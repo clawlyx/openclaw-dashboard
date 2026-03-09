@@ -6,16 +6,18 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-09
+
 ### Added
 
-- Local-first dashboard shell for OpenClaw usage, quota, cron health, and usage history trends.
-- Demo dataset fallback for first-run previews and CI validation.
-- GitHub Actions CI workflow and pull request template for repository hygiene.
+- Provider-aware limits data in `usage.providerLimits`, including reusable limit windows for the active provider.
+- A reusable provider limits panel component for hero and usage surfaces.
 
 ### Changed
 
-- Public-facing docs now use generic paths and default examples that are safe to publish.
-- Dashboard snapshot output now masks local filesystem paths before rendering or returning JSON.
+- Reduced homepage copy density so the first screen is easier to scan and act on.
+- Updated the dashboard UI and public docs to describe provider limits instead of a Codex-only rolling quota card.
+- Refreshed package metadata for the provider-limits terminology used in this release.
 
 ## [0.1.0] - 2026-03-08
 

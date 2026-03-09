@@ -2,7 +2,7 @@
   "lang": "English",
   "meta": {
     "title": "OpenClaw Dashboard",
-    "description": "A local-first dashboard for OpenClaw usage, quotas, and scheduler health."
+    "description": "A local-first dashboard for OpenClaw usage, provider limits, and scheduler health."
   },
   "nav": {
     "label": "Primary navigation",
@@ -15,7 +15,25 @@
   "hero": {
     "eyebrow": "Local Operations",
     "title": "OpenClaw Dashboard",
-    "copy": "A local-first cockpit for OpenClaw. It reads usage reports, rolling quota state, and scheduler health directly from {home}, so you can inspect the system without asking the agent to reconstruct its own status.",
+    "copy": "See usage history, provider limits, and scheduler health from local data at {home}.",
+    "highlights": [
+      {
+        "title": "Usage history",
+        "copy": "Normalized reports and trend charts stay ready."
+      },
+      {
+        "title": "Provider limits",
+        "copy": "Codex windows are wired in now, and other provider limit shapes can follow."
+      },
+      {
+        "title": "Scheduler health",
+        "copy": "Next runs and attention items stay in one place."
+      }
+    ],
+    "generatedShort": "Updated",
+    "sourceShort": "Source",
+    "usageSourceShort": "Usage report",
+    "jobsShort": "Jobs",
     "generated": "Generated {value}",
     "source": "Data source: {value}",
     "usageSource": "Usage source: {value}",
@@ -25,10 +43,12 @@
     "modeLive": "Live workspace",
     "modeCustom": "Custom source",
     "modeDemo": "Demo dataset",
-    "pulseEyebrow": "Rolling quota",
-    "pulseTitle": "Realtime 5h and 7d limits stay visible even when the latest report snapshot is already stale.",
-    "pulseFooter": "Quota source: {value}",
+    "pulseEyebrow": "Provider limits",
+    "pulseTitle": "Active provider limits",
+    "pulseCopy": "This module is provider-ready. Today it surfaces Codex 5h and 7d rolling windows.",
+    "pulseFooter": "Limit source: {value}",
     "opsEyebrow": "System pulse",
+    "opsTitle": "Runtime checkpoints",
     "sourcePath": "Source path",
     "nextRun": "Next run",
     "attention": "Attention",
@@ -54,7 +74,7 @@
   "stats": {
     "totalRequests": "Total Requests",
     "totalTokens": "Total Tokens",
-    "quotaRemaining": "Quota Remaining",
+    "quotaRemaining": "Provider Limits",
     "jobsAttention": "Jobs Needing Attention",
     "latestUsage": "Latest usage report",
     "inputOutput": "Input + output",
@@ -66,10 +86,11 @@
   "usage": {
     "section": "Usage",
     "topModelBreakdown": "Top Model Breakdown",
-    "topModelDescription": "Top-model source share is pulled from the report's per-model source table, so the dashboard does not need to guess.",
+    "topModelDescription": "Source share comes from the report table, so the dashboard does not have to infer model mix.",
     "topModel": "Top model",
-    "oauth": "OAuth/token",
-    "remaining7d": "7d remaining",
+    "authStatus": "Auth status",
+    "activeProvider": "Active provider",
+    "limitWindows": "Limit windows",
     "tableModel": "Model",
     "tableRequests": "Requests",
     "tableTokens": "Total Tokens"
@@ -77,7 +98,7 @@
   "scheduler": {
     "section": "Scheduler",
     "title": "Cron Health",
-    "description": "OpenClaw cron jobs from cron/jobs.json. Host-level schedulers like launchd can be added next.",
+    "description": "OpenClaw cron jobs from cron/jobs.json. Host-level schedulers like launchd can come next.",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "attention": "Attention",
@@ -95,7 +116,7 @@
   },
   "history": {
     "title": "History Trend",
-    "description": "Reports are normalized into structured history so the dashboard can chart requests and tokens across older and newer report formats.",
+    "description": "Normalized reports power request and token trend charts across older and newer report formats.",
     "descriptionUnavailable": "Normalized history powers the next chart layer, even when report formats evolve.",
     "range": "{start} to {end}",
     "reportsNormalized": "{count} reports normalized",

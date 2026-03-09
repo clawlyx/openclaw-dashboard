@@ -2,14 +2,14 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-A local-first dashboard for OpenClaw usage history, quota status, and cron health.
+A local-first dashboard for OpenClaw usage history, provider limits, and cron health.
 
 ![OpenClaw Dashboard demo](./.github/assets/readme-demo.png)
 
 ## Features
 
 - latest usage report summary
-- 5h / 7d quota status
+- provider limits module with reusable limit windows, currently backed by Codex 5h / 7d data
 - top-model source share
 - model usage table
 - cron overview
@@ -38,7 +38,8 @@ live install is present, the app serves bundled demo data instead.
 - cron jobs: `cron/jobs.json`
 
 This means the app is local-first and does not need a custom backend yet. The JSON snapshot is
-also exposed at `/api/snapshot`, including normalized `usage.history` data for charts.
+also exposed at `/api/snapshot`, including normalized `usage.history` data for charts and
+`usage.providerLimits` data for provider-aware limit modules.
 
 ## Quick Start
 

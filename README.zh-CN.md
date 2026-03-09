@@ -2,14 +2,14 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-一个面向 OpenClaw usage 历史、额度状态和 cron 健康度的本地优先仪表盘。
+一个面向 OpenClaw usage 历史、provider 限额和 cron 健康度的本地优先仪表盘。
 
 ![OpenClaw Dashboard demo](./.github/assets/readme-demo.png)
 
 ## 功能特性
 
 - 最新 usage 报告摘要
-- 5h / 7d 额度状态
+- provider 限额模块，已支持可复用的限额窗口展示，当前先由 Codex 的 5h / 7d 数据驱动
 - Top 模型来源占比
 - 模型 usage 表格
 - cron 概览
@@ -35,7 +35,7 @@
 - usage 报告：`workspace/memory/usage/*.md`
 - cron 任务：`cron/jobs.json`
 
-这意味着它目前仍然是 local-first 的，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供图表使用的归一化 `usage.history` 数据。
+这意味着它目前仍然是 local-first 的，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供图表使用的归一化 `usage.history` 数据，以及供 provider-aware 限额模块使用的 `usage.providerLimits` 数据。
 
 ## 快速开始
 

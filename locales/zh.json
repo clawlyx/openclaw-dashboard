@@ -2,7 +2,7 @@
   "lang": "简体中文",
   "meta": {
     "title": "OpenClaw 仪表盘",
-    "description": "一个面向 OpenClaw usage、额度与调度健康度的本地优先仪表盘。"
+    "description": "一个面向 OpenClaw usage、provider 限额与调度健康度的本地优先仪表盘。"
   },
   "nav": {
     "label": "主导航",
@@ -15,7 +15,25 @@
   "hero": {
     "eyebrow": "本地运维面板",
     "title": "OpenClaw 仪表盘",
-    "copy": "这是一个面向 OpenClaw 的本地优先驾驶舱。它会直接从 {home} 读取 usage 报告、滚动额度状态和调度健康度，让你无需再让 Agent 反向重构自己的状态，也能直接看清系统现况。",
+    "copy": "直接从 {home} 查看本地 OpenClaw 的 usage 历史、provider 限额和调度健康度。",
+    "highlights": [
+      {
+        "title": "Usage 历史",
+        "copy": "归一化报告和趋势图一眼就能看懂。"
+      },
+      {
+        "title": "Provider 限额",
+        "copy": "当前先接入 Codex 窗口，后面可以继续扩展更多 provider 的限额形态。"
+      },
+      {
+        "title": "调度健康度",
+        "copy": "下次运行和告警项集中在同一处。"
+      }
+    ],
+    "generatedShort": "更新时间",
+    "sourceShort": "数据源",
+    "usageSourceShort": "Usage 报告",
+    "jobsShort": "任务数",
     "generated": "生成时间：{value}",
     "source": "数据来源：{value}",
     "usageSource": "Usage 来源：{value}",
@@ -25,10 +43,12 @@
     "modeLive": "实时工作区",
     "modeCustom": "自定义数据源",
     "modeDemo": "演示数据集",
-    "pulseEyebrow": "滚动额度",
-    "pulseTitle": "即使最新日报快照已经过时，当前 5h / 7d 额度仍然保持可见。",
-    "pulseFooter": "额度来源：{value}",
+    "pulseEyebrow": "Provider 限额",
+    "pulseTitle": "当前 provider 限额",
+    "pulseCopy": "这个模块已经按 provider 扩展方向设计。当前先展示 Codex 的 5h / 7d 滚动窗口。",
+    "pulseFooter": "限额来源：{value}",
     "opsEyebrow": "系统脉冲",
+    "opsTitle": "运行时检查点",
     "sourcePath": "数据路径",
     "nextRun": "下次运行",
     "attention": "告警任务",
@@ -54,7 +74,7 @@
   "stats": {
     "totalRequests": "总请求数",
     "totalTokens": "总 Tokens",
-    "quotaRemaining": "剩余额度",
+    "quotaRemaining": "Provider 限额",
     "jobsAttention": "需关注任务",
     "latestUsage": "最新 usage 报告",
     "inputOutput": "输入 + 输出",
@@ -66,10 +86,11 @@
   "usage": {
     "section": "用量",
     "topModelBreakdown": "Top 模型拆解",
-    "topModelDescription": "Top 模型来源占比来自报告中的分模型来源表，所以看板无需再猜测模型结构。",
+    "topModelDescription": "来源占比直接来自报告表格，所以看板无需再推断模型结构。",
     "topModel": "Top 模型",
-    "oauth": "OAuth/token",
-    "remaining7d": "7 天剩余",
+    "authStatus": "认证状态",
+    "activeProvider": "当前 provider",
+    "limitWindows": "限额窗口",
     "tableModel": "模型",
     "tableRequests": "请求数",
     "tableTokens": "总 Tokens"
@@ -77,7 +98,7 @@
   "scheduler": {
     "section": "调度",
     "title": "Cron 健康度",
-    "description": "来自 cron/jobs.json 的 OpenClaw cron 任务。下一步可以继续接入 launchd 等主机级调度器。",
+    "description": "展示 cron/jobs.json 里的 OpenClaw cron。下一步再接入 launchd 等主机级调度器。",
     "enabled": "启用",
     "disabled": "停用",
     "attention": "告警",
@@ -95,7 +116,7 @@
   },
   "history": {
     "title": "历史趋势",
-    "description": "报告会被归一化为结构化历史数据，支持在新旧格式之间连续绘制请求数与 Tokens 趋势图。",
+    "description": "归一化报告支撑请求数和 Tokens 趋势图，并兼容新旧格式。",
     "descriptionUnavailable": "即使报告格式继续演进，归一化历史也能支撑下一层图表能力。",
     "range": "{start} 至 {end}",
     "reportsNormalized": "已归一化 {count} 份报告",

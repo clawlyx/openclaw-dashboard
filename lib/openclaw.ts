@@ -56,6 +56,22 @@ export type UsageHistorySnapshot = {
   error?: string;
 };
 
+export type ProviderLimitWindow = {
+  id: string;
+  label: string;
+  remaining?: string;
+  remainingValue?: number;
+};
+
+export type ProviderLimitSnapshot = {
+  providerId: string;
+  providerLabel: string;
+  authStatus?: string;
+  source?: "report" | "models" | "session-status";
+  observedAt?: string;
+  windows: ProviderLimitWindow[];
+};
+
 export type UsageSnapshot = {
   available: boolean;
   reportDate?: string;
@@ -71,6 +87,7 @@ export type UsageSnapshot = {
   quota7d?: string;
   quotaSource?: "report" | "models" | "session-status";
   quotaObservedAt?: string;
+  providerLimits?: ProviderLimitSnapshot[];
   quickSummary?: string[];
   topModelSources?: UsageSourceShare[];
   models?: UsageModelRow[];
@@ -305,6 +322,57 @@ const formatQuotaRemaining = (percent: string, remaining: string) => ({
   label: `${percent.trim()}%（剩余约 ${remaining.trim()}）`,
   value: parseNumber(percent)
 });
+
+const buildProviderLimits = ({
+  authStatus,
+  quota5h,
+  quota5hValue,
+  quota7d,
+  quota7dValue,
+  source,
+  observedAt
+}: {
+  authStatus?: string;
+  quota5h?: string;
+  quota5hValue?: number;
+  quota7d?: string;
+  quota7dValue?: number;
+  source?: "report" | "models" | "session-status";
+  observedAt?: string;
+}): ProviderLimitSnapshot[] | undefined => {
+  const windows: ProviderLimitWindow[] = [];
+
+  if (quota5h) {
+    windows.push({
+      id: "5h",
+      label: "5h",
+      remaining: quota5h,
+      remainingValue: quota5hValue
+    });
+  }
+
+  if (quota7d) {
+    windows.push({
+      id: "7d",
+      label: "7d",
+      remaining: quota7d,
+      remainingValue: quota7dValue
+    });
+  }
+
+  if (!windows.length && !authStatus) return undefined;
+
+  return [
+    {
+      providerId: "openai-codex",
+      providerLabel: "OpenAI Codex",
+      authStatus,
+      source,
+      observedAt,
+      windows
+    }
+  ];
+};
 
 const buildRowLookup = (rows: TableRow[]) =>
   Object.fromEntries(
@@ -730,6 +798,11 @@ const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<Usa
       latestReport: latest
     });
     const resolvedQuota = useLiveQuota ? liveQuota : null;
+    const authStatus = resolvedQuota?.oauthStatus || latest.oauthStatus;
+    const quota5h = resolvedQuota?.quota5h || latest.quota5h;
+    const quota7d = resolvedQuota?.quota7d || latest.quota7d;
+    const quotaSource = resolvedQuota?.source || "report";
+    const quotaObservedAt = resolvedQuota?.observedAt || latest.generatedAt;
 
     return {
       available: true,
@@ -741,11 +814,20 @@ const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<Usa
       inputTokens: latest.inputTokens,
       outputTokens: latest.outputTokens,
       topModel: latest.topModel,
-      oauthStatus: resolvedQuota?.oauthStatus || latest.oauthStatus,
-      quota5h: resolvedQuota?.quota5h || latest.quota5h,
-      quota7d: resolvedQuota?.quota7d || latest.quota7d,
-      quotaSource: resolvedQuota?.source || "report",
-      quotaObservedAt: resolvedQuota?.observedAt || latest.generatedAt,
+      oauthStatus: authStatus,
+      quota5h,
+      quota7d,
+      quotaSource,
+      quotaObservedAt,
+      providerLimits: buildProviderLimits({
+        authStatus,
+        quota5h,
+        quota5hValue: resolvedQuota?.quota5hValue || latest.quota5hValue,
+        quota7d,
+        quota7dValue: resolvedQuota?.quota7dValue || latest.quota7dValue,
+        source: quotaSource,
+        observedAt: quotaObservedAt
+      }),
       quickSummary: latest.quickSummary,
       topModelSources: latest.topModelSources,
       models: latest.models,

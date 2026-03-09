@@ -411,6 +411,10 @@ code {
   line-height: 1.02;
 }
 
+.signalCardTitleCompact {
+  font-size: clamp(1.08rem, 1.4vw, 1.28rem);
+}
+
 .eyebrow {
   margin: 0 0 12px;
   color: var(--accent);
@@ -432,15 +436,84 @@ table,
 }
 
 .heroCopy {
-  max-width: 60ch;
+  max-width: 34ch;
   margin: 18px 0 0;
+  color: var(--ink-soft);
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.heroHighlights,
+.heroFacts {
+  display: grid;
+  gap: 12px;
+}
+
+.heroHighlights {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 22px;
+}
+
+.heroHighlightCard,
+.heroFactCard {
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface-card);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.heroHighlightTitle,
+.heroHighlightCopy,
+.heroFactLabel,
+.heroFactValue {
+  margin: 0;
+}
+
+.heroHighlightTitle {
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.heroHighlightCopy {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.heroFacts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 24px;
+}
+
+.heroFactCard {
+  background: var(--surface-chip);
+}
+
+.heroFactLabel {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroFactValue {
+  display: block;
+  margin-top: 10px;
+  color: var(--ink-soft);
+  font-size: 0.96rem;
+  line-height: 1.4;
 }
 
 .heroActionRow {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 28px;
+  margin-top: 22px;
 }
 
 .heroActionPrimary,
@@ -473,16 +546,6 @@ table,
   transform: translateY(-1px);
 }
 
-.heroMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.heroMetaGrid {
-  margin-top: 24px;
-}
-
 .metaChip {
   display: inline-flex;
   align-items: center;
@@ -509,10 +572,18 @@ table,
 
 .signalCardQuota .eyebrow,
 .signalCardQuota .signalCardTitle,
-.signalCardQuota .quotaKey,
-.signalCardQuota .quotaFigure,
+.signalCardQuota .signalCardLead,
+.signalCardQuota .providerLimitLabel,
+.signalCardQuota .providerLimitValue,
 .signalCardQuota .signalCardCopy {
   color: rgba(255, 252, 246, 0.96);
+}
+
+.signalCardLead {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 .signalCardCopy {
@@ -638,40 +709,65 @@ table,
   font-size: 0.8rem;
 }
 
-.quotaValue {
+.providerLimitsGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
   gap: 12px;
+  margin-top: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
 }
 
-.quotaValueHero {
+.providerLimitsGridCompact {
+  margin-top: 0;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.providerLimitItem {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--surface-chip);
+}
+
+.providerLimitsGridHero {
   margin-top: 22px;
 }
 
-.quotaItem {
-  display: grid;
-  gap: 4px;
+.providerLimitsGridHero .providerLimitItem {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.quotaKey {
+.providerLimitsGridCompact .providerLimitItem {
+  padding: 10px 12px;
+}
+
+.providerLimitLabel {
   color: var(--muted);
   font-size: 0.76rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.quotaFigure {
+.providerLimitValue {
   color: var(--ink);
   font-size: clamp(1.06rem, 1.35vw, 1.5rem);
   line-height: 1.15;
   letter-spacing: -0.04em;
 }
 
-.quotaDivider {
-  width: 1px;
-  height: 42px;
-  background: var(--line-strong);
+.providerLimitsPanel {
+  margin-top: 16px;
+}
+
+.providerLimitsPanelLabel {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .contentGrid {
@@ -1046,6 +1142,11 @@ html[data-theme="dark"] .historyGridLine {
   .contentGrid {
     grid-template-columns: 1fr;
   }
+
+  .heroHighlights,
+  .heroFacts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 980px) {
@@ -1073,7 +1174,9 @@ html[data-theme="dark"] .historyGridLine {
   .contentGrid,
   .statsGridCompact,
   .historyStatsGrid,
-  .historyChartGrid {
+  .historyChartGrid,
+  .heroHighlights,
+  .heroFacts {
     grid-template-columns: 1fr;
   }
 
@@ -1102,13 +1205,9 @@ html[data-theme="dark"] .historyGridLine {
     justify-content: flex-start;
   }
 
-  .quotaValue {
+  .providerLimitsGrid,
+  .providerLimitsGridCompact {
     grid-template-columns: 1fr;
-  }
-
-  .quotaDivider {
-    width: 100%;
-    height: 1px;
   }
 }
 

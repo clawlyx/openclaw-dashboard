@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 import { SectionShell } from "@/components/section-shell";
 import { StatCard } from "@/components/stat-card";
+import { ProviderLimitWindows } from "@/components/provider-limit-windows";
 import { UsageHistoryPanel } from "@/components/usage-history-panel";
 import { ThemeSwitch } from "@/components/theme-switch";
 import {
@@ -66,11 +67,24 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       : openclawSourceKind === "custom"
         ? t.hero.modeCustom
         : t.hero.modeLive;
+  const heroFacts = [
+    { label: t.hero.generatedShort, value: generatedLabel },
+    { label: t.hero.sourceShort, value: localizedSourceLabel },
+    { label: t.hero.usageSourceShort, value: reportDateLabel },
+    { label: t.hero.jobsShort, value: String(cron.jobs.length) }
+  ];
 
   const localizedUsage = {
     ...usage,
     quota5h: formatQuotaDisplay(usage.quota5h, t),
     quota7d: formatQuotaDisplay(usage.quota7d, t),
+    providerLimits: (usage.providerLimits || []).map((provider) => ({
+      ...provider,
+      windows: provider.windows.map((window) => ({
+        ...window,
+        remaining: formatQuotaDisplay(window.remaining, t)
+      }))
+    })),
     error: translateDashboardText(usage.error, t),
     notes: translateDashboardTexts(usage.notes, t),
     history: {
@@ -80,6 +94,33 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       reportsWindowLabel: formatReportsWindowLabel(Math.min(7, usage.history.reportCount), t)
     }
   };
+  const primaryProviderLimit = localizedUsage.providerLimits[0];
+  const providerWindows = (
+    primaryProviderLimit?.windows.length
+      ? primaryProviderLimit.windows
+      : [
+          localizedUsage.quota5h
+            ? { id: "5h", label: t.stats.window5h, remaining: localizedUsage.quota5h }
+            : null,
+          localizedUsage.quota7d
+            ? { id: "7d", label: t.stats.window7d, remaining: localizedUsage.quota7d }
+            : null
+        ].filter(
+          (
+            window
+          ): window is {
+            id: string;
+            label: string;
+            remaining: string;
+          } => Boolean(window)
+        )
+  ).map((window) => ({
+    id: window.id,
+    label: window.label,
+    value: window.remaining || na
+  }));
+  const primaryProviderLabel = primaryProviderLimit?.providerLabel || t.hero.pulseTitle;
+  const providerAuthStatus = primaryProviderLimit?.authStatus || localizedUsage.oauthStatus || na;
 
   const presentJob = (job: (typeof cron.nextJobs)[number]) => presentCronJob({ job, locale, messages: t });
   const nextJobs = cron.nextJobs.map(presentJob);
@@ -146,6 +187,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <h1>{t.hero.title}</h1>
           <p className="heroCopy">{formatMessage(t.hero.copy, { home: openclawHome })}</p>
 
+          <div className="heroHighlights" aria-label={t.hero.eyebrow}>
+            {t.hero.highlights.map((item) => (
+              <article key={item.title} className="heroHighlightCard">
+                <p className="heroHighlightTitle">{item.title}</p>
+                <p className="heroHighlightCopy">{item.copy}</p>
+              </article>
+            ))}
+          </div>
+
           <div className="heroActionRow">
             <a href={buildHref(locale, "history")} className="heroActionPrimary">
               {t.hero.primaryCta}
@@ -155,36 +205,30 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </a>
           </div>
 
-          <div className="heroMeta heroMetaGrid">
-            <div className="metaChip">{formatMessage(t.hero.generated, { value: generatedLabel })}</div>
-            <div className="metaChip">{formatMessage(t.hero.source, { value: localizedSourceLabel })}</div>
-            <div className="metaChip">{formatMessage(t.hero.usageSource, { value: reportDateLabel })}</div>
-            <div className="metaChip">{formatMessage(t.hero.cronJobs, { count: cron.jobs.length })}</div>
+          <div className="heroFacts" aria-label={t.hero.eyebrow}>
+            {heroFacts.map((fact) => (
+              <article key={fact.label} className="heroFactCard">
+                <span className="heroFactLabel">{fact.label}</span>
+                <strong className="heroFactValue">{fact.value}</strong>
+              </article>
+            ))}
           </div>
         </div>
 
         <div className="heroRail">
           <article className="signalCard signalCardQuota">
             <p className="eyebrow">{t.hero.pulseEyebrow}</p>
-            <h2 className="signalCardTitle">{t.hero.pulseTitle}</h2>
+            <h2 className="signalCardTitle">{primaryProviderLabel}</h2>
+            <p className="signalCardLead">{t.hero.pulseCopy}</p>
 
-            <div className="quotaValue quotaValueHero">
-              <div className="quotaItem">
-                <span className="quotaKey">{t.stats.window5h}</span>
-                <strong className="quotaFigure">{localizedUsage.quota5h || na}</strong>
-              </div>
-              <div className="quotaDivider" />
-              <div className="quotaItem">
-                <span className="quotaKey">{t.stats.window7d}</span>
-                <strong className="quotaFigure">{localizedUsage.quota7d || na}</strong>
-              </div>
-            </div>
+            <ProviderLimitWindows windows={providerWindows} variant="hero" />
 
             <p className="signalCardCopy">{formatMessage(t.hero.pulseFooter, { value: quotaSourceLabel })}</p>
           </article>
 
           <article className="signalCard">
             <p className="eyebrow">{t.hero.opsEyebrow}</p>
+            <h2 className="signalCardTitle signalCardTitleCompact">{t.hero.opsTitle}</h2>
             <div className="signalList">
               <div className="signalRow">
                 <span className="signalLabel">{t.hero.sourcePath}</span>
@@ -217,19 +261,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <StatCard label={t.stats.totalTokens} value={usage.totalTokens || na} hint={t.stats.inputOutput} />
         <StatCard
           label={t.stats.quotaRemaining}
-          value={
-            <div className="quotaValue">
-              <div className="quotaItem">
-                <span className="quotaKey">{t.stats.window5h}</span>
-                <strong className="quotaFigure">{localizedUsage.quota5h || na}</strong>
-              </div>
-              <div className="quotaDivider" />
-              <div className="quotaItem">
-                <span className="quotaKey">{t.stats.window7d}</span>
-                <strong className="quotaFigure">{localizedUsage.quota7d || na}</strong>
-              </div>
-            </div>
-          }
+          value={<ProviderLimitWindows windows={providerWindows} variant="default" />}
           hint={quotaHint}
         />
         <StatCard
@@ -263,14 +295,21 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   <strong>{localizedUsage.topModel || na}</strong>
                 </div>
                 <div className="metricLine">
-                  <span className="metricLabel">{t.usage.oauth}</span>
-                  <strong>{localizedUsage.oauthStatus || na}</strong>
+                  <span className="metricLabel">{t.usage.authStatus}</span>
+                  <strong>{providerAuthStatus}</strong>
                 </div>
                 <div className="metricLine">
-                  <span className="metricLabel">{t.usage.remaining7d}</span>
-                  <strong>{localizedUsage.quota7d || na}</strong>
+                  <span className="metricLabel">{t.usage.activeProvider}</span>
+                  <strong>{primaryProviderLabel}</strong>
                 </div>
               </div>
+
+              {providerWindows.length ? (
+                <div className="providerLimitsPanel">
+                  <p className="providerLimitsPanelLabel">{t.usage.limitWindows}</p>
+                  <ProviderLimitWindows windows={providerWindows} variant="compact" />
+                </div>
+              ) : null}
 
               <div className="shareList">
                 {(localizedUsage.topModelSources || []).map((entry) => (
