@@ -41,6 +41,12 @@
     "en": "EN",
     "zh": "中文"
   },
+  "theme": {
+    "label": "主题",
+    "system": "自动",
+    "light": "浅色",
+    "dark": "深色"
+  },
   "demo": {
     "eyebrow": "演示模式",
     "copy": "未检测到本地 ~/.openclaw，当前展示内置演示数据。设置 OPENCLAW_HOME 或创建 ~/.openclaw 后可切换为实时数据。"
