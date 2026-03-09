@@ -1,0 +1,31 @@
+{
+  "name": "openclaw-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visual dashboard for OpenClaw usage, quotas, and scheduler health.",
+  "packageManager": "pnpm@10.30.3",
+  "scripts": {
+    "dev": "node scripts/next-runner.mjs dev",
+    "build": "next build",
+    "start": "node scripts/next-runner.mjs start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm lint && pnpm typecheck && pnpm build"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.1.6",
+    "typescript": "latest"
+  }
+}

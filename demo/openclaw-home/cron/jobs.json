@@ -1,0 +1,89 @@
+{
+  "jobs": [
+    {
+      "id": "usage-daily",
+      "name": "Daily Usage Report",
+      "enabled": true,
+      "sessionTarget": "ops",
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * *",
+        "tz": "America/New_York"
+      },
+      "delivery": {
+        "channel": "telegram",
+        "to": "ops-room"
+      },
+      "state": {
+        "lastRunStatus": "ok",
+        "lastDeliveryStatus": "ok",
+        "lastRunAtMs": 1772978400000,
+        "nextRunAtMs": 1773061200000,
+        "consecutiveErrors": 0
+      }
+    },
+    {
+      "id": "quota-watch",
+      "name": "Quota Watcher",
+      "enabled": true,
+      "sessionTarget": "ops",
+      "schedule": {
+        "kind": "interval",
+        "every": "5h"
+      },
+      "delivery": {
+        "channel": "discord",
+        "to": "quota-alerts"
+      },
+      "state": {
+        "lastRunStatus": "error",
+        "lastDeliveryStatus": "failed",
+        "lastRunAtMs": 1772924400000,
+        "nextRunAtMs": 1772985600000,
+        "consecutiveErrors": 2
+      }
+    },
+    {
+      "id": "browser-heartbeat",
+      "name": "Browser Heartbeat",
+      "enabled": true,
+      "sessionTarget": "automation",
+      "schedule": {
+        "kind": "cron",
+        "expr": "*/30 * * * *",
+        "tz": "America/New_York"
+      },
+      "delivery": {
+        "channel": "feishu",
+        "to": "browser-ops"
+      },
+      "state": {
+        "lastRunStatus": "ok",
+        "lastDeliveryStatus": "ok",
+        "lastRunAtMs": 1772974800000,
+        "nextRunAtMs": 1772982000000,
+        "consecutiveErrors": 0
+      }
+    },
+    {
+      "id": "publish-weekly",
+      "name": "Weekly Publish Checklist",
+      "enabled": false,
+      "sessionTarget": "maintainers",
+      "schedule": {
+        "kind": "cron",
+        "expr": "30 10 * * 1",
+        "tz": "America/New_York"
+      },
+      "delivery": {
+        "channel": "discord",
+        "to": "release-room"
+      },
+      "state": {
+        "lastRunStatus": "never",
+        "lastDeliveryStatus": "n/a",
+        "consecutiveErrors": 0
+      }
+    }
+  ]
+}
