@@ -1,5 +1,7 @@
 # OpenClaw Dashboard
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 A local-first dashboard for OpenClaw usage history, quota status, and cron health.
 
 ![OpenClaw Dashboard demo](./.github/assets/readme-demo.png)
