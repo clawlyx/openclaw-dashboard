@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { SectionShell } from "@/components/section-shell";
 import { StatCard } from "@/components/stat-card";
 import { UsageHistoryPanel } from "@/components/usage-history-panel";
+import { ThemeSwitch } from "@/components/theme-switch";
 import {
   formatDateTimeLabel,
   formatQuotaDisplay,
@@ -114,6 +115,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         <div className="toolbarCluster">
           <span className={`modeChip ${openclawSourceKind === "demo" ? "modeChipDemo" : ""}`}>{modeLabel}</span>
+          <ThemeSwitch
+            label={t.theme.label}
+            options={{
+              system: t.theme.system,
+              light: t.theme.light,
+              dark: t.theme.dark
+            }}
+          />
           <div className="languageSwitch" aria-label={t.language.label}>
             {(["en", "zh"] as const).map((targetLocale) => (
               <a

@@ -16,3 +16,7 @@ playwright-report/
 .vscode/
 docs/
 public/
+docs/briefs/
+docs/rfc/
+docs/qa/
+docs/release/

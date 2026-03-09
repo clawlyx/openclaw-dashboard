@@ -41,6 +41,12 @@
     "en": "EN",
     "zh": "中文"
   },
+  "theme": {
+    "label": "Theme",
+    "system": "Auto",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "demo": {
     "eyebrow": "Demo Mode",
     "copy": "No local ~/.openclaw install was found, so the dashboard is showing the bundled demo dataset. Set OPENCLAW_HOME or create ~/.openclaw to switch to live data."
