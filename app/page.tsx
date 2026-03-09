@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 
 import { SectionShell } from "@/components/section-shell";
 import { StatCard } from "@/components/stat-card";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/dashboard-presenters";
 import { formatMessage, getMessages, localeTag, resolveLocale, type Locale } from "@/lib/i18n";
 import { getDashboardSnapshot } from "@/lib/openclaw";
+import { resolveTheme, THEME_COOKIE } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const params = searchParams ? await searchParams : undefined;
   const locale = resolveLocale(params?.lang);
   const t = getMessages(locale);
+  const cookieStore = await cookies();
+  const theme = resolveTheme(cookieStore.get(THEME_COOKIE)?.value);
 
   const snapshot = await getDashboardSnapshot();
   const { usage, cron, openclawHome, openclawSourceKind, openclawSourceLabel } = snapshot;
@@ -117,11 +121,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <span className={`modeChip ${openclawSourceKind === "demo" ? "modeChipDemo" : ""}`}>{modeLabel}</span>
           <ThemeSwitch
             label={t.theme.label}
-            options={{
-              system: t.theme.system,
-              light: t.theme.light,
-              dark: t.theme.dark
-            }}
+            lightLabel={t.theme.light}
+            darkLabel={t.theme.dark}
+            theme={theme}
           />
           <div className="languageSwitch" aria-label={t.language.label}>
             {(["en", "zh"] as const).map((targetLocale) => (

@@ -1,62 +1,58 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
-const THEME_KEY = "oc-dashboard-theme";
+import type { ThemeMode } from "@/lib/theme";
 
-type ThemeMode = "system" | "light" | "dark";
-
-function normalizeTheme(value: string | null): ThemeMode {
-  return value === "light" || value === "dark" || value === "system" ? value : "system";
-}
-
-function resolveTheme(mode: ThemeMode) {
-  if (mode === "system") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  return mode;
-}
-
-export function ThemeSwitch({
-  label,
-  options
-}: {
+type ThemeSwitchProps = {
   label: string;
-  options: Record<ThemeMode, string>;
-}) {
-  const [mode, setMode] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "system";
-    return normalizeTheme(window.localStorage.getItem(THEME_KEY));
-  });
+  lightLabel: string;
+  darkLabel: string;
+  theme: ThemeMode;
+};
+
+export function ThemeSwitch({ label, lightLabel, darkLabel, theme }: ThemeSwitchProps) {
+  const pathname = usePathname() || "/";
+  const searchParams = useSearchParams();
+  const [hash, setHash] = useState("");
+  const currentQuery = searchParams.toString();
+  const currentPath = currentQuery ? `${pathname}?${currentQuery}` : pathname;
+  const nextPath = `${currentPath}${hash}`;
 
   useEffect(() => {
-    document.documentElement.dataset.theme = resolveTheme(mode);
-    window.localStorage.setItem(THEME_KEY, mode);
-  }, [mode]);
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      if (normalizeTheme(window.localStorage.getItem(THEME_KEY)) === "system") {
-        document.documentElement.dataset.theme = resolveTheme("system");
-      }
-    };
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
+    const syncHash = () => setHash(window.location.hash);
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
   }, []);
 
   return (
     <div className="themeSwitch" aria-label={label}>
-      {(["system", "light", "dark"] as const).map((item) => (
-        <button
-          key={item}
-          type="button"
-          className={`themeOption ${mode === item ? "themeOptionActive" : ""}`}
-          onClick={() => setMode(item)}
-        >
-          {options[item]}
-        </button>
-      ))}
+      <a
+        href={`/api/theme?mode=light&next=${encodeURIComponent(nextPath)}`}
+        className={`themeOption ${theme === "light" ? "themeOptionActive" : ""}`}
+        aria-label={lightLabel}
+        title={lightLabel}
+        aria-current={theme === "light" ? "page" : undefined}
+      >
+        <span className="themeOptionIcon" aria-hidden="true">
+          ☀
+        </span>
+        <span className="themeOptionText">{lightLabel}</span>
+      </a>
+      <a
+        href={`/api/theme?mode=dark&next=${encodeURIComponent(nextPath)}`}
+        className={`themeOption ${theme === "dark" ? "themeOptionActive" : ""}`}
+        aria-label={darkLabel}
+        title={darkLabel}
+        aria-current={theme === "dark" ? "page" : undefined}
+      >
+        <span className="themeOptionIcon" aria-hidden="true">
+          ☾
+        </span>
+        <span className="themeOptionText">{darkLabel}</span>
+      </a>
     </div>
   );
 }
