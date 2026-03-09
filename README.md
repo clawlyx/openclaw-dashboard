@@ -1,32 +1,10 @@
 # OpenClaw Dashboard
 
-A local-first dashboard for OpenClaw. The current MVP focuses on two reliable surfaces:
-
-- usage and quota visibility from the latest usage report
-- cron scheduler health from `cron/jobs.json`
-
-## Reference docs
-
-- [Contribution guide](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
-- [Pull request template](.github/PULL_REQUEST_TEMPLATE.md)
-- [Changelog](CHANGELOG.md)
-
-This repo is intentionally broader than a single usage report skill. The goal is a proper OpenClaw dashboard that can grow into channels, browser telemetry, delivery health, and host-level schedulers.
+A local-first dashboard for OpenClaw usage history, quota status, and cron health.
 
 ![OpenClaw Dashboard demo](./.github/assets/readme-demo.png)
 
-## Why this exists
-
-OpenClaw can already produce reports. The weak point is repeatability:
-
-- a chat agent can drift on formatting
-- the same data gets re-explained differently across runs
-- scheduled reporting is slower when a model has to think through every step
-
-This dashboard uses direct local reads for the visual layer. If the source report is already correct, the UI stays correct.
-
-## MVP
+## Features
 
 - latest usage report summary
 - 5h / 7d quota status
@@ -38,7 +16,9 @@ This dashboard uses direct local reads for the visual layer. If the source repor
 - automatic fallback to a bundled demo dataset for public previews and first-run setup
 - normalized usage history and trend charts across multiple reports
 
-## How it runs
+The repo is intentionally broader than a single usage report skill. The goal is a proper OpenClaw dashboard that can grow into channels, browser telemetry, delivery health, and host-level schedulers.
+
+## How it works
 
 The app supports two data modes:
 
@@ -49,8 +29,6 @@ The app supports two data modes:
 This makes the repo publishable as-is while still preferring real local data on machines that
 already have OpenClaw installed.
 
-## Data sources
-
 By default the app reads from `~/.openclaw`. You can override that with `OPENCLAW_HOME`. If no
 live install is present, the app serves bundled demo data instead.
 
@@ -60,7 +38,7 @@ live install is present, the app serves bundled demo data instead.
 This means the app is local-first and does not need a custom backend yet. The JSON snapshot is
 also exposed at `/api/snapshot`, including normalized `usage.history` data for charts.
 
-## Getting started
+## Quick Start
 
 ```bash
 git clone <your-fork-or-this-repo-url>
@@ -118,35 +96,6 @@ The repo also includes a GitHub Actions workflow at `.github/workflows/ci.yml` t
 typechecks, and builds against the bundled demo dataset on every push to `main` and every pull
 request.
 
-## Git Workflow
-
-This repo uses a lightweight trunk-based workflow with conventional commit naming.
-
-Default approach:
-
-- small, low-risk changes can be committed directly to `main`
-- larger or higher-risk changes should use a review branch and pull request
-
-Use direct commits to `main` for:
-
-- copy and documentation edits
-- small UI tweaks
-- narrow bug fixes
-- low-risk scripts and tooling changes
-
-Use a branch and PR for:
-
-- data-source contract changes
-- parser refactors or dashboard architecture changes
-- changes that span many files or alter user-facing behavior
-- screenshot, localization, or release-prep work that benefits from review
-
-Naming convention:
-
-- branch: `codex/feat/<topic>`, `codex/fix/<topic>`, `codex/chore/<topic>`, `codex/docs/<topic>`
-- commit: `feat(scope): ...`, `fix(scope): ...`, `chore(scope): ...`, `docs(scope): ...`
-- PR title: match the conventional commit style
-
 ## Current assumptions
 
 - usage data is parsed from the markdown produced by the current `usage-tracker`
@@ -162,7 +111,7 @@ Naming convention:
 - normalize usage history into JSON for real charts instead of markdown parsing
 - expose a packaged install path as a reusable OpenClaw integration/skill
 
-## Open source hygiene
+## Privacy and Demo Data
 
 Do not commit:
 
@@ -174,6 +123,13 @@ Do not commit:
 
 The demo dataset under `demo/openclaw-home` is synthetic and safe to publish.
 The public screenshot in `.github/assets/readme-demo.png` should always be generated from the bundled demo dataset.
+
+## Project Docs
+
+- [Contribution guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Pull request template](.github/PULL_REQUEST_TEMPLATE.md)
+- [Changelog](CHANGELOG.md)
 
 ## License
 
