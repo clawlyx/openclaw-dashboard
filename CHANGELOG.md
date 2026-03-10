@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-10
+
 ### Added
 
 - Connected provider profile data in `usage.providerProfiles`, including auth type, profile expiry, and OpenRouter free-quota usage when present in the AI Model Daily Usage Report.

@@ -1,8 +1,8 @@
 {
   "name": "openclaw-dashboard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Visual dashboard for OpenClaw usage, provider limits, and scheduler health.",
+  "description": "Visual dashboard for OpenClaw usage, providers, and scheduler health.",
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "node scripts/next-runner.mjs dev",
