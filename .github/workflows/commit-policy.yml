@@ -1,0 +1,83 @@
+name: Commit Policy
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  commit-policy:
+    name: Commit Policy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Validate commit titles and signatures
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pattern = /^(feat|fix|chore|docs|refactor|test|ci|build|perf|revert|style)(\([A-Za-z0-9._/-]+\))?(!)?: .+/;
+            const failures = [];
+            const commits = [];
+            const { owner, repo } = context.repo;
+
+            if (context.eventName === "pull_request") {
+              const pull_number = context.payload.pull_request.number;
+              const prCommits = await github.paginate(github.rest.pulls.listCommits, {
+                owner,
+                repo,
+                pull_number,
+                per_page: 100,
+              });
+              commits.push(...prCommits);
+            } else if (context.eventName === "push") {
+              const before = context.payload.before;
+              const after = context.payload.after;
+              const zeroSha = "0000000000000000000000000000000000000000";
+
+              if (before && before !== zeroSha) {
+                const comparison = await github.rest.repos.compareCommitsWithBasehead({
+                  owner,
+                  repo,
+                  basehead: `${before}...${after}`,
+                });
+                commits.push(...comparison.data.commits);
+              } else {
+                const commit = await github.rest.repos.getCommit({
+                  owner,
+                  repo,
+                  ref: after,
+                });
+                commits.push(commit.data);
+              }
+            }
+
+            for (const commit of commits) {
+              const sha = commit.sha;
+              const subject = (commit.commit.message || "").split("\n")[0];
+              const parentCount = Array.isArray(commit.parents) ? commit.parents.length : 0;
+              const verification = commit.commit.verification || {};
+
+              if (!parentCount || parentCount <= 1) {
+                const allowedSpecialCase =
+                  subject.startsWith("Merge pull request ") ||
+                  subject.startsWith("Merge branch ") ||
+                  subject.startsWith('Revert "');
+
+                if (!allowedSpecialCase && !pattern.test(subject)) {
+                  failures.push(`${sha} invalid title: ${subject}`);
+                }
+              }
+
+              if (!verification.verified) {
+                failures.push(
+                  `${sha} is not GitHub-verified: ${subject} (reason=${verification.reason || "unknown"})`
+                );
+              }
+            }
+
+            if (failures.length) {
+              core.setFailed(failures.join("\n"));
+            }
