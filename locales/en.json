@@ -8,49 +8,47 @@
     "label": "Primary navigation",
     "overview": "Overview",
     "history": "History",
-    "usage": "Usage mix",
-    "scheduler": "Scheduler",
-    "roadmap": "Roadmap"
+    "usage": "Usage",
+    "scheduler": "Scheduler"
   },
   "hero": {
     "eyebrow": "Local Operations",
     "title": "OpenClaw Dashboard",
-    "copy": "See usage history, provider limits, and scheduler health from local data at {home}.",
-    "highlights": [
-      {
-        "title": "Usage history",
-        "copy": "Normalized reports and trend charts stay ready."
-      },
-      {
-        "title": "Provider limits",
-        "copy": "Codex windows are wired in now, and other provider limit shapes can follow."
-      },
-      {
-        "title": "Scheduler health",
-        "copy": "Next runs and attention items stay in one place."
-      }
-    ],
+    "copy": "Track usage history, provider limits, and scheduler status from local data at {home}.",
     "generatedShort": "Updated",
     "sourceShort": "Source",
     "usageSourceShort": "Usage report",
     "jobsShort": "Jobs",
-    "generated": "Generated {value}",
-    "source": "Data source: {value}",
-    "usageSource": "Usage source: {value}",
-    "cronJobs": "Cron jobs: {count}",
-    "primaryCta": "Inspect history",
-    "secondaryCta": "Review scheduler",
     "modeLive": "Live workspace",
     "modeCustom": "Custom source",
     "modeDemo": "Demo dataset",
-    "pulseEyebrow": "Provider limits",
-    "pulseTitle": "Active provider limits",
-    "pulseCopy": "This module is provider-ready. Today it surfaces Codex 5h and 7d rolling windows.",
+    "statusLabel": "System status",
+    "statusHealthy": "Healthy",
+    "statusAttention": "Needs attention",
+    "statusPartial": "Partial data",
+    "statusAttentionHint": "{count} items need review",
+    "statusNextRunHint": "Next run {value}",
+    "statusPartialHint": "Some local snapshot data is unavailable.",
+    "providerHint": "Provider: {value}",
+    "runWindowLabel": "Run window",
+    "pulseEyebrow": "Providers",
+    "pulseTitle": "Connected providers",
+    "pulseCopy": "Saved profiles and the active rolling limits.",
+    "providerMetaLabel": "Provider profile",
+    "providerMetaProfile": "Profile",
+    "providerMetaStatus": "Status",
+    "providerMetaAuth": "Auth",
+    "providerMetaExpiry": "Expires",
+    "providerActive": "Active",
+    "providerFreeQuota": "Free quota",
+    "providerFreeRemaining": "Remaining",
+    "providerFreeUsage": "Used today",
+    "providerRequestsShort": "req",
+    "providerTokensShort": "tokens",
     "pulseFooter": "Limit source: {value}",
-    "opsEyebrow": "System pulse",
-    "opsTitle": "Runtime checkpoints",
-    "sourcePath": "Source path",
+    "lastRun": "Last run",
     "nextRun": "Next run",
+    "failingJobs": "Failing jobs",
     "attention": "Attention",
     "quotaSourceModels": "openclaw models",
     "quotaSourceSession": "latest session status",
@@ -86,11 +84,12 @@
   "usage": {
     "section": "Usage",
     "topModelBreakdown": "Top Model Breakdown",
-    "topModelDescription": "Source share comes from the report table, so the dashboard does not have to infer model mix.",
+    "topModelDescription": "Model mix from the latest usage report.",
     "topModel": "Top model",
     "authStatus": "Auth status",
     "activeProvider": "Active provider",
     "limitWindows": "Limit windows",
+    "tableToggle": "View full model table",
     "tableModel": "Model",
     "tableRequests": "Requests",
     "tableTokens": "Total Tokens"
@@ -98,7 +97,7 @@
   "scheduler": {
     "section": "Scheduler",
     "title": "Cron Health",
-    "description": "OpenClaw cron jobs from cron/jobs.json. Host-level schedulers like launchd can come next.",
+    "description": "Upcoming jobs and attention items from cron/jobs.json.",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "attention": "Attention",
@@ -116,7 +115,7 @@
   },
   "history": {
     "title": "History Trend",
-    "description": "Normalized reports power request and token trend charts across older and newer report formats.",
+    "description": "Requests and tokens across normalized reports.",
     "descriptionUnavailable": "Normalized history powers the next chart layer, even when report formats evolve.",
     "range": "{start} to {end}",
     "reportsNormalized": "{count} reports normalized",
@@ -137,16 +136,6 @@
     "chartLabel": "{metric} trend chart",
     "historyUnavailable": "History is unavailable.",
     "average": "Average per report: {requests} requests and {tokens} tokens."
-  },
-  "roadmap": {
-    "eyebrow": "Roadmap",
-    "title": "What should land next",
-    "items": [
-      "Host scheduler visibility: launchd / system cron alongside OpenClaw cron.",
-      "Channel delivery health: Telegram, Discord, Feishu plugin status and latency.",
-      "Browser telemetry: running profiles, attached tabs, recent automation runs.",
-      "Historical charts backed by a normalized JSON export instead of markdown parsing."
-    ]
   },
   "data": {
     "sourceLabelDemo": "bundled demo",
@@ -176,6 +165,9 @@
     "unableToReadCronJobs": "Unable to read cron jobs.",
     "unnamedJob": "Unnamed job",
     "statusOk": "ok",
+    "statusHealthy": "healthy",
+    "statusOauth": "oauth",
+    "statusApi": "api",
     "statusFailed": "failed",
     "statusNotDelivered": "not-delivered",
     "statusError": "error",

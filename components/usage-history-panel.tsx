@@ -1,5 +1,4 @@
 import type { UsageHistoryPoint, UsageHistorySnapshot } from "@/lib/openclaw";
-import { StatCard } from "@/components/stat-card";
 import { formatMessage, localeTag, type Locale } from "@/lib/i18n";
 
 const CHART_WIDTH = 640;
@@ -16,14 +15,6 @@ type HistoryMessages = {
   descriptionUnavailable: string;
   range: string;
   reportsNormalized: string;
-  apiSnapshot: string;
-  reports: string;
-  recentRequests: string;
-  recentTokens: string;
-  peakRequests: string;
-  requestsWindowHint: string;
-  tokensWindowHint: string;
-  peakHintFallback: string;
   requestsPerReport: string;
   tokensPerReport: string;
   firstReport: string;
@@ -225,26 +216,6 @@ export function UsageHistoryPanel({
           })}
         </div>
         <div className="metaChip">{formatMessage(copy.reportsNormalized, { count: history.reportCount })}</div>
-        <div className="metaChip">{copy.apiSnapshot}</div>
-      </div>
-
-      <div className="historyStatsGrid">
-        <StatCard
-          label={copy.reports}
-          value={String(history.reportCount)}
-          hint={`${history.rangeStart || common.na} ${common.to} ${history.rangeEnd || common.na}`}
-        />
-        <StatCard
-          label={history.reportsWindowLabel || copy.recentRequests}
-          value={history.recentRequestsTotal || common.na}
-          hint={copy.requestsWindowHint}
-        />
-        <StatCard label={copy.recentTokens} value={history.recentTokensTotal || common.na} hint={copy.tokensWindowHint} />
-        <StatCard
-          label={copy.peakRequests}
-          value={history.peakRequestsValue || common.na}
-          hint={history.peakRequestsDate || copy.peakHintFallback}
-        />
       </div>
 
       <div className="historyChartGrid">

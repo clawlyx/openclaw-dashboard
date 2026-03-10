@@ -2,14 +2,16 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-一个面向 OpenClaw usage 历史、provider 限额和 cron 健康度的本地优先仪表盘。
+一个面向 OpenClaw usage 历史、providers 和 cron 健康度的本地优先仪表盘。
 
 ![OpenClaw Dashboard demo](./.github/assets/readme-demo.png)
 
 ## 功能特性
 
 - 最新 usage 报告摘要
-- provider 限额模块，已支持可复用的限额窗口展示，当前先由 Codex 的 5h / 7d 数据驱动
+- 已连接 providers 视图，包含 auth/profile 元数据、active 高亮和可复用的限额 tile
+- Codex 的 5h / 7d 滚动限额直接展示在 active provider 行内
+- OpenRouter API profile 可见，并可从 AI Model usage report 读取每日 free quota 使用情况
 - Top 模型来源占比
 - 模型 usage 表格
 - cron 概览
@@ -35,7 +37,7 @@
 - usage 报告：`workspace/memory/usage/*.md`
 - cron 任务：`cron/jobs.json`
 
-这意味着它目前仍然是 local-first 的，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供图表使用的归一化 `usage.history` 数据，以及供 provider-aware 限额模块使用的 `usage.providerLimits` 数据。
+这意味着它目前仍然是 local-first 的，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供图表使用的归一化 `usage.history` 数据、用于 active 滚动窗口的 `usage.providerLimits`，以及用于已保存 provider profile 的 `usage.providerProfiles`。
 
 ## 快速开始
 
@@ -98,6 +100,7 @@ pnpm check
 - usage 数据来自当前 `usage-tracker` 生成的 markdown
 - 解析器同时兼容新的 account-status 报告和旧的 quota-only 报告
 - Top 模型来源占比来自 `Model × Source Breakdown`
+- OpenRouter free quota 的可见性来自 AI Model Daily Usage Report 中的对应 section（如果存在）
 - 还没有接入 `launchd` 这类主机侧调度器
 
 ## 路线图

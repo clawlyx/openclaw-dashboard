@@ -8,49 +8,47 @@
     "label": "主导航",
     "overview": "概览",
     "history": "历史",
-    "usage": "用量结构",
-    "scheduler": "调度",
-    "roadmap": "路线图"
+    "usage": "用量",
+    "scheduler": "调度"
   },
   "hero": {
     "eyebrow": "本地运维面板",
     "title": "OpenClaw 仪表盘",
-    "copy": "直接从 {home} 查看本地 OpenClaw 的 usage 历史、provider 限额和调度健康度。",
-    "highlights": [
-      {
-        "title": "Usage 历史",
-        "copy": "归一化报告和趋势图一眼就能看懂。"
-      },
-      {
-        "title": "Provider 限额",
-        "copy": "当前先接入 Codex 窗口，后面可以继续扩展更多 provider 的限额形态。"
-      },
-      {
-        "title": "调度健康度",
-        "copy": "下次运行和告警项集中在同一处。"
-      }
-    ],
+    "copy": "直接从 {home} 查看本地 OpenClaw 的 usage 历史、provider 限额和调度状态。",
     "generatedShort": "更新时间",
     "sourceShort": "数据源",
     "usageSourceShort": "Usage 报告",
     "jobsShort": "任务数",
-    "generated": "生成时间：{value}",
-    "source": "数据来源：{value}",
-    "usageSource": "Usage 来源：{value}",
-    "cronJobs": "Cron 任务数：{count}",
-    "primaryCta": "查看历史",
-    "secondaryCta": "查看调度",
     "modeLive": "实时工作区",
     "modeCustom": "自定义数据源",
     "modeDemo": "演示数据集",
-    "pulseEyebrow": "Provider 限额",
-    "pulseTitle": "当前 provider 限额",
-    "pulseCopy": "这个模块已经按 provider 扩展方向设计。当前先展示 Codex 的 5h / 7d 滚动窗口。",
+    "statusLabel": "系统状态",
+    "statusHealthy": "正常",
+    "statusAttention": "需要关注",
+    "statusPartial": "数据不完整",
+    "statusAttentionHint": "有 {count} 项需要查看",
+    "statusNextRunHint": "下次运行 {value}",
+    "statusPartialHint": "部分本地快照数据当前不可用。",
+    "providerHint": "Provider：{value}",
+    "runWindowLabel": "运行窗口",
+    "pulseEyebrow": "Providers",
+    "pulseTitle": "已连接的 providers",
+    "pulseCopy": "这里展示已保存的 profile 和当前滚动限额。",
+    "providerMetaLabel": "Provider 配置",
+    "providerMetaProfile": "配置",
+    "providerMetaStatus": "状态",
+    "providerMetaAuth": "认证",
+    "providerMetaExpiry": "到期",
+    "providerActive": "当前",
+    "providerFreeQuota": "免费额度",
+    "providerFreeRemaining": "剩余",
+    "providerFreeUsage": "今日已用",
+    "providerRequestsShort": "次",
+    "providerTokensShort": "tokens",
     "pulseFooter": "限额来源：{value}",
-    "opsEyebrow": "系统脉冲",
-    "opsTitle": "运行时检查点",
-    "sourcePath": "数据路径",
+    "lastRun": "最近运行",
     "nextRun": "下次运行",
+    "failingJobs": "失败任务",
     "attention": "告警任务",
     "quotaSourceModels": "openclaw models",
     "quotaSourceSession": "最新 session status",
@@ -86,11 +84,12 @@
   "usage": {
     "section": "用量",
     "topModelBreakdown": "Top 模型拆解",
-    "topModelDescription": "来源占比直接来自报告表格，所以看板无需再推断模型结构。",
+    "topModelDescription": "来自最新 usage 报告的模型结构。",
     "topModel": "Top 模型",
     "authStatus": "认证状态",
     "activeProvider": "当前 provider",
     "limitWindows": "限额窗口",
+    "tableToggle": "查看完整模型表格",
     "tableModel": "模型",
     "tableRequests": "请求数",
     "tableTokens": "总 Tokens"
@@ -98,7 +97,7 @@
   "scheduler": {
     "section": "调度",
     "title": "Cron 健康度",
-    "description": "展示 cron/jobs.json 里的 OpenClaw cron。下一步再接入 launchd 等主机级调度器。",
+    "description": "来自 cron/jobs.json 的下一次运行和告警项。",
     "enabled": "启用",
     "disabled": "停用",
     "attention": "告警",
@@ -116,7 +115,7 @@
   },
   "history": {
     "title": "历史趋势",
-    "description": "归一化报告支撑请求数和 Tokens 趋势图，并兼容新旧格式。",
+    "description": "归一化报告上的请求数与 Tokens 趋势。",
     "descriptionUnavailable": "即使报告格式继续演进，归一化历史也能支撑下一层图表能力。",
     "range": "{start} 至 {end}",
     "reportsNormalized": "已归一化 {count} 份报告",
@@ -137,16 +136,6 @@
     "chartLabel": "{metric} 趋势图",
     "historyUnavailable": "历史数据不可用。",
     "average": "平均每份报告：{requests} 次请求，{tokens} Tokens。"
-  },
-  "roadmap": {
-    "eyebrow": "路线图",
-    "title": "下一步建议",
-    "items": [
-      "主机调度可见性：在 OpenClaw cron 之外展示 launchd / system cron。",
-      "通道投递健康：Telegram、Discord、飞书插件状态与时延。",
-      "浏览器遥测：运行中的 profile、已附加标签页、近期自动化运行。",
-      "使用归一化 JSON 导出作为历史图表底座，替代 markdown 解析。"
-    ]
   },
   "data": {
     "sourceLabelDemo": "内置演示数据",
@@ -176,6 +165,9 @@
     "unableToReadCronJobs": "无法读取 cron 任务。",
     "unnamedJob": "未命名任务",
     "statusOk": "正常",
+    "statusHealthy": "正常",
+    "statusOauth": "OAuth",
+    "statusApi": "API",
     "statusFailed": "失败",
     "statusNotDelivered": "未送达",
     "statusError": "错误",

@@ -67,9 +67,29 @@ export type ProviderLimitSnapshot = {
   providerId: string;
   providerLabel: string;
   authStatus?: string;
+  profileLabel?: string;
+  profileStatus?: string;
+  profileExpiresIn?: string;
   source?: "report" | "models" | "session-status";
   observedAt?: string;
   windows: ProviderLimitWindow[];
+};
+
+export type ProviderProfileSnapshot = {
+  providerId: string;
+  providerLabel: string;
+  profileLabel: string;
+  authType?: string;
+  profileExpiresAt?: string;
+  profileExpiresIn?: string;
+  freeQuota?: {
+    configuredRequests?: string;
+    usedRequests?: string;
+    usedShare?: string;
+    remainingRequests?: string;
+    usageRequests?: string;
+    usageTokens?: string;
+  };
 };
 
 export type UsageSnapshot = {
@@ -88,6 +108,7 @@ export type UsageSnapshot = {
   quotaSource?: "report" | "models" | "session-status";
   quotaObservedAt?: string;
   providerLimits?: ProviderLimitSnapshot[];
+  providerProfiles?: ProviderProfileSnapshot[];
   quickSummary?: string[];
   topModelSources?: UsageSourceShare[];
   models?: UsageModelRow[];
@@ -145,10 +166,14 @@ type ParsedUsageReport = UsageHistoryPoint & {
   quickSummary: string[];
   topModelSources: UsageSourceShare[];
   models: UsageModelRow[];
+  freeQuota?: ProviderProfileSnapshot["freeQuota"];
 };
 
 type LiveQuotaSnapshot = {
   oauthStatus?: string;
+  profileLabel?: string;
+  profileStatus?: string;
+  profileExpiresIn?: string;
   quota5h: string;
   quota5hValue?: number;
   quota7d: string;
@@ -163,6 +188,11 @@ const NUMBER_FORMATTER = new Intl.NumberFormat("en-US");
 const execFileAsync = promisify(execFile);
 const OPENCLAW_MODELS_TIMEOUT_MS = 2_000;
 const MAX_SESSION_LOG_FILES = 24;
+const PRIMARY_PROVIDER_ID = "openai-codex";
+const PROVIDER_LABELS: Record<string, string> = {
+  "openai-codex": "OpenAI Codex",
+  openrouter: "OpenRouter"
+};
 const LIVE_MODELS_USAGE_PATTERN =
   /-\s*openai-codex usage:\s*([^ ]+)\s+(\d+)% left\s+⏱([^·\n]+?)\s+·\s+(?:Week|7d)\s+(\d+)% left\s+⏱([^\n]+)/;
 const LIVE_STATUS_USAGE_PATTERN =
@@ -293,6 +323,14 @@ const parseBulletSection = (lines: string[], heading: string) =>
     .filter((line) => line.startsWith("- "))
     .map((line) => line.slice(2));
 
+const readTableByHeadings = (lines: string[], headings: string[]) => {
+  for (const heading of headings) {
+    const rows = parseMarkdownTable(lines, heading);
+    if (rows.length > 0) return rows;
+  }
+  return [];
+};
+
 const resolveUsageDirectory = (openclawHome: string) =>
   path.join(openclawHome, "workspace", "memory", "usage");
 const resolveCronJobsPath = (openclawHome: string) => path.join(openclawHome, "cron", "jobs.json");
@@ -315,6 +353,38 @@ const parseTimestampMs = (value?: string) => {
   return Number.isFinite(timestampMs) ? timestampMs : undefined;
 };
 
+const formatProviderLabel = (providerId: string) => {
+  if (PROVIDER_LABELS[providerId]) return PROVIDER_LABELS[providerId];
+
+  return providerId
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
+const formatExpiresIn = (expiresAtMs?: number) => {
+  if (typeof expiresAtMs !== "number" || Number.isNaN(expiresAtMs)) return undefined;
+
+  const remainingMs = expiresAtMs - Date.now();
+  if (remainingMs <= 0) return "expired";
+
+  const totalMinutes = Math.max(1, Math.floor(remainingMs / 60_000));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  return `${minutes}m`;
+};
+
+const normalizeAuthType = (value?: string) => {
+  if (!value) return undefined;
+  if (value === "api_key") return "api";
+  return value.toLowerCase();
+};
+
 const asObject = (value: unknown) =>
   value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 
@@ -329,6 +399,9 @@ const buildProviderLimits = ({
   quota5hValue,
   quota7d,
   quota7dValue,
+  profileLabel,
+  profileStatus,
+  profileExpiresIn,
   source,
   observedAt
 }: {
@@ -337,6 +410,9 @@ const buildProviderLimits = ({
   quota5hValue?: number;
   quota7d?: string;
   quota7dValue?: number;
+  profileLabel?: string;
+  profileStatus?: string;
+  profileExpiresIn?: string;
   source?: "report" | "models" | "session-status";
   observedAt?: string;
 }): ProviderLimitSnapshot[] | undefined => {
@@ -364,9 +440,12 @@ const buildProviderLimits = ({
 
   return [
     {
-      providerId: "openai-codex",
-      providerLabel: "OpenAI Codex",
+      providerId: PRIMARY_PROVIDER_ID,
+      providerLabel: formatProviderLabel(PRIMARY_PROVIDER_ID),
       authStatus,
+      profileLabel,
+      profileStatus,
+      profileExpiresIn,
       source,
       observedAt,
       windows
@@ -381,6 +460,45 @@ const buildRowLookup = (rows: TableRow[]) =>
       return [key, row.Value || row.Today || ""];
     })
   );
+
+const readProviderProfiles = async (openclawHome: ResolvedOpenClawHome): Promise<ProviderProfileSnapshot[]> => {
+  const authProfilesPath = path.join(openclawHome.home, "agents", "main", "agent", "auth-profiles.json");
+
+  try {
+    const raw = JSON.parse(await fs.readFile(authProfilesPath, "utf8")) as unknown;
+    const profiles = asObject(asObject(raw)?.profiles);
+    if (!profiles) return [];
+
+    return Object.entries(profiles)
+      .map(([key, value]) => {
+        const entry = asObject(value);
+        const [profileProviderId, ...profileSegments] = key.split(":");
+        const providerId = typeof entry?.provider === "string" ? entry.provider : profileProviderId;
+        const profileLabel = profileSegments.join(":") || "default";
+        const expiresAtMs =
+          typeof entry?.expires === "number"
+            ? entry.expires
+            : typeof entry?.expires === "string"
+              ? Number(entry.expires)
+              : undefined;
+
+        return {
+          providerId,
+          providerLabel: formatProviderLabel(providerId),
+          profileLabel,
+          authType: normalizeAuthType(typeof entry?.type === "string" ? entry.type : undefined),
+          profileExpiresAt:
+            typeof expiresAtMs === "number" && Number.isFinite(expiresAtMs)
+              ? new Date(expiresAtMs).toISOString()
+              : undefined,
+          profileExpiresIn: formatExpiresIn(expiresAtMs)
+        };
+      })
+      .sort((left, right) => left.providerLabel.localeCompare(right.providerLabel));
+  } catch {
+    return [];
+  }
+};
 
 const parseLiveQuotaLine = (line: string, source: LiveQuotaSnapshot["source"]) => {
   const match = line.match(source === "models" ? LIVE_MODELS_USAGE_PATTERN : LIVE_STATUS_USAGE_PATTERN);
@@ -418,10 +536,17 @@ const parseLiveQuotaFromModels = async (
     if (!quota) return null;
 
     const profileMatch = profileLine?.match(MODELS_PROFILE_PATTERN);
+    const rawProfileLabel = profileMatch?.[1]?.trim();
+    const profileLabel = rawProfileLabel?.includes(":") ? rawProfileLabel.split(":").slice(1).join(":") : rawProfileLabel;
+    const profileStatus = profileMatch?.[2]?.trim().toLowerCase();
+    const profileExpiresIn = profileMatch?.[3]?.trim();
 
     return {
       ...quota,
-      oauthStatus: profileMatch?.[1] ? `oauth (${profileMatch[1]})` : undefined,
+      oauthStatus: profileStatus,
+      profileLabel,
+      profileStatus,
+      profileExpiresIn,
       source: "models",
       observedAt: new Date().toISOString()
     };
@@ -470,10 +595,15 @@ const parseLiveQuotaFromSessionStatusText = ({
     .split(/\r?\n/)
     .find((line) => line.includes("🔑 "));
   const oauthMatch = oauthLine?.match(/🔑\s*([^\n]+)/);
+  const oauthText = oauthMatch?.[1]?.trim();
+  const oauthProfileMatch = oauthText?.match(/^oauth\s*\(([^)]+)\)$/i);
+  const rawProfileLabel = oauthProfileMatch?.[1]?.trim();
+  const profileLabel = rawProfileLabel?.includes(":") ? rawProfileLabel.split(":").slice(1).join(":") : rawProfileLabel;
 
   return {
     ...quota,
-    oauthStatus: oauthMatch?.[1]?.trim(),
+    oauthStatus: oauthProfileMatch ? "oauth" : oauthText,
+    profileLabel,
     source: "session-status",
     observedAt
   };
@@ -608,20 +738,43 @@ const parseUsageReport = ({
   const accountRows = parseMarkdownTable(lines, "## 🔐 Account Status");
   const modelRows = parseMarkdownTable(lines, "## 📈 Breakdown by Model");
   const modelSourceRows = parseMarkdownTable(lines, "## 🧭 Model × Source Breakdown");
+  const freeQuotaRows = readTableByHeadings(lines, [
+    "## 📦 Free Quota (estimated from :free models)",
+    "## 📦 Free Request Quota (OpenRouter)"
+  ]);
   const quickSummary = parseBulletSection(lines, "## ⚡ Quick Summary (for embedding)");
   const generatedAt = lines.find((line) => line.startsWith("> 自动生成于 "))?.replace("> 自动生成于 ", "");
 
   const summaryByMetric = buildRowLookup(summaryRows);
   const accountByMetric = buildRowLookup(accountRows);
+  const freeQuotaByMetric = buildRowLookup(freeQuotaRows);
 
-  const models = modelRows
+  const parsedModelRows = modelRows
     .filter((row) => row.Model && row.Model !== "Total" && !row.Model.startsWith("system/"))
     .map((row) => ({
       model: row.Model,
       requests: row.Requests,
       totalTokens: row.Total
-    }))
-    .slice(0, 8);
+    }));
+  const models = parsedModelRows.slice(0, 8);
+  const freeModelRows = parsedModelRows.filter((row) => row.model.includes(":free"));
+  const freeQuotaUsedValue = freeQuotaByMetric["Used by :free models"];
+  const freeQuota = freeQuotaRows.length || freeModelRows.length
+    ? {
+        configuredRequests: freeQuotaByMetric["Daily Free Requests (configured)"] || freeQuotaByMetric["Daily Free Requests"],
+        usedRequests: freeQuotaUsedValue ? formatNumber(parseNumber(freeQuotaUsedValue) || 0) : undefined,
+        usedShare:
+          freeQuotaUsedValue?.match(/\(([^)]+)\)/)?.[1] ||
+          undefined,
+        remainingRequests: freeQuotaByMetric.Remaining,
+        usageRequests: freeModelRows.length
+          ? formatNumber(freeModelRows.reduce((sum, row) => sum + (parseNumber(row.requests) || 0), 0))
+          : undefined,
+        usageTokens: freeModelRows.length
+          ? formatNumber(freeModelRows.reduce((sum, row) => sum + (parseNumber(row.totalTokens) || 0), 0))
+          : undefined
+      }
+    : undefined;
 
   const topModel = models[0]?.model;
   const topModelSources = topModel
@@ -661,7 +814,8 @@ const parseUsageReport = ({
     quota7dValue: parseNumber(quota7d),
     quickSummary,
     topModelSources,
-    models
+    models,
+    freeQuota
   };
 };
 
@@ -792,12 +946,28 @@ const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<Usa
       };
     }
 
-    const liveQuota = await resolveLiveQuota(openclawHome);
+    const [liveQuota, providerProfiles] = await Promise.all([
+      resolveLiveQuota(openclawHome),
+      readProviderProfiles(openclawHome)
+    ]);
     const useLiveQuota = shouldUseLiveQuota({
       liveQuota,
       latestReport: latest
     });
     const resolvedQuota = useLiveQuota ? liveQuota : null;
+    const hydratedProviderProfiles = providerProfiles.map((profile) =>
+      profile.providerId === "openrouter" && latest.freeQuota
+        ? {
+            ...profile,
+            freeQuota: latest.freeQuota
+          }
+        : profile
+    );
+    const activeProviderProfile = hydratedProviderProfiles.find(
+      (profile) =>
+        profile.providerId === PRIMARY_PROVIDER_ID &&
+        (!resolvedQuota?.profileLabel || profile.profileLabel === resolvedQuota.profileLabel)
+    );
     const authStatus = resolvedQuota?.oauthStatus || latest.oauthStatus;
     const quota5h = resolvedQuota?.quota5h || latest.quota5h;
     const quota7d = resolvedQuota?.quota7d || latest.quota7d;
@@ -825,9 +995,13 @@ const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<Usa
         quota5hValue: resolvedQuota?.quota5hValue || latest.quota5hValue,
         quota7d,
         quota7dValue: resolvedQuota?.quota7dValue || latest.quota7dValue,
+        profileLabel: resolvedQuota?.profileLabel || activeProviderProfile?.profileLabel,
+        profileStatus: resolvedQuota?.profileStatus,
+        profileExpiresIn: resolvedQuota?.profileExpiresIn || activeProviderProfile?.profileExpiresIn,
         source: quotaSource,
         observedAt: quotaObservedAt
       }),
+      providerProfiles: hydratedProviderProfiles,
       quickSummary: latest.quickSummary,
       topModelSources: latest.topModelSources,
       models: latest.models,

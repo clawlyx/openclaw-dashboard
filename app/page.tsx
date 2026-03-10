@@ -2,17 +2,16 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
 import { SectionShell } from "@/components/section-shell";
-import { StatCard } from "@/components/stat-card";
 import { ProviderLimitWindows } from "@/components/provider-limit-windows";
 import { UsageHistoryPanel } from "@/components/usage-history-panel";
 import { ThemeSwitch } from "@/components/theme-switch";
 import {
   formatDateTimeLabel,
   formatQuotaDisplay,
-  formatQuotaHint,
   formatQuotaSourceLabel,
   formatReportDateLabel,
   formatReportsWindowLabel,
+  formatStatusLabel,
   formatSourceLabel,
   presentCronJob,
   translateDashboardText,
@@ -57,7 +56,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const unavailable = t.common.unavailable;
 
   const localizedSourceLabel = formatSourceLabel(openclawSourceKind, openclawSourceLabel, t);
-  const quotaHint = formatQuotaHint(usage, t);
   const quotaSourceLabel = formatQuotaSourceLabel(usage.quotaSource, t);
   const generatedLabel = formatDateTimeLabel(Date.parse(snapshot.generatedAt), locale, unavailable);
   const reportDateLabel = formatReportDateLabel(usage.reportDate, locale, unavailable);
@@ -67,19 +65,20 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       : openclawSourceKind === "custom"
         ? t.hero.modeCustom
         : t.hero.modeLive;
-  const heroFacts = [
-    { label: t.hero.generatedShort, value: generatedLabel },
-    { label: t.hero.sourceShort, value: localizedSourceLabel },
-    { label: t.hero.usageSourceShort, value: reportDateLabel },
-    { label: t.hero.jobsShort, value: String(cron.jobs.length) }
-  ];
 
   const localizedUsage = {
     ...usage,
+    oauthStatus: usage.oauthStatus ? formatStatusLabel(usage.oauthStatus, t) : undefined,
     quota5h: formatQuotaDisplay(usage.quota5h, t),
     quota7d: formatQuotaDisplay(usage.quota7d, t),
+    providerProfiles: (usage.providerProfiles || []).map((profile) => ({
+      ...profile,
+      authType: profile.authType ? formatStatusLabel(profile.authType, t) : undefined
+    })),
     providerLimits: (usage.providerLimits || []).map((provider) => ({
       ...provider,
+      authStatus: provider.authStatus ? formatStatusLabel(provider.authStatus, t) : undefined,
+      profileStatus: provider.profileStatus ? formatStatusLabel(provider.profileStatus, t) : undefined,
       windows: provider.windows.map((window) => ({
         ...window,
         remaining: formatQuotaDisplay(window.remaining, t)
@@ -121,19 +120,95 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }));
   const primaryProviderLabel = primaryProviderLimit?.providerLabel || t.hero.pulseTitle;
   const providerAuthStatus = primaryProviderLimit?.authStatus || localizedUsage.oauthStatus || na;
+  const providerRoster = [
+    ...localizedUsage.providerProfiles.map((profile) => ({
+      ...profile,
+      isActive:
+        profile.providerId === primaryProviderLimit?.providerId &&
+        profile.profileLabel === primaryProviderLimit?.profileLabel
+    })),
+    ...(!localizedUsage.providerProfiles.some(
+      (profile) =>
+        profile.providerId === primaryProviderLimit?.providerId &&
+        profile.profileLabel === primaryProviderLimit?.profileLabel
+    ) &&
+    primaryProviderLimit
+        ? [
+          {
+            providerId: primaryProviderLimit.providerId,
+            providerLabel: primaryProviderLimit.providerLabel,
+            profileLabel: primaryProviderLimit.profileLabel || "",
+            authType: providerAuthStatus !== na ? providerAuthStatus : undefined,
+            profileExpiresIn: primaryProviderLimit.profileExpiresIn,
+            isActive: true
+          }
+        ]
+      : [])
+  ].sort((left, right) => Number(Boolean(right.isActive)) - Number(Boolean(left.isActive)));
 
   const presentJob = (job: (typeof cron.nextJobs)[number]) => presentCronJob({ job, locale, messages: t });
   const nextJobs = cron.nextJobs.map(presentJob);
   const failingJobs = cron.failingJobs.map(presentJob);
   const cronError = translateDashboardText(cron.error, t);
   const nextRunLabel = nextJobs[0]?.nextRunAt || na;
+  const lastRunMs = cron.jobs.reduce<number | undefined>((latest, job) => {
+    if (typeof job.lastRunAtMs !== "number") return latest;
+    if (typeof latest !== "number" || job.lastRunAtMs > latest) return job.lastRunAtMs;
+    return latest;
+  }, undefined);
+  const lastRunLabel = formatDateTimeLabel(lastRunMs, locale, na);
+  const statusValue =
+    cron.attentionCount > 0
+      ? t.hero.statusAttention
+      : usage.available && cron.available
+        ? t.hero.statusHealthy
+        : t.hero.statusPartial;
+  const statusHint =
+    cron.attentionCount > 0
+      ? formatMessage(t.hero.statusAttentionHint, { count: cron.attentionCount })
+      : usage.available && cron.available
+        ? formatMessage(t.hero.statusNextRunHint, { value: nextRunLabel })
+        : t.hero.statusPartialHint;
+  const heroSummary = [
+    {
+      label: t.hero.statusLabel,
+      value: statusValue,
+      hint: statusHint,
+      tone: cron.attentionCount > 0 ? "warning" : "default"
+    },
+    {
+      label: t.history.recentRequests,
+      value: localizedUsage.history.recentRequestsTotal || localizedUsage.totalRequests || na,
+      hint: localizedUsage.history.reportsWindowLabel || t.stats.latestUsage,
+      tone: "default" as const
+    },
+    {
+      label: t.usage.topModel,
+      value: localizedUsage.topModel || na,
+      hint: formatMessage(t.hero.providerHint, { value: primaryProviderLabel }),
+      tone: "default" as const
+    }
+  ];
+  const heroMeta = [
+    { label: t.hero.generatedShort, value: generatedLabel },
+    { label: t.hero.sourceShort, value: localizedSourceLabel },
+    { label: t.hero.usageSourceShort, value: reportDateLabel }
+  ];
+  const schedulerTotals: Array<{ label: string; value: string; tone?: "default" | "warning" }> = [
+    { label: t.scheduler.enabled, value: String(cron.enabledCount) },
+    { label: t.scheduler.disabled, value: String(cron.disabledCount) },
+    {
+      label: t.scheduler.attention,
+      value: String(cron.attentionCount),
+      tone: cron.attentionCount > 0 ? "warning" : "default"
+    }
+  ] as const;
 
   const navItems = [
     { id: "overview", label: t.nav.overview },
     { id: "history", label: t.nav.history },
     { id: "usage", label: t.nav.usage },
-    { id: "scheduler", label: t.nav.scheduler },
-    { id: "roadmap", label: t.nav.roadmap }
+    { id: "scheduler", label: t.nav.scheduler }
   ];
 
   return (
@@ -187,30 +262,38 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <h1>{t.hero.title}</h1>
           <p className="heroCopy">{formatMessage(t.hero.copy, { home: openclawHome })}</p>
 
-          <div className="heroHighlights" aria-label={t.hero.eyebrow}>
-            {t.hero.highlights.map((item) => (
-              <article key={item.title} className="heroHighlightCard">
-                <p className="heroHighlightTitle">{item.title}</p>
-                <p className="heroHighlightCopy">{item.copy}</p>
+          <div className="heroSummary" aria-label={t.nav.overview}>
+            {heroSummary.map((item) => (
+              <article
+                key={item.label}
+                className={`heroSummaryCard ${item.tone === "warning" ? "heroSummaryCardWarning" : ""}`}
+              >
+                <span className="heroSummaryLabel">{item.label}</span>
+                <strong className="heroSummaryValue">{item.value}</strong>
+                <span className="heroSummaryHint">{item.hint}</span>
               </article>
             ))}
+            <article className="heroSummaryCard heroSummaryCardPair">
+              <span className="heroSummaryLabel">{t.hero.runWindowLabel}</span>
+              <div className="heroSummaryPair">
+                <div className="heroSummaryPairRow">
+                  <span className="heroSummaryPairKey">{t.hero.lastRun}</span>
+                  <strong className="heroSummaryPairValue">{lastRunLabel}</strong>
+                </div>
+                <div className="heroSummaryPairRow">
+                  <span className="heroSummaryPairKey">{t.hero.nextRun}</span>
+                  <strong className="heroSummaryPairValue">{nextRunLabel}</strong>
+                </div>
+              </div>
+            </article>
           </div>
 
-          <div className="heroActionRow">
-            <a href={buildHref(locale, "history")} className="heroActionPrimary">
-              {t.hero.primaryCta}
-            </a>
-            <a href={buildHref(locale, "scheduler")} className="heroActionSecondary">
-              {t.hero.secondaryCta}
-            </a>
-          </div>
-
-          <div className="heroFacts" aria-label={t.hero.eyebrow}>
-            {heroFacts.map((fact) => (
-              <article key={fact.label} className="heroFactCard">
-                <span className="heroFactLabel">{fact.label}</span>
-                <strong className="heroFactValue">{fact.value}</strong>
-              </article>
+          <div className="heroMetaRow" aria-label={t.nav.overview}>
+            {heroMeta.map((item) => (
+              <span key={item.label} className="heroMetaItem">
+                <span className="heroMetaKey">{item.label}</span>
+                <strong className="heroMetaText">{item.value}</strong>
+              </span>
             ))}
           </div>
         </div>
@@ -218,69 +301,105 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div className="heroRail">
           <article className="signalCard signalCardQuota">
             <p className="eyebrow">{t.hero.pulseEyebrow}</p>
-            <h2 className="signalCardTitle">{primaryProviderLabel}</h2>
+            <h2 className="signalCardTitle">{t.hero.pulseTitle}</h2>
             <p className="signalCardLead">{t.hero.pulseCopy}</p>
 
-            <ProviderLimitWindows windows={providerWindows} variant="hero" />
+            {providerRoster.length ? (
+              <div className="providerRoster" aria-label={t.hero.providerMetaLabel}>
+                {providerRoster.map((profile) => {
+                  const rowBadges = [
+                    profile.profileLabel
+                      ? { id: "profile", label: t.hero.providerMetaProfile, value: profile.profileLabel }
+                      : null,
+                    profile.authType
+                      ? { id: "auth", label: t.hero.providerMetaAuth, value: profile.authType }
+                      : profile.isActive && providerAuthStatus !== na
+                        ? { id: "auth-fallback", label: t.hero.providerMetaAuth, value: providerAuthStatus }
+                        : null,
+                    profile.isActive && primaryProviderLimit?.profileStatus
+                      ? { id: "status", label: t.hero.providerMetaStatus, value: primaryProviderLimit.profileStatus }
+                      : null,
+                    profile.profileExpiresIn
+                      ? { id: "expiry", label: t.hero.providerMetaExpiry, value: profile.profileExpiresIn }
+                      : null
+                  ].filter((badge): badge is { id: string; label: string; value: string } => Boolean(badge));
+
+                  return (
+                    <article
+                      key={`${profile.providerId}:${profile.profileLabel}`}
+                      className={`providerProfileRow ${profile.isActive ? "providerProfileRowActive" : ""}`}
+                    >
+                      <div className="providerProfileHead">
+                        <strong className="providerProfileName">{profile.providerLabel}</strong>
+                        {profile.isActive ? <span className="providerProfileState">{t.hero.providerActive}</span> : null}
+                      </div>
+
+                      {rowBadges.length ? (
+                        <div className="providerMetaRow">
+                          {rowBadges.map((badge) => (
+                            <span key={`${profile.providerId}:${badge.id}`} className="providerMetaBadge">
+                              <span className="providerMetaBadgeKey">{badge.label}</span>
+                              <span className="providerMetaBadgeValue">{badge.value}</span>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {profile.isActive && providerWindows.length ? (
+                        <div className="providerWindowsInline">
+                          <ProviderLimitWindows windows={providerWindows} variant="compact" />
+                        </div>
+                      ) : null}
+
+                      {profile.freeQuota ? (
+                        <div className="providerProfilePanel">
+                          <span className="providerProfilePanelLabel">{t.hero.providerFreeQuota}</span>
+                          <div className="providerProfileFacts">
+                            <div className="providerProfileFact">
+                              <span className="providerProfileFactKey">{t.hero.providerFreeRemaining}</span>
+                              <strong className="providerProfileFactValue">
+                                {profile.freeQuota.remainingRequests || na}
+                                {profile.freeQuota.configuredRequests ? ` / ${profile.freeQuota.configuredRequests}` : ""}
+                              </strong>
+                            </div>
+                            <div className="providerProfileFact">
+                              <span className="providerProfileFactKey">{t.hero.providerFreeUsage}</span>
+                              <strong className="providerProfileFactValue">
+                                {profile.freeQuota.usageRequests || profile.freeQuota.usedRequests || na}
+                                {profile.freeQuota.usageRequests || profile.freeQuota.usedRequests
+                                  ? ` ${t.hero.providerRequestsShort}`
+                                  : ""}
+                                {profile.freeQuota.usageTokens
+                                  ? ` · ${profile.freeQuota.usageTokens} ${t.hero.providerTokensShort}`
+                                  : profile.freeQuota.usedShare
+                                    ? ` · ${profile.freeQuota.usedShare}`
+                                    : ""}
+                              </strong>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null}
 
             <p className="signalCardCopy">{formatMessage(t.hero.pulseFooter, { value: quotaSourceLabel })}</p>
           </article>
 
-          <article className="signalCard">
-            <p className="eyebrow">{t.hero.opsEyebrow}</p>
-            <h2 className="signalCardTitle signalCardTitleCompact">{t.hero.opsTitle}</h2>
-            <div className="signalList">
-              <div className="signalRow">
-                <span className="signalLabel">{t.hero.sourcePath}</span>
-                <strong className="signalValue">
-                  <code>{openclawHome}</code>
-                </strong>
-              </div>
-              <div className="signalRow">
-                <span className="signalLabel">{t.hero.nextRun}</span>
-                <strong className="signalValue">{nextRunLabel}</strong>
-              </div>
-              <div className="signalRow">
-                <span className="signalLabel">{t.hero.attention}</span>
-                <strong className="signalValue">{cron.attentionCount}</strong>
-              </div>
-            </div>
-          </article>
         </div>
-      </section>
-
-      {openclawSourceKind === "demo" ? (
-        <section className="infoBox">
-          <p className="eyebrow">{t.demo.eyebrow}</p>
-          <p>{t.demo.copy}</p>
-        </section>
-      ) : null}
-
-      <section className="statsGrid">
-        <StatCard label={t.stats.totalRequests} value={usage.totalRequests || na} hint={t.stats.latestUsage} />
-        <StatCard label={t.stats.totalTokens} value={usage.totalTokens || na} hint={t.stats.inputOutput} />
-        <StatCard
-          label={t.stats.quotaRemaining}
-          value={<ProviderLimitWindows windows={providerWindows} variant="default" />}
-          hint={quotaHint}
-        />
-        <StatCard
-          label={t.stats.jobsAttention}
-          value={String(cron.attentionCount)}
-          hint={cron.available ? t.stats.failedUndelivered : cronError || t.stats.cronUnavailable}
-          tone={cron.attentionCount > 0 ? "warning" : "default"}
-        />
       </section>
 
       <UsageHistoryPanel
         id="history"
         history={localizedUsage.history}
         locale={locale}
-        copy={{ ...t.history, section: t.usage.section }}
+        copy={{ ...t.history, section: t.nav.history }}
         common={t.common}
       />
 
-      <div className="contentGrid">
+      <div className="contentStack">
         <SectionShell
           id="usage"
           eyebrow={t.usage.section}
@@ -325,26 +444,29 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 ))}
               </div>
 
-              <div className="tableWrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t.usage.tableModel}</th>
-                      <th>{t.usage.tableRequests}</th>
-                      <th>{t.usage.tableTokens}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(localizedUsage.models || []).map((model) => (
-                      <tr key={model.model}>
-                        <td>{model.model}</td>
-                        <td>{model.requests}</td>
-                        <td>{model.totalTokens}</td>
+              <details className="detailDisclosure">
+                <summary>{t.usage.tableToggle}</summary>
+                <div className="tableWrap tableWrapNested">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>{t.usage.tableModel}</th>
+                        <th>{t.usage.tableRequests}</th>
+                        <th>{t.usage.tableTokens}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {(localizedUsage.models || []).map((model) => (
+                        <tr key={model.model}>
+                          <td>{model.model}</td>
+                          <td>{model.requests}</td>
+                          <td>{model.totalTokens}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             </>
           ) : (
             <div className="emptyState">
@@ -359,14 +481,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <SectionShell id="scheduler" eyebrow={t.scheduler.section} title={t.scheduler.title} description={t.scheduler.description}>
           {cron.available ? (
             <>
-              <div className="statsGridCompact">
-                <StatCard label={t.scheduler.enabled} value={String(cron.enabledCount)} />
-                <StatCard label={t.scheduler.disabled} value={String(cron.disabledCount)} />
-                <StatCard
-                  label={t.scheduler.attention}
-                  value={String(cron.attentionCount)}
-                  tone={cron.attentionCount > 0 ? "warning" : "default"}
-                />
+              <div className="miniSummaryGrid">
+                {schedulerTotals.map((item) => (
+                  <article
+                    key={item.label}
+                    className={`miniSummaryCard ${item.tone === "warning" ? "miniSummaryCardWarning" : ""}`}
+                  >
+                    <span className="miniSummaryLabel">{item.label}</span>
+                    <strong className="miniSummaryValue">{item.value}</strong>
+                  </article>
+                ))}
               </div>
 
               <div className="tableWrap">
@@ -423,17 +547,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </SectionShell>
       </div>
 
-      <section id="roadmap" className="footerPanel sectionAnchor">
-        <div>
-          <p className="eyebrow">{t.roadmap.eyebrow}</p>
-          <h2>{t.roadmap.title}</h2>
-        </div>
-        <ul className="plainList">
-          {t.roadmap.items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
     </main>
   );
 }

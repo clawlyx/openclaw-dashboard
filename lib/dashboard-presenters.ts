@@ -124,6 +124,12 @@ const translateStatusToken = (value: string, messages: Messages) => {
   switch (value.toLowerCase()) {
     case "ok":
       return messages.data.statusOk;
+    case "healthy":
+      return messages.data.statusHealthy;
+    case "oauth":
+      return messages.data.statusOauth;
+    case "api":
+      return messages.data.statusApi;
     case "failed":
       return messages.data.statusFailed;
     case "not-delivered":
