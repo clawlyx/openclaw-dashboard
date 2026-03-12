@@ -23,13 +23,70 @@ import { resolveTheme, THEME_COOKIE } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 
-type HomePageProps = {
-  searchParams?: Promise<{ lang?: string }> | { lang?: string };
+const DASHBOARD_VIEWS = ["overview", "history", "usage", "scheduler"] as const;
+
+type DashboardView = (typeof DASHBOARD_VIEWS)[number];
+type DashboardPanel =
+  | "summary"
+  | "providers"
+  | "source"
+  | "trend"
+  | "requests"
+  | "tokens"
+  | "breakdown"
+  | "limits"
+  | "models"
+  | "health"
+  | "jobs"
+  | "attention";
+
+const DASHBOARD_PANELS: Record<DashboardView, DashboardPanel[]> = {
+  overview: ["summary", "providers", "source"],
+  history: ["trend", "requests", "tokens"],
+  usage: ["breakdown", "limits", "models"],
+  scheduler: ["health", "jobs", "attention"]
 };
 
-const buildHref = (targetLocale: Locale, hash?: string) => {
-  const base = targetLocale === "en" ? "/" : "/?lang=zh";
-  return hash ? `${base}#${hash}` : base;
+type HomePageProps = {
+  searchParams?:
+    | Promise<{ lang?: string; view?: string; panel?: string }>
+    | { lang?: string; view?: string; panel?: string };
+};
+
+const resolveView = (raw?: string): DashboardView =>
+  DASHBOARD_VIEWS.includes(raw as DashboardView) ? (raw as DashboardView) : "overview";
+
+const resolvePanel = (view: DashboardView, raw?: string): DashboardPanel =>
+  DASHBOARD_PANELS[view].includes(raw as DashboardPanel) ? (raw as DashboardPanel) : DASHBOARD_PANELS[view][0];
+
+const buildHref = (targetLocale: Locale, view?: DashboardView, panel?: DashboardPanel) => {
+  const search = new URLSearchParams();
+
+  if (targetLocale === "zh") {
+    search.set("lang", "zh");
+  }
+
+  if (view && (view !== "overview" || panel)) {
+    search.set("view", view);
+  }
+
+  if (panel) {
+    search.set("panel", panel);
+  }
+
+  const query = search.toString();
+  return query ? `/?${query}` : "/";
+};
+
+const formatCompactValue = (value: number | undefined, locale: Locale, fallback: string) => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return fallback;
+  }
+
+  return new Intl.NumberFormat(localeTag(locale), {
+    notation: "compact",
+    maximumFractionDigits: 1
+  }).format(value);
 };
 
 export async function generateMetadata({ searchParams }: HomePageProps): Promise<Metadata> {
@@ -46,6 +103,8 @@ export async function generateMetadata({ searchParams }: HomePageProps): Promise
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = searchParams ? await searchParams : undefined;
   const locale = resolveLocale(params?.lang);
+  const activeView = resolveView(params?.view);
+  const activePanel = resolvePanel(activeView, params?.panel);
   const t = getMessages(locale);
   const cookieStore = await cookies();
   const theme = resolveTheme(cookieStore.get(THEME_COOKIE)?.value);
@@ -93,6 +152,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       reportsWindowLabel: formatReportsWindowLabel(Math.min(7, usage.history.reportCount), t)
     }
   };
+
   const primaryProviderLimit = localizedUsage.providerLimits[0];
   const providerWindows = (
     primaryProviderLimit?.windows.length
@@ -118,6 +178,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     label: window.label,
     value: window.remaining || na
   }));
+
   const primaryProviderLabel = primaryProviderLimit?.providerLabel || t.hero.pulseTitle;
   const providerAuthStatus = primaryProviderLimit?.authStatus || localizedUsage.oauthStatus || na;
   const providerRoster = [
@@ -133,7 +194,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         profile.profileLabel === primaryProviderLimit?.profileLabel
     ) &&
     primaryProviderLimit
-        ? [
+      ? [
           {
             providerId: primaryProviderLimit.providerId,
             providerLabel: primaryProviderLimit.providerLabel,
@@ -169,6 +230,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       : usage.available && cron.available
         ? formatMessage(t.hero.statusNextRunHint, { value: nextRunLabel })
         : t.hero.statusPartialHint;
+
   const heroSummary = [
     {
       label: t.hero.statusLabel,
@@ -189,11 +251,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       tone: "default" as const
     }
   ];
+
   const heroMeta = [
     { label: t.hero.generatedShort, value: generatedLabel },
     { label: t.hero.sourceShort, value: localizedSourceLabel },
     { label: t.hero.usageSourceShort, value: reportDateLabel }
   ];
+
   const schedulerTotals: Array<{ label: string; value: string; tone?: "default" | "warning" }> = [
     { label: t.scheduler.enabled, value: String(cron.enabledCount) },
     { label: t.scheduler.disabled, value: String(cron.disabledCount) },
@@ -202,204 +266,447 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       value: String(cron.attentionCount),
       tone: cron.attentionCount > 0 ? "warning" : "default"
     }
-  ] as const;
-
-  const navItems = [
-    { id: "overview", label: t.nav.overview },
-    { id: "history", label: t.nav.history },
-    { id: "usage", label: t.nav.usage },
-    { id: "scheduler", label: t.nav.scheduler }
   ];
 
-  return (
-    <main className="pageShell" lang={localeTag(locale)}>
-      <div className="pageGlow pageGlowLeft" />
-      <div className="pageGlow pageGlowRight" />
+  const overviewCopy = formatMessage(t.hero.copy, { home: openclawHome });
+  const historyRangeLabel = formatMessage(t.history.range, {
+    start: localizedUsage.history.rangeStart || na,
+    end: localizedUsage.history.rangeEnd || na
+  });
+  const latestHistoryPoint = localizedUsage.history.points.at(-1);
+  const latestRequestsLabel = latestHistoryPoint
+    ? formatCompactValue(latestHistoryPoint.totalRequestsValue, locale, na)
+    : na;
+  const latestTokensLabel = latestHistoryPoint
+    ? formatCompactValue(latestHistoryPoint.totalTokensValue, locale, na)
+    : na;
 
-      <header className="topBar">
-        <a href={buildHref(locale)} className="brandLockup">
-          <span className="brandBadge">OC</span>
-          <span className="brandText">
-            <strong>{t.hero.title}</strong>
-            <small>{t.hero.eyebrow}</small>
-          </span>
-        </a>
+  const viewItems: Array<{ id: DashboardView; label: string; hint: string }> = [
+    { id: "overview", label: t.nav.overview, hint: statusValue },
+    {
+      id: "history",
+      label: t.nav.history,
+      hint: localizedUsage.history.reportsWindowLabel || t.history.title
+    },
+    { id: "usage", label: t.nav.usage, hint: primaryProviderLabel },
+    { id: "scheduler", label: t.nav.scheduler, hint: nextRunLabel }
+  ];
 
-        <nav className="menuBar" aria-label={t.nav.label}>
-          {navItems.map((item) => (
-            <a key={item.id} href={buildHref(locale, item.id)} className="menuLink">
-              {item.label}
-            </a>
-          ))}
-        </nav>
+  const panelItemsByView: Record<
+    DashboardView,
+    Array<{ id: DashboardPanel; label: string; hint: string; description: string }>
+  > = {
+    overview: [
+      { id: "summary", label: t.nav.overview, hint: statusValue, description: overviewCopy },
+      { id: "providers", label: t.hero.pulseTitle, hint: primaryProviderLabel, description: t.hero.pulseCopy },
+      { id: "source", label: t.hero.sourceShort, hint: localizedSourceLabel, description: overviewCopy }
+    ],
+    history: [
+      {
+        id: "trend",
+        label: t.history.title,
+        hint: localizedUsage.history.reportsWindowLabel || String(localizedUsage.history.reportCount || 0),
+        description: t.history.description
+      },
+      {
+        id: "requests",
+        label: t.history.requestsPerReport,
+        hint: latestRequestsLabel,
+        description: t.history.description
+      },
+      {
+        id: "tokens",
+        label: t.history.tokensPerReport,
+        hint: latestTokensLabel,
+        description: t.history.description
+      }
+    ],
+    usage: [
+      {
+        id: "breakdown",
+        label: t.usage.topModelBreakdown,
+        hint: localizedUsage.topModel || na,
+        description: t.usage.topModelDescription
+      },
+      {
+        id: "limits",
+        label: t.usage.limitWindows,
+        hint: providerWindows[0]?.value || na,
+        description: formatMessage(t.hero.providerHint, { value: primaryProviderLabel })
+      },
+      {
+        id: "models",
+        label: t.usage.tableToggle,
+        hint: String((localizedUsage.models || []).length),
+        description: t.usage.topModelDescription
+      }
+    ],
+    scheduler: [
+      { id: "health", label: t.scheduler.title, hint: statusValue, description: t.scheduler.description },
+      { id: "jobs", label: t.scheduler.tableJob, hint: String(nextJobs.length), description: t.scheduler.description },
+      {
+        id: "attention",
+        label: t.scheduler.needsAttention,
+        hint: String(cron.attentionCount),
+        description: t.scheduler.description
+      }
+    ]
+  };
 
-        <div className="toolbarCluster">
-          <span className={`modeChip ${openclawSourceKind === "demo" ? "modeChipDemo" : ""}`}>{modeLabel}</span>
-          <ThemeSwitch
-            label={t.theme.label}
-            lightLabel={t.theme.light}
-            darkLabel={t.theme.dark}
-            theme={theme}
-          />
-          <div className="languageSwitch" aria-label={t.language.label}>
-            {(["en", "zh"] as const).map((targetLocale) => (
-              <a
-                key={targetLocale}
-                href={buildHref(targetLocale)}
-                className={`languageOption ${locale === targetLocale ? "languageOptionActive" : ""}`}
-                aria-current={locale === targetLocale ? "page" : undefined}
-              >
-                {t.language[targetLocale]}
-              </a>
-            ))}
-          </div>
-        </div>
-      </header>
+  const contextualSummaryByView: Record<
+    DashboardView,
+    { label: string; value: string; hint: string; tone?: "default" | "warning" }
+  > = {
+    overview: {
+      label: t.hero.statusLabel,
+      value: statusValue,
+      hint: statusHint,
+      tone: cron.attentionCount > 0 ? "warning" : "default"
+    },
+    history: {
+      label: t.history.title,
+      value: String(localizedUsage.history.reportCount || 0),
+      hint: historyRangeLabel
+    },
+    usage: {
+      label: t.usage.topModel,
+      value: localizedUsage.topModel || na,
+      hint: formatMessage(t.hero.providerHint, { value: primaryProviderLabel })
+    },
+    scheduler: {
+      label: t.scheduler.attention,
+      value: String(cron.attentionCount),
+      hint: cron.available ? formatMessage(t.hero.statusNextRunHint, { value: nextRunLabel }) : cronError || na,
+      tone: cron.attentionCount > 0 ? "warning" : "default"
+    }
+  };
 
-      <section id="overview" className="hero sectionAnchor">
-        <div className="heroMain">
-          <p className="eyebrow">{t.hero.eyebrow}</p>
-          <h1>{t.hero.title}</h1>
-          <p className="heroCopy">{formatMessage(t.hero.copy, { home: openclawHome })}</p>
+  const contextualFactsByView: Record<DashboardView, Array<{ label: string; value: string }>> = {
+    overview: [
+      { label: t.hero.generatedShort, value: generatedLabel },
+      { label: t.hero.sourceShort, value: localizedSourceLabel },
+      { label: t.hero.usageSourceShort, value: reportDateLabel },
+      { label: t.hero.lastRun, value: lastRunLabel }
+    ],
+    history: [
+      { label: t.history.title, value: historyRangeLabel },
+      { label: t.history.reports, value: String(localizedUsage.history.reportCount || 0) },
+      { label: t.history.recentRequests, value: localizedUsage.history.averageRequests || na },
+      { label: t.history.recentTokens, value: localizedUsage.history.averageTokens || na }
+    ],
+    usage: [
+      { label: t.usage.authStatus, value: providerAuthStatus },
+      { label: t.usage.activeProvider, value: primaryProviderLabel },
+      { label: providerWindows[0]?.label || t.stats.window5h, value: providerWindows[0]?.value || na },
+      { label: providerWindows[1]?.label || t.stats.window7d, value: providerWindows[1]?.value || quotaSourceLabel }
+    ],
+    scheduler: [
+      { label: t.scheduler.enabled, value: String(cron.enabledCount) },
+      { label: t.scheduler.disabled, value: String(cron.disabledCount) },
+      { label: t.hero.lastRun, value: lastRunLabel },
+      { label: t.hero.nextRun, value: nextRunLabel }
+    ]
+  };
 
-          <div className="heroSummary" aria-label={t.nav.overview}>
-            {heroSummary.map((item) => (
-              <article
-                key={item.label}
-                className={`heroSummaryCard ${item.tone === "warning" ? "heroSummaryCardWarning" : ""}`}
-              >
-                <span className="heroSummaryLabel">{item.label}</span>
-                <strong className="heroSummaryValue">{item.value}</strong>
-                <span className="heroSummaryHint">{item.hint}</span>
-              </article>
-            ))}
-            <article className="heroSummaryCard heroSummaryCardPair">
-              <span className="heroSummaryLabel">{t.hero.runWindowLabel}</span>
-              <div className="heroSummaryPair">
-                <div className="heroSummaryPairRow">
-                  <span className="heroSummaryPairKey">{t.hero.lastRun}</span>
-                  <strong className="heroSummaryPairValue">{lastRunLabel}</strong>
-                </div>
-                <div className="heroSummaryPairRow">
-                  <span className="heroSummaryPairKey">{t.hero.nextRun}</span>
-                  <strong className="heroSummaryPairValue">{nextRunLabel}</strong>
-                </div>
-              </div>
-            </article>
-          </div>
+  const activeViewItem = viewItems.find((item) => item.id === activeView) || viewItems[0];
+  const activePanelItems = panelItemsByView[activeView];
+  const activePanelItem = activePanelItems.find((item) => item.id === activePanel) || activePanelItems[0];
+  const contextualSummary = contextualSummaryByView[activeView];
+  const contextualFacts = contextualFactsByView[activeView];
+  const historyFocus = activePanel === "requests" ? "requests" : activePanel === "tokens" ? "tokens" : "all";
 
-          <div className="heroMetaRow" aria-label={t.nav.overview}>
-            {heroMeta.map((item) => (
-              <span key={item.label} className="heroMetaItem">
-                <span className="heroMetaKey">{item.label}</span>
-                <strong className="heroMetaText">{item.value}</strong>
-              </span>
-            ))}
-          </div>
-        </div>
+  const providerRosterContent = providerRoster.length ? (
+    <div className="providerRoster" aria-label={t.hero.providerMetaLabel}>
+      {providerRoster.map((profile) => {
+        const rowBadges = [
+          profile.profileLabel
+            ? { id: "profile", label: t.hero.providerMetaProfile, value: profile.profileLabel }
+            : null,
+          profile.authType
+            ? { id: "auth", label: t.hero.providerMetaAuth, value: profile.authType }
+            : profile.isActive && providerAuthStatus !== na
+              ? { id: "auth-fallback", label: t.hero.providerMetaAuth, value: providerAuthStatus }
+              : null,
+          profile.isActive && primaryProviderLimit?.profileStatus
+            ? { id: "status", label: t.hero.providerMetaStatus, value: primaryProviderLimit.profileStatus }
+            : null,
+          profile.profileExpiresIn
+            ? { id: "expiry", label: t.hero.providerMetaExpiry, value: profile.profileExpiresIn }
+            : null
+        ].filter((badge): badge is { id: string; label: string; value: string } => Boolean(badge));
 
-        <div className="heroRail">
-          <article className="signalCard signalCardQuota">
-            <p className="eyebrow">{t.hero.pulseEyebrow}</p>
-            <h2 className="signalCardTitle">{t.hero.pulseTitle}</h2>
-            <p className="signalCardLead">{t.hero.pulseCopy}</p>
+        return (
+          <article
+            key={`${profile.providerId}:${profile.profileLabel}`}
+            className={`providerProfileRow ${profile.isActive ? "providerProfileRowActive" : ""}`}
+          >
+            <div className="providerProfileHead">
+              <strong className="providerProfileName">{profile.providerLabel}</strong>
+              {profile.isActive ? <span className="providerProfileState">{t.hero.providerActive}</span> : null}
+            </div>
 
-            {providerRoster.length ? (
-              <div className="providerRoster" aria-label={t.hero.providerMetaLabel}>
-                {providerRoster.map((profile) => {
-                  const rowBadges = [
-                    profile.profileLabel
-                      ? { id: "profile", label: t.hero.providerMetaProfile, value: profile.profileLabel }
-                      : null,
-                    profile.authType
-                      ? { id: "auth", label: t.hero.providerMetaAuth, value: profile.authType }
-                      : profile.isActive && providerAuthStatus !== na
-                        ? { id: "auth-fallback", label: t.hero.providerMetaAuth, value: providerAuthStatus }
-                        : null,
-                    profile.isActive && primaryProviderLimit?.profileStatus
-                      ? { id: "status", label: t.hero.providerMetaStatus, value: primaryProviderLimit.profileStatus }
-                      : null,
-                    profile.profileExpiresIn
-                      ? { id: "expiry", label: t.hero.providerMetaExpiry, value: profile.profileExpiresIn }
-                      : null
-                  ].filter((badge): badge is { id: string; label: string; value: string } => Boolean(badge));
-
-                  return (
-                    <article
-                      key={`${profile.providerId}:${profile.profileLabel}`}
-                      className={`providerProfileRow ${profile.isActive ? "providerProfileRowActive" : ""}`}
-                    >
-                      <div className="providerProfileHead">
-                        <strong className="providerProfileName">{profile.providerLabel}</strong>
-                        {profile.isActive ? <span className="providerProfileState">{t.hero.providerActive}</span> : null}
-                      </div>
-
-                      {rowBadges.length ? (
-                        <div className="providerMetaRow">
-                          {rowBadges.map((badge) => (
-                            <span key={`${profile.providerId}:${badge.id}`} className="providerMetaBadge">
-                              <span className="providerMetaBadgeKey">{badge.label}</span>
-                              <span className="providerMetaBadgeValue">{badge.value}</span>
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      {profile.isActive && providerWindows.length ? (
-                        <div className="providerWindowsInline">
-                          <ProviderLimitWindows windows={providerWindows} variant="compact" />
-                        </div>
-                      ) : null}
-
-                      {profile.freeQuota ? (
-                        <div className="providerProfilePanel">
-                          <span className="providerProfilePanelLabel">{t.hero.providerFreeQuota}</span>
-                          <div className="providerProfileFacts">
-                            <div className="providerProfileFact">
-                              <span className="providerProfileFactKey">{t.hero.providerFreeRemaining}</span>
-                              <strong className="providerProfileFactValue">
-                                {profile.freeQuota.remainingRequests || na}
-                                {profile.freeQuota.configuredRequests ? ` / ${profile.freeQuota.configuredRequests}` : ""}
-                              </strong>
-                            </div>
-                            <div className="providerProfileFact">
-                              <span className="providerProfileFactKey">{t.hero.providerFreeUsage}</span>
-                              <strong className="providerProfileFactValue">
-                                {profile.freeQuota.usageRequests || profile.freeQuota.usedRequests || na}
-                                {profile.freeQuota.usageRequests || profile.freeQuota.usedRequests
-                                  ? ` ${t.hero.providerRequestsShort}`
-                                  : ""}
-                                {profile.freeQuota.usageTokens
-                                  ? ` · ${profile.freeQuota.usageTokens} ${t.hero.providerTokensShort}`
-                                  : profile.freeQuota.usedShare
-                                    ? ` · ${profile.freeQuota.usedShare}`
-                                    : ""}
-                              </strong>
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
-                    </article>
-                  );
-                })}
+            {rowBadges.length ? (
+              <div className="providerMetaRow">
+                {rowBadges.map((badge) => (
+                  <span key={`${profile.providerId}:${badge.id}`} className="providerMetaBadge">
+                    <span className="providerMetaBadgeKey">{badge.label}</span>
+                    <span className="providerMetaBadgeValue">{badge.value}</span>
+                  </span>
+                ))}
               </div>
             ) : null}
 
-            <p className="signalCardCopy">{formatMessage(t.hero.pulseFooter, { value: quotaSourceLabel })}</p>
+            {profile.isActive && providerWindows.length ? (
+              <div className="providerWindowsInline">
+                <ProviderLimitWindows windows={providerWindows} variant="compact" />
+              </div>
+            ) : null}
+
+            {profile.freeQuota ? (
+              <div className="providerProfilePanel">
+                <span className="providerProfilePanelLabel">{t.hero.providerFreeQuota}</span>
+                <div className="providerProfileFacts">
+                  <div className="providerProfileFact">
+                    <span className="providerProfileFactKey">{t.hero.providerFreeRemaining}</span>
+                    <strong className="providerProfileFactValue">
+                      {profile.freeQuota.remainingRequests || na}
+                      {profile.freeQuota.configuredRequests ? ` / ${profile.freeQuota.configuredRequests}` : ""}
+                    </strong>
+                  </div>
+                  <div className="providerProfileFact">
+                    <span className="providerProfileFactKey">{t.hero.providerFreeUsage}</span>
+                    <strong className="providerProfileFactValue">
+                      {profile.freeQuota.usageRequests || profile.freeQuota.usedRequests || na}
+                      {profile.freeQuota.usageRequests || profile.freeQuota.usedRequests
+                        ? ` ${t.hero.providerRequestsShort}`
+                        : ""}
+                      {profile.freeQuota.usageTokens
+                        ? ` · ${profile.freeQuota.usageTokens} ${t.hero.providerTokensShort}`
+                        : profile.freeQuota.usedShare
+                          ? ` · ${profile.freeQuota.usedShare}`
+                          : ""}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </article>
+        );
+      })}
+    </div>
+  ) : (
+    <div className="emptyState">
+      <p>{na}</p>
+    </div>
+  );
 
-        </div>
-      </section>
+  const renderUsageUnavailable = () => (
+    <div className="emptyState">
+      <p>{localizedUsage.error}</p>
+      {(localizedUsage.notes || []).map((note) => (
+        <p key={note}>{note}</p>
+      ))}
+    </div>
+  );
 
-      <UsageHistoryPanel
-        id="history"
-        history={localizedUsage.history}
-        locale={locale}
-        copy={{ ...t.history, section: t.nav.history }}
-        common={t.common}
-      />
+  const renderSchedulerUnavailable = () => (
+    <div className="emptyState">
+      <p>{cronError}</p>
+      <p>
+        <code>{cron.path}</code>
+      </p>
+    </div>
+  );
 
-      <div className="contentStack">
+  const renderActiveContent = () => {
+    if (activeView === "overview") {
+      if (activePanel === "providers") {
+        return (
+          <SectionShell
+            id="overview"
+            eyebrow={t.hero.pulseEyebrow}
+            title={t.hero.pulseTitle}
+            description={t.hero.pulseCopy}
+          >
+            <article className="signalCard signalCardQuota">
+              {providerRosterContent}
+              <p className="signalCardCopy">{formatMessage(t.hero.pulseFooter, { value: quotaSourceLabel })}</p>
+            </article>
+          </SectionShell>
+        );
+      }
+
+      if (activePanel === "source") {
+        const sourceFacts = [
+          ...heroMeta,
+          { label: t.hero.lastRun, value: lastRunLabel },
+          { label: t.hero.nextRun, value: nextRunLabel },
+          { label: t.hero.statusLabel, value: statusValue },
+          { label: t.hero.generatedShort, value: modeLabel }
+        ];
+
+        return (
+          <SectionShell id="overview" eyebrow={t.nav.overview} title={t.hero.title} description={overviewCopy}>
+            <div className="miniSummaryGrid">
+              {sourceFacts.map((item) => (
+                <article key={item.label} className="miniSummaryCard">
+                  <span className="miniSummaryLabel">{item.label}</span>
+                  <strong className="miniSummaryValue miniSummaryValueCompact">{item.value}</strong>
+                </article>
+              ))}
+            </div>
+
+            <div className="infoBox">
+              <p>
+                <code>{openclawHome}</code>
+              </p>
+            </div>
+          </SectionShell>
+        );
+      }
+
+      return (
+        <section id="overview" className="hero heroSingle">
+          <div className="heroMain">
+            <p className="eyebrow">{t.hero.eyebrow}</p>
+            <h1>{t.hero.title}</h1>
+            <p className="heroCopy">{overviewCopy}</p>
+
+            <div className="heroSummary" aria-label={t.nav.overview}>
+              {heroSummary.map((item) => (
+                <article
+                  key={item.label}
+                  className={`heroSummaryCard ${item.tone === "warning" ? "heroSummaryCardWarning" : ""}`}
+                >
+                  <span className="heroSummaryLabel">{item.label}</span>
+                  <strong className="heroSummaryValue">{item.value}</strong>
+                  <span className="heroSummaryHint">{item.hint}</span>
+                </article>
+              ))}
+              <article className="heroSummaryCard heroSummaryCardPair">
+                <span className="heroSummaryLabel">{t.hero.runWindowLabel}</span>
+                <div className="heroSummaryPair">
+                  <div className="heroSummaryPairRow">
+                    <span className="heroSummaryPairKey">{t.hero.lastRun}</span>
+                    <strong className="heroSummaryPairValue">{lastRunLabel}</strong>
+                  </div>
+                  <div className="heroSummaryPairRow">
+                    <span className="heroSummaryPairKey">{t.hero.nextRun}</span>
+                    <strong className="heroSummaryPairValue">{nextRunLabel}</strong>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div className="heroMetaRow" aria-label={t.nav.overview}>
+              {heroMeta.map((item) => (
+                <span key={item.label} className="heroMetaItem">
+                  <span className="heroMetaKey">{item.label}</span>
+                  <strong className="heroMetaText">{item.value}</strong>
+                </span>
+              ))}
+            </div>
+
+            <div className="infoBox">
+              <p>
+                <code>{openclawHome}</code>
+              </p>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    if (activeView === "history") {
+      return (
+        <UsageHistoryPanel
+          id="history"
+          history={localizedUsage.history}
+          locale={locale}
+          copy={{ ...t.history, section: t.nav.history }}
+          common={t.common}
+          focus={historyFocus}
+        />
+      );
+    }
+
+    if (activeView === "usage") {
+      if (activePanel === "limits") {
+        return (
+          <SectionShell
+            id="usage"
+            eyebrow={t.usage.section}
+            title={t.usage.limitWindows}
+            description={formatMessage(t.hero.providerHint, { value: primaryProviderLabel })}
+          >
+            {localizedUsage.available ? (
+              <>
+                <div className="stack">
+                  <div className="metricLine">
+                    <span className="metricLabel">{t.usage.authStatus}</span>
+                    <strong>{providerAuthStatus}</strong>
+                  </div>
+                  <div className="metricLine">
+                    <span className="metricLabel">{t.usage.activeProvider}</span>
+                    <strong>{primaryProviderLabel}</strong>
+                  </div>
+                </div>
+
+                {providerWindows.length ? <ProviderLimitWindows windows={providerWindows} variant="compact" /> : null}
+
+                <div className="providerLimitsPanel">
+                  <p className="providerLimitsPanelLabel">{t.hero.pulseTitle}</p>
+                  {providerRosterContent}
+                </div>
+
+                <div className="infoBox">
+                  <p>{formatMessage(t.hero.pulseFooter, { value: quotaSourceLabel })}</p>
+                </div>
+              </>
+            ) : (
+              renderUsageUnavailable()
+            )}
+          </SectionShell>
+        );
+      }
+
+      if (activePanel === "models") {
+        return (
+          <SectionShell
+            id="usage"
+            eyebrow={t.usage.section}
+            title={t.usage.tableToggle}
+            description={t.usage.topModelDescription}
+          >
+            {localizedUsage.available ? (
+              <div className="tableWrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t.usage.tableModel}</th>
+                      <th>{t.usage.tableRequests}</th>
+                      <th>{t.usage.tableTokens}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(localizedUsage.models || []).map((model) => (
+                      <tr key={model.model}>
+                        <td>{model.model}</td>
+                        <td>{model.requests}</td>
+                        <td>{model.totalTokens}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              renderUsageUnavailable()
+            )}
+          </SectionShell>
+        );
+      }
+
+      return (
         <SectionShell
           id="usage"
           eyebrow={t.usage.section}
@@ -443,110 +750,232 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   </article>
                 ))}
               </div>
-
-              <details className="detailDisclosure">
-                <summary>{t.usage.tableToggle}</summary>
-                <div className="tableWrap tableWrapNested">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>{t.usage.tableModel}</th>
-                        <th>{t.usage.tableRequests}</th>
-                        <th>{t.usage.tableTokens}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(localizedUsage.models || []).map((model) => (
-                        <tr key={model.model}>
-                          <td>{model.model}</td>
-                          <td>{model.requests}</td>
-                          <td>{model.totalTokens}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </details>
             </>
           ) : (
-            <div className="emptyState">
-              <p>{localizedUsage.error}</p>
-              {(localizedUsage.notes || []).map((note) => (
-                <p key={note}>{note}</p>
+            renderUsageUnavailable()
+          )}
+        </SectionShell>
+      );
+    }
+
+    if (activePanel === "jobs") {
+      return (
+        <SectionShell
+          id="scheduler"
+          eyebrow={t.scheduler.section}
+          title={t.scheduler.tableJob}
+          description={t.scheduler.description}
+        >
+          {cron.available ? (
+            <div className="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t.scheduler.tableJob}</th>
+                    <th>{t.scheduler.tableNextRun}</th>
+                    <th>{t.scheduler.tableLastStatus}</th>
+                    <th>{t.scheduler.tableDelivery}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nextJobs.map((job) => (
+                    <tr key={job.id}>
+                      <td>
+                        <div className="tableTitle">{job.name}</div>
+                        <div className="tableSubtle">{job.schedule}</div>
+                      </td>
+                      <td>{job.nextRunAt}</td>
+                      <td>{job.lastRunStatus}</td>
+                      <td>{job.delivery}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            renderSchedulerUnavailable()
+          )}
+        </SectionShell>
+      );
+    }
+
+    if (activePanel === "attention") {
+      return (
+        <SectionShell
+          id="scheduler"
+          eyebrow={t.scheduler.section}
+          title={t.scheduler.needsAttention}
+          description={t.scheduler.description}
+        >
+          {cron.available ? (
+            failingJobs.length > 0 ? (
+              <div className="alertBox">
+                <ul className="plainList">
+                  {failingJobs.map((job) => (
+                    <li key={job.id}>
+                      <strong>{job.name}</strong>
+                      <span>
+                        {job.lastRunStatus} / {job.lastDeliveryStatus}
+                        {job.consecutiveErrors > 0 ? ` / ${t.scheduler.errors} ${job.consecutiveErrors}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="infoBox">
+                <p>{statusHint}</p>
+              </div>
+            )
+          ) : (
+            renderSchedulerUnavailable()
+          )}
+        </SectionShell>
+      );
+    }
+
+    return (
+      <SectionShell
+        id="scheduler"
+        eyebrow={t.scheduler.section}
+        title={t.scheduler.title}
+        description={t.scheduler.description}
+      >
+        {cron.available ? (
+          <>
+            <div className="miniSummaryGrid">
+              {schedulerTotals.map((item) => (
+                <article
+                  key={item.label}
+                  className={`miniSummaryCard ${item.tone === "warning" ? "miniSummaryCardWarning" : ""}`}
+                >
+                  <span className="miniSummaryLabel">{item.label}</span>
+                  <strong className="miniSummaryValue">{item.value}</strong>
+                </article>
               ))}
             </div>
-          )}
-        </SectionShell>
 
-        <SectionShell id="scheduler" eyebrow={t.scheduler.section} title={t.scheduler.title} description={t.scheduler.description}>
-          {cron.available ? (
-            <>
-              <div className="miniSummaryGrid">
-                {schedulerTotals.map((item) => (
-                  <article
-                    key={item.label}
-                    className={`miniSummaryCard ${item.tone === "warning" ? "miniSummaryCardWarning" : ""}`}
-                  >
-                    <span className="miniSummaryLabel">{item.label}</span>
-                    <strong className="miniSummaryValue">{item.value}</strong>
-                  </article>
+            <div className="stack">
+              <div className="metricLine">
+                <span className="metricLabel">{t.hero.lastRun}</span>
+                <strong>{lastRunLabel}</strong>
+              </div>
+              <div className="metricLine">
+                <span className="metricLabel">{t.hero.nextRun}</span>
+                <strong>{nextRunLabel}</strong>
+              </div>
+              <div className="metricLine">
+                <span className="metricLabel">{t.hero.statusLabel}</span>
+                <strong>{statusValue}</strong>
+              </div>
+            </div>
+          </>
+        ) : (
+          renderSchedulerUnavailable()
+        )}
+      </SectionShell>
+    );
+  };
+
+  return (
+    <main className="pageShell" lang={localeTag(locale)}>
+      <div className="pageGlow pageGlowLeft" />
+      <div className="pageGlow pageGlowRight" />
+
+      <header className="topBar">
+        <a href={buildHref(locale)} className="brandLockup">
+          <span className="brandBadge">OC</span>
+          <span className="brandText">
+            <strong>{t.hero.title}</strong>
+            <small>{t.hero.eyebrow}</small>
+          </span>
+        </a>
+
+        <nav className="menuBar" aria-label={t.nav.label}>
+          {viewItems.map((item) => (
+            <a
+              key={item.id}
+              href={buildHref(locale, item.id)}
+              className={`menuLink ${activeView === item.id ? "menuLinkActive" : ""}`}
+              aria-current={activeView === item.id ? "page" : undefined}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="toolbarCluster">
+          <span className={`modeChip ${openclawSourceKind === "demo" ? "modeChipDemo" : ""}`}>{modeLabel}</span>
+          <ThemeSwitch
+            label={t.theme.label}
+            lightLabel={t.theme.light}
+            darkLabel={t.theme.dark}
+            theme={theme}
+          />
+          <div className="languageSwitch" aria-label={t.language.label}>
+            {(["en", "zh"] as const).map((targetLocale) => (
+              <a
+                key={targetLocale}
+                href={buildHref(targetLocale, activeView, activePanel)}
+                className={`languageOption ${locale === targetLocale ? "languageOptionActive" : ""}`}
+                aria-current={locale === targetLocale ? "page" : undefined}
+              >
+                {t.language[targetLocale]}
+              </a>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <div className="dashboardLayout">
+        <aside className="dashboardSidebar">
+          <div className="sidebarSurface">
+            <div className="sidebarIntro">
+              <p className="eyebrow">{activeViewItem.label}</p>
+              <h2 className="sidebarSectionTitle">{activePanelItem.label}</h2>
+              <p className="sidebarCopy">{activePanelItem.description}</p>
+            </div>
+
+            <nav className="sidebarNav" aria-label={activeViewItem.label}>
+              {activePanelItems.map((item, index) => (
+                <a
+                  key={item.id}
+                  href={buildHref(locale, activeView, item.id)}
+                  className={`sidebarNavLink ${activePanel === item.id ? "sidebarNavLinkActive" : ""}`}
+                  aria-current={activePanel === item.id ? "page" : undefined}
+                >
+                  <span className="sidebarNavIndex">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="sidebarNavBody">
+                    <strong className="sidebarNavLabel">{item.label}</strong>
+                    <span className="sidebarNavHint">{item.hint}</span>
+                  </span>
+                </a>
+              ))}
+            </nav>
+
+            <article
+              className={`sidebarStatusCard ${
+                contextualSummary.tone === "warning" ? "sidebarStatusCardWarning" : ""
+              }`}
+            >
+              <span className="sidebarStatusLabel">{contextualSummary.label}</span>
+              <strong className="sidebarStatusValue">{contextualSummary.value}</strong>
+              <p className="sidebarStatusHint">{contextualSummary.hint}</p>
+
+              <div className="sidebarFactGrid">
+                {contextualFacts.map((item) => (
+                  <div key={item.label} className="sidebarFact">
+                    <span className="sidebarFactLabel">{item.label}</span>
+                    <strong className="sidebarFactValue">{item.value}</strong>
+                  </div>
                 ))}
               </div>
+            </article>
+          </div>
+        </aside>
 
-              <div className="tableWrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t.scheduler.tableJob}</th>
-                      <th>{t.scheduler.tableNextRun}</th>
-                      <th>{t.scheduler.tableLastStatus}</th>
-                      <th>{t.scheduler.tableDelivery}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {nextJobs.map((job) => (
-                      <tr key={job.id}>
-                        <td>
-                          <div className="tableTitle">{job.name}</div>
-                          <div className="tableSubtle">{job.schedule}</div>
-                        </td>
-                        <td>{job.nextRunAt}</td>
-                        <td>{job.lastRunStatus}</td>
-                        <td>{job.delivery}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {failingJobs.length > 0 ? (
-                <div className="alertBox">
-                  <p className="eyebrow">{t.scheduler.needsAttention}</p>
-                  <ul className="plainList">
-                    {failingJobs.map((job) => (
-                      <li key={job.id}>
-                        <strong>{job.name}</strong>
-                        <span>
-                          {job.lastRunStatus} / {job.lastDeliveryStatus}
-                          {job.consecutiveErrors > 0 ? ` / ${t.scheduler.errors} ${job.consecutiveErrors}` : ""}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <div className="emptyState">
-              <p>{cronError}</p>
-              <p>
-                <code>{cron.path}</code>
-              </p>
-            </div>
-          )}
-        </SectionShell>
+        <div className="dashboardMain">{renderActiveContent()}</div>
       </div>
-
     </main>
   );
 }

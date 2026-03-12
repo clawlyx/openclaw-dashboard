@@ -7,6 +7,7 @@ const CHART_PADDING_X = 18;
 const CHART_PADDING_Y = 18;
 
 type TrendMetric = "requests" | "tokens";
+type HistoryFocus = "all" | TrendMetric;
 
 type HistoryMessages = {
   section: string;
@@ -171,13 +172,15 @@ export function UsageHistoryPanel({
   history,
   locale,
   copy,
-  common
+  common,
+  focus = "all"
 }: {
   id?: string;
   history: UsageHistorySnapshot;
   locale: Locale;
   copy: HistoryMessages;
   common: { na: string; to: string };
+  focus?: HistoryFocus;
 }) {
   if (!history.available) {
     return (
@@ -199,6 +202,7 @@ export function UsageHistoryPanel({
   }
 
   const chartPoints = history.points.slice(-Math.min(14, history.points.length));
+  const chartMetrics = focus === "all" ? (["requests", "tokens"] as const) : ([focus] as const);
 
   return (
     <section id={id} className="panel historyPanel sectionAnchor">
@@ -218,9 +222,10 @@ export function UsageHistoryPanel({
         <div className="metaChip">{formatMessage(copy.reportsNormalized, { count: history.reportCount })}</div>
       </div>
 
-      <div className="historyChartGrid">
-        <UsageTrendChart metric="requests" points={chartPoints} locale={locale} copy={copy} />
-        <UsageTrendChart metric="tokens" points={chartPoints} locale={locale} copy={copy} />
+      <div className={`historyChartGrid ${chartMetrics.length === 1 ? "historyChartGridSingle" : ""}`}>
+        {chartMetrics.map((metric) => (
+          <UsageTrendChart key={metric} metric={metric} points={chartPoints} locale={locale} copy={copy} />
+        ))}
       </div>
 
       <div className="historyFootnotes">
