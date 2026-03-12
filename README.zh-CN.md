@@ -2,12 +2,16 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-一个面向 OpenClaw usage 历史、providers 和 cron 健康度的本地优先仪表盘。
+一个面向 OpenClaw 的本地优先运维仪表盘，提供概览、历史、用量和调度四个菜单视图。
 
-![OpenClaw Dashboard demo](./.github/assets/readme-demo.png)
+<p align="center">
+  <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard 桌面端预览" width="78%" />
+  <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard 移动端预览" width="19%" />
+</p>
 
 ## 功能特性
 
+- 顶部主菜单 + 左侧上下文导航 + 单面板渲染的 dashboard shell
 - 最新 usage 报告摘要
 - 已连接 providers 视图，包含 auth/profile 元数据、active 高亮和可复用的限额 tile
 - Codex 的 5h / 7d 滚动限额直接展示在 active provider 行内
@@ -122,7 +126,7 @@ pnpm check
 - 真实的 `~/.openclaw` 快照，除非你明确要公开
 
 `demo/openclaw-home` 下的 demo 数据是合成的，可以安全发布。  
-`.github/assets/readme-demo.png` 里的公开截图也应始终基于内置 demo 数据生成。
+`.github/assets/readme-demo.png`、`.github/assets/readme-mobile.png` 和 `.github/assets/social-preview.png` 里的公开截图都应始终基于内置 demo 数据生成。
 
 ## 项目文档
 

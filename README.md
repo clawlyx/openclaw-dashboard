@@ -2,12 +2,16 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-A local-first dashboard for OpenClaw usage history, providers, and cron health.
+A local-first operations dashboard for OpenClaw with menu-driven views for overview, history, usage, and scheduler health.
 
-![OpenClaw Dashboard demo](./.github/assets/readme-demo.png)
+<p align="center">
+  <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard desktop preview" width="78%" />
+  <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard mobile preview" width="19%" />
+</p>
 
 ## Features
 
+- top-level dashboard shell with a primary menu, contextual left navigation, and single-panel rendering
 - latest usage report summary
 - connected providers with auth/profile metadata, active highlighting, and reusable limit tiles
 - Codex 5h / 7d rolling limit visibility inside the active provider row
@@ -129,7 +133,7 @@ Do not commit:
 - real `~/.openclaw` snapshots unless you explicitly want them public
 
 The demo dataset under `demo/openclaw-home` is synthetic and safe to publish.
-The public screenshot in `.github/assets/readme-demo.png` should always be generated from the bundled demo dataset.
+The public screenshots in `.github/assets/readme-demo.png`, `.github/assets/readme-mobile.png`, and `.github/assets/social-preview.png` should always be generated from the bundled demo dataset.
 
 ## Project Docs
 
