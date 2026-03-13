@@ -2,16 +2,19 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-A local-first operations dashboard for OpenClaw with menu-driven views for overview, history, usage, and scheduler health.
+OpenClaw dashboard with dedicated Agents, Overview, History, Usage, and Scheduler workspaces.
 
 <p align="center">
-  <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard desktop preview" width="78%" />
-  <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard mobile preview" width="19%" />
+  <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard agents virtual office desktop preview" width="78%" />
+  <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard agents virtual office mobile preview" width="19%" />
 </p>
 
 ## Features
 
 - top-level dashboard shell with a primary menu, contextual left navigation, and single-panel rendering
+- dedicated `Agents` workspace with room-based navigation
+- `Virtual Office` pixel office scene for active, waiting, blocked, and idle agents
+- `Office Floor`, `Queues & handoffs`, and `Recent activity` panels for simplified agent operations visibility
 - latest usage report summary
 - connected providers with auth/profile metadata, active highlighting, and reusable limit tiles
 - Codex 5h / 7d rolling limit visibility inside the active provider row
@@ -24,7 +27,7 @@ A local-first operations dashboard for OpenClaw with menu-driven views for overv
 - automatic fallback to a bundled demo dataset for public previews and first-run setup
 - normalized usage history and trend charts across multiple reports
 
-The repo is intentionally broader than a single usage report skill. The goal is a proper OpenClaw dashboard that can grow into channels, browser telemetry, delivery health, and host-level schedulers.
+The repo is intentionally broader than a single usage report skill. The goal is a proper OpenClaw dashboard that can grow into agent operations, channels, browser telemetry, delivery health, and host-level schedulers.
 
 ## How it works
 
@@ -43,10 +46,10 @@ live install is present, the app serves bundled demo data instead.
 - usage reports: `workspace/memory/usage/*.md`
 - cron jobs: `cron/jobs.json`
 
-This means the app is local-first and does not need a custom backend yet. The JSON snapshot is
-also exposed at `/api/snapshot`, including normalized `usage.history` data for charts,
-`usage.providerLimits` for active rolling windows, and `usage.providerProfiles` for saved provider
-profiles such as OpenAI Codex and OpenRouter.
+This keeps the app centered on your own OpenClaw setup and avoids needing a custom backend yet.
+The JSON snapshot is also exposed at `/api/snapshot`, including normalized `agents` data for the
+office views, `usage.history` data for charts, `usage.providerLimits` for active rolling windows,
+and `usage.providerProfiles` for saved provider profiles such as OpenAI Codex and OpenRouter.
 
 ## Quick Start
 
@@ -106,12 +109,21 @@ The repo also includes a GitHub Actions workflow at `.github/workflows/ci.yml` t
 typechecks, and builds against the bundled demo dataset on every push to `main` and every pull
 request.
 
+## Current Surfaces
+
+- `Agents`: virtual office, office floor, queues and handoffs, recent activity
+- `Overview`: latest summary cards and high-signal operational state
+- `History`: usage history trends and chart views
+- `Usage`: provider state, rolling limits, source share, and model breakdown
+- `Scheduler`: cron overview, next jobs, and delivery failures
+
 ## Current assumptions
 
 - usage data is parsed from the markdown produced by the current `usage-tracker`
 - the parser accepts both newer account-status reports and older quota-only report variants
 - top-model source share is derived from `Model × Source Breakdown`
 - OpenRouter free-quota visibility comes from the AI Model Daily Usage Report when that section is present
+- agent office views are derived from `agents/dashboard.json` or inferred session activity when available
 - host-side schedulers like `launchd` are not ingested yet
 
 ## Roadmap

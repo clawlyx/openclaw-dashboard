@@ -2,16 +2,19 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-一个面向 OpenClaw 的本地优先运维仪表盘，提供概览、历史、用量和调度四个菜单视图。
+一个面向 OpenClaw 的运维仪表盘，提供 Agents、概览、历史、用量和调度等独立工作区。
 
 <p align="center">
-  <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard 桌面端预览" width="78%" />
-  <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard 移动端预览" width="19%" />
+  <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard Agents 虚拟办公室桌面端预览" width="78%" />
+  <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard Agents 虚拟办公室移动端预览" width="19%" />
 </p>
 
 ## 功能特性
 
 - 顶部主菜单 + 左侧上下文导航 + 单面板渲染的 dashboard shell
+- 独立的 `Agents` 工作区和按房间组织的二级导航
+- 用像素风 `Virtual Office` 直观展示 active / waiting / blocked / idle agents
+- `Office Floor`、`Queues & handoffs`、`Recent activity` 三个补充面板，用于快速理解 agent 运转状态
 - 最新 usage 报告摘要
 - 已连接 providers 视图，包含 auth/profile 元数据、active 高亮和可复用的限额 tile
 - Codex 的 5h / 7d 滚动限额直接展示在 active provider 行内
@@ -24,7 +27,7 @@
 - 面向公开预览和首次运行的内置 demo 数据自动回退
 - 基于多份报告归一化后的 usage 历史和趋势图
 
-这个仓库的目标不局限于单个 usage report skill，而是一个可以继续扩展到 channels、browser telemetry、delivery health 和 host-level schedulers 的完整 OpenClaw dashboard。
+这个仓库的目标不局限于单个 usage report skill，而是一个可以继续扩展到 agent 运维、channels、browser telemetry、delivery health 和 host-level schedulers 的完整 OpenClaw dashboard。
 
 ## 工作方式
 
@@ -41,7 +44,7 @@
 - usage 报告：`workspace/memory/usage/*.md`
 - cron 任务：`cron/jobs.json`
 
-这意味着它目前仍然是 local-first 的，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供图表使用的归一化 `usage.history` 数据、用于 active 滚动窗口的 `usage.providerLimits`，以及用于已保存 provider profile 的 `usage.providerProfiles`。
+这意味着它仍然围绕你自己的 OpenClaw 本地数据运行，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供 Agents 办公室视图使用的归一化 `agents` 数据、供图表使用的 `usage.history` 数据、用于 active 滚动窗口的 `usage.providerLimits`，以及用于已保存 provider profile 的 `usage.providerProfiles`。
 
 ## 快速开始
 
@@ -99,12 +102,21 @@ pnpm check
 
 仓库还包含一个位于 `.github/workflows/ci.yml` 的 GitHub Actions 工作流，会在每次 push 到 `main` 和每次 pull request 时基于内置 demo 数据执行 install、typecheck 和 build。
 
+## 当前页面
+
+- `Agents`：Virtual Office、Office Floor、Queues & handoffs、Recent activity
+- `Overview`：最新摘要卡片和高优先级运行状态
+- `History`：usage 历史趋势和图表视图
+- `Usage`：provider 状态、滚动限额、来源占比和模型明细
+- `Scheduler`：cron 概览、下一批任务和投递失败
+
 ## 当前假设
 
 - usage 数据来自当前 `usage-tracker` 生成的 markdown
 - 解析器同时兼容新的 account-status 报告和旧的 quota-only 报告
 - Top 模型来源占比来自 `Model × Source Breakdown`
 - OpenRouter free quota 的可见性来自 AI Model Daily Usage Report 中的对应 section（如果存在）
+- agent 办公室视图来自 `agents/dashboard.json`，如果存在 session 数据也可以从中推断状态
 - 还没有接入 `launchd` 这类主机侧调度器
 
 ## 路线图
