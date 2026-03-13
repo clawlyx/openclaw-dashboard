@@ -9,6 +9,17 @@
   <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard Agents 虚拟办公室移动端预览" width="19%" />
 </p>
 
+## 其他页面预览
+
+<p align="center">
+  <img src="./.github/assets/preview-overview.png" alt="OpenClaw Dashboard 概览页面预览" width="49%" />
+  <img src="./.github/assets/preview-history.png" alt="OpenClaw Dashboard 历史页面预览" width="49%" />
+</p>
+<p align="center">
+  <img src="./.github/assets/preview-usage.png" alt="OpenClaw Dashboard 用量页面预览" width="49%" />
+  <img src="./.github/assets/preview-scheduler.png" alt="OpenClaw Dashboard 调度页面预览" width="49%" />
+</p>
+
 ## 功能特性
 
 - 顶部主菜单 + 左侧上下文导航 + 单面板渲染的 dashboard shell
