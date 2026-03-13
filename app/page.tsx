@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
+import { AgentsOfficePanel } from "@/components/agents-office-panel";
+import { AgentsVirtualOfficePanel } from "@/components/agents-virtual-office-panel";
 import { SectionShell } from "@/components/section-shell";
 import { ProviderLimitWindows } from "@/components/provider-limit-windows";
 import { UsageHistoryPanel } from "@/components/usage-history-panel";
@@ -23,13 +25,17 @@ import { resolveTheme, THEME_COOKIE } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 
-const DASHBOARD_VIEWS = ["overview", "history", "usage", "scheduler"] as const;
+const DASHBOARD_VIEWS = ["overview", "agents", "history", "usage", "scheduler"] as const;
 
 type DashboardView = (typeof DASHBOARD_VIEWS)[number];
 type DashboardPanel =
   | "summary"
   | "providers"
   | "source"
+  | "virtual"
+  | "floor"
+  | "queues"
+  | "activity"
   | "trend"
   | "requests"
   | "tokens"
@@ -42,6 +48,7 @@ type DashboardPanel =
 
 const DASHBOARD_PANELS: Record<DashboardView, DashboardPanel[]> = {
   overview: ["summary", "providers", "source"],
+  agents: ["virtual", "floor", "queues", "activity"],
   history: ["trend", "requests", "tokens"],
   usage: ["breakdown", "limits", "models"],
   scheduler: ["health", "jobs", "attention"]
@@ -89,6 +96,12 @@ const formatCompactValue = (value: number | undefined, locale: Locale, fallback:
   }).format(value);
 };
 
+const parseOptionalTimestampMs = (value?: string) => {
+  if (!value) return undefined;
+  const timestampMs = Date.parse(value);
+  return Number.isFinite(timestampMs) ? timestampMs : undefined;
+};
+
 export async function generateMetadata({ searchParams }: HomePageProps): Promise<Metadata> {
   const params = searchParams ? await searchParams : undefined;
   const locale = resolveLocale(params?.lang);
@@ -110,7 +123,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const theme = resolveTheme(cookieStore.get(THEME_COOKIE)?.value);
 
   const snapshot = await getDashboardSnapshot();
-  const { usage, cron, openclawHome, openclawSourceKind, openclawSourceLabel } = snapshot;
+  const { usage, cron, agents, openclawHome, openclawSourceKind, openclawSourceLabel } = snapshot;
   const na = t.common.na;
   const unavailable = t.common.unavailable;
 
@@ -273,6 +286,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     start: localizedUsage.history.rangeStart || na,
     end: localizedUsage.history.rangeEnd || na
   });
+  const agentsUpdatedLabel = formatDateTimeLabel(parseOptionalTimestampMs(agents.updatedAt), locale, na);
+  const agentsLatestEventMs = agents.recentEvents
+    .map((event) => parseOptionalTimestampMs(event.at))
+    .filter((value): value is number => typeof value === "number")
+    .sort((left, right) => right - left)[0];
+  const agentsLatestEventLabel = formatDateTimeLabel(agentsLatestEventMs, locale, na);
+  const agentsOnlineCount = agents.agents.filter((agent) => agent.status !== "offline").length;
+  const agentsBlockedCount = agents.agents.filter((agent) => agent.status === "blocked").length;
+  const agentsQueueCount = agents.agents.reduce((sum, agent) => sum + (agent.queueCount || 0), 0);
+  const agentsRoomCount = agents.rooms.filter((room) => agents.agents.some((agent) => agent.roomId === room.id)).length;
   const latestHistoryPoint = localizedUsage.history.points.at(-1);
   const latestRequestsLabel = latestHistoryPoint
     ? formatCompactValue(latestHistoryPoint.totalRequestsValue, locale, na)
@@ -283,6 +306,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const viewItems: Array<{ id: DashboardView; label: string; hint: string }> = [
     { id: "overview", label: t.nav.overview, hint: statusValue },
+    { id: "agents", label: t.nav.agents, hint: agentsOnlineCount ? String(agentsOnlineCount) : t.agents.title },
     {
       id: "history",
       label: t.nav.history,
@@ -300,6 +324,32 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       { id: "summary", label: t.nav.overview, hint: statusValue, description: overviewCopy },
       { id: "providers", label: t.hero.pulseTitle, hint: primaryProviderLabel, description: t.hero.pulseCopy },
       { id: "source", label: t.hero.sourceShort, hint: localizedSourceLabel, description: overviewCopy }
+    ],
+    agents: [
+      {
+        id: "virtual",
+        label: t.agents.virtualTitle,
+        hint: agents.officeName || t.agents.virtualTitle,
+        description: t.agents.virtualDescription
+      },
+      {
+        id: "floor",
+        label: t.agents.floorTitle,
+        hint: agentsOnlineCount ? String(agentsOnlineCount) : na,
+        description: t.agents.floorDescription
+      },
+      {
+        id: "queues",
+        label: t.agents.queuesTitle,
+        hint: String(agentsQueueCount),
+        description: t.agents.queuesDescription
+      },
+      {
+        id: "activity",
+        label: t.agents.activityTitle,
+        hint: agentsLatestEventLabel,
+        description: t.agents.activityDescription
+      }
     ],
     history: [
       {
@@ -363,6 +413,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       hint: statusHint,
       tone: cron.attentionCount > 0 ? "warning" : "default"
     },
+    agents: {
+      label: t.agents.floorStatus,
+      value: agentsBlockedCount > 0 ? t.agents.floorAttention : t.agents.floorHealthy,
+      hint: formatMessage(t.agents.floorHint, { count: agentsOnlineCount }),
+      tone: agentsBlockedCount > 0 ? "warning" : "default"
+    },
     history: {
       label: t.history.title,
       value: String(localizedUsage.history.reportCount || 0),
@@ -387,6 +443,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       { label: t.hero.sourceShort, value: localizedSourceLabel },
       { label: t.hero.usageSourceShort, value: reportDateLabel },
       { label: t.hero.lastRun, value: lastRunLabel }
+    ],
+    agents: [
+      { label: t.agents.updated, value: agentsUpdatedLabel },
+      { label: t.agents.summaryQueues, value: String(agentsQueueCount) },
+      { label: t.agents.summaryRooms, value: String(agentsRoomCount || agents.rooms.length) },
+      { label: t.agents.latest, value: agentsLatestEventLabel }
     ],
     history: [
       { label: t.history.title, value: historyRangeLabel },
@@ -614,6 +676,33 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </div>
           </div>
         </section>
+      );
+    }
+
+    if (activeView === "agents") {
+      if (activePanel === "virtual") {
+        return (
+          <AgentsVirtualOfficePanel
+            id="agents"
+            agents={agents}
+            locale={locale}
+            copy={t.agents}
+            common={t.common}
+          />
+        );
+      }
+
+      const agentsFocus = activePanel === "queues" ? "queues" : activePanel === "activity" ? "activity" : "floor";
+
+      return (
+        <AgentsOfficePanel
+          id="agents"
+          agents={agents}
+          locale={locale}
+          copy={t.agents}
+          common={t.common}
+          focus={agentsFocus}
+        />
       );
     }
 

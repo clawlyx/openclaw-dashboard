@@ -6,6 +6,24 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-13
+
+### Added
+
+- A top-level `Agents` workspace with `Virtual Office`, `Office Floor`, `Queues & handoffs`, and `Recent activity` panels.
+- A pixel-art `Virtual Office` scene that places OpenClaw agents into room-based office zones with room focus, desk feed, and latest activity rails.
+- A new agent snapshot flow in the public demo dataset so README and GitHub preview assets can show the multi-agent dashboard safely.
+
+### Changed
+
+- Reworked the app shell into a top menu plus contextual left navigation so each module renders as a focused single-panel workspace instead of a long scrolling homepage.
+- Updated the public positioning of the product from a usage-only dashboard to a broader operations surface for agents, providers, usage, and scheduler health.
+- Refreshed README, release docs, and GitHub preview assets to match the current `Agents`-first product surface.
+
+### Fixed
+
+- Prevented lobster-agent sprites in `Virtual Office` from overlapping by giving each room unique seat placement and separate overview/focus density.
+
 ## [0.3.0] - 2026-03-10
 
 ### Added

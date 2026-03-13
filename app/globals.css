@@ -72,6 +72,18 @@ html[data-theme="dark"] {
   box-sizing: border-box;
 }
 
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 html {
   min-height: 100%;
   scroll-behavior: smooth;
@@ -1504,7 +1516,7 @@ tbody tr:last-child td {
 
 .miniSummaryGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -1553,6 +1565,1299 @@ tbody tr:last-child td {
 .miniSummaryValueCompact {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.agentMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.officeBoard,
+.officeRailCard,
+.roomLoadCard {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.officeBoard {
+  padding: 24px;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.72), transparent 26%),
+    linear-gradient(135deg, rgba(18, 87, 68, 0.1), rgba(200, 90, 50, 0.12) 52%, rgba(255, 251, 244, 0.88));
+}
+
+.officeBoard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 0, transparent 24px, rgba(18, 87, 68, 0.04) 24px, rgba(18, 87, 68, 0.04) 25px),
+    linear-gradient(0deg, transparent 0, transparent 24px, rgba(18, 87, 68, 0.04) 24px, rgba(18, 87, 68, 0.04) 25px);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.officeBoardHeader,
+.officeRoomHeader,
+.officeRailHeader,
+.roomLoadHead,
+.queueLaneHead,
+.agentDeskTop,
+.agentStripHead,
+.timelineHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.officeBoardHeader,
+.officeRoomHeader,
+.officeRailHeader {
+  position: relative;
+  z-index: 1;
+}
+
+.officeBoardHeader h3,
+.officeRailHeader h3,
+.officeRoomHeader h3 {
+  margin: 4px 0 0;
+  color: var(--ink);
+  letter-spacing: -0.05em;
+}
+
+.officeBoardHeader h3 {
+  font-size: clamp(1.6rem, 2vw, 2.3rem);
+}
+
+.officeRailHeader h3,
+.officeRoomHeader h3 {
+  font-size: clamp(1.18rem, 1.6vw, 1.55rem);
+}
+
+.officeBoardCopy,
+.officeRailCopy,
+.officeRoomCopy,
+.roomLoadHead p,
+.queueLaneHead p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.officeBoardCopy {
+  max-width: 40rem;
+}
+
+.officeRoomLead {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.officeRailCopy {
+  max-width: 22rem;
+}
+
+.officeLegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.officeLegendChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.officeFloorPlan {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-areas:
+    "dispatch research research build"
+    "dispatch review release concierge";
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.officeRoomAreaDispatch {
+  grid-area: dispatch;
+}
+
+.officeRoomAreaResearch {
+  grid-area: research;
+}
+
+.officeRoomAreaBuild {
+  grid-area: build;
+}
+
+.officeRoomAreaReview {
+  grid-area: review;
+}
+
+.officeRoomAreaRelease {
+  grid-area: release;
+}
+
+.officeRoomAreaConcierge {
+  grid-area: concierge;
+}
+
+.officeRoom {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(23, 21, 19, 0.08);
+  background: rgba(255, 251, 244, 0.76);
+  backdrop-filter: blur(10px);
+}
+
+.officeRoomToneSage {
+  background: linear-gradient(180deg, rgba(234, 246, 239, 0.9), rgba(255, 251, 244, 0.88));
+}
+
+.officeRoomToneClay {
+  background: linear-gradient(180deg, rgba(252, 236, 226, 0.92), rgba(255, 251, 244, 0.88));
+}
+
+.officeRoomToneOcean {
+  background: linear-gradient(180deg, rgba(232, 240, 248, 0.92), rgba(255, 251, 244, 0.88));
+}
+
+.officeRoomToneGold {
+  background: linear-gradient(180deg, rgba(252, 243, 220, 0.92), rgba(255, 251, 244, 0.88));
+}
+
+.officeRoomToneBerry {
+  background: linear-gradient(180deg, rgba(251, 235, 239, 0.92), rgba(255, 251, 244, 0.88));
+}
+
+.officeRoomToneSlate {
+  background: linear-gradient(180deg, rgba(239, 241, 244, 0.92), rgba(255, 251, 244, 0.88));
+}
+
+.officeRoomMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  text-align: left;
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.officeRoomMeta span {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(23, 21, 19, 0.08);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.officeRoomHeader {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.agentDeskGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.agentDesk,
+.agentStrip,
+.queueLane {
+  min-width: 0;
+  border-radius: 22px;
+  border: 1px solid rgba(23, 21, 19, 0.08);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.agentDesk {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.agentDeskStatus,
+.agentDeskQueue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.agentDeskName {
+  color: var(--ink);
+  font-size: 1rem;
+  letter-spacing: -0.04em;
+}
+
+.agentDeskRole {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.agentDeskTask,
+.agentStrip p,
+.timelineBody p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.58;
+}
+
+.agentDeskFacts,
+.agentStripMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.agentDeskFacts span,
+.agentStripMeta span,
+.timelineHead span,
+.queueLaneTail {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.agentDeskMeter,
+.queueLaneBar {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(23, 21, 19, 0.08);
+}
+
+.agentDeskMeter span,
+.queueLaneBar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+}
+
+.officeRoomEmpty {
+  padding: 20px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 22px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.officeSecondaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.officeRailCard {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 28px;
+  background: var(--surface-panel);
+}
+
+.queueLaneList,
+.attentionDeskList,
+.timelineList {
+  display: grid;
+  gap: 12px;
+}
+
+.queueLane,
+.agentStrip {
+  padding: 14px;
+}
+
+.queueLaneWarning,
+.agentDeskBlocked,
+.agentStrip.agentDeskBlocked,
+.officeLegendChip.agentDeskBlocked {
+  border-color: rgba(178, 60, 45, 0.24);
+  background: rgba(255, 240, 236, 0.84);
+}
+
+.agentDeskActive,
+.agentStrip.agentDeskActive,
+.officeLegendChip.agentDeskActive {
+  border-color: rgba(18, 87, 68, 0.24);
+  background: rgba(237, 247, 242, 0.84);
+}
+
+.agentDeskWaiting,
+.agentStrip.agentDeskWaiting,
+.officeLegendChip.agentDeskWaiting {
+  border-color: rgba(185, 123, 28, 0.22);
+  background: rgba(255, 247, 231, 0.84);
+}
+
+.agentDeskIdle,
+.agentStrip.agentDeskIdle,
+.officeLegendChip.agentDeskIdle {
+  border-color: rgba(90, 104, 128, 0.16);
+  background: rgba(244, 246, 249, 0.84);
+}
+
+.agentDeskOffline,
+.agentStrip.agentDeskOffline,
+.officeLegendChip.agentDeskOffline {
+  border-color: rgba(109, 120, 136, 0.14);
+  background: rgba(240, 241, 244, 0.7);
+  opacity: 0.82;
+}
+
+.queueLaneHead strong,
+.agentStripHead strong,
+.timelineHead strong,
+.roomLoadHead strong {
+  color: var(--ink);
+}
+
+.queueLaneTail,
+.timelineHead span,
+.agentStripHead span {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.timelineDot {
+  width: 10px;
+  height: 10px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  box-shadow: 0 0 0 4px rgba(18, 87, 68, 0.08);
+}
+
+.timelineBody {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.timelineItem:last-child .timelineBody {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.timelineItemWarning .timelineDot {
+  background: linear-gradient(135deg, rgba(178, 60, 45, 0.92), rgba(220, 118, 89, 0.92));
+  box-shadow: 0 0 0 4px rgba(178, 60, 45, 0.12);
+}
+
+.roomLoadGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.roomLoadCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 24px;
+  background: var(--surface-card);
+}
+
+html[data-theme="dark"] .officeBoard {
+  border-color: rgba(111, 131, 170, 0.24);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 22%),
+    linear-gradient(135deg, rgba(16, 52, 62, 0.92), rgba(82, 32, 27, 0.68) 55%, rgba(15, 25, 45, 0.95));
+}
+
+html[data-theme="dark"] .officeRoom,
+html[data-theme="dark"] .officeRailCard,
+html[data-theme="dark"] .roomLoadCard,
+html[data-theme="dark"] .agentDesk,
+html[data-theme="dark"] .agentStrip,
+html[data-theme="dark"] .queueLane,
+html[data-theme="dark"] .officeRoomEmpty,
+html[data-theme="dark"] .officeLegendChip {
+  border-color: rgba(111, 131, 170, 0.22);
+}
+
+html[data-theme="dark"] .officeRoom,
+html[data-theme="dark"] .officeRailCard,
+html[data-theme="dark"] .roomLoadCard {
+  background: rgba(11, 20, 36, 0.88);
+}
+
+html[data-theme="dark"] .officeRoomToneSage {
+  background: linear-gradient(180deg, rgba(16, 52, 62, 0.94), rgba(11, 20, 36, 0.9));
+}
+
+html[data-theme="dark"] .officeRoomToneClay {
+  background: linear-gradient(180deg, rgba(82, 32, 27, 0.92), rgba(11, 20, 36, 0.9));
+}
+
+html[data-theme="dark"] .officeRoomToneOcean {
+  background: linear-gradient(180deg, rgba(21, 42, 68, 0.94), rgba(11, 20, 36, 0.9));
+}
+
+html[data-theme="dark"] .officeRoomToneGold {
+  background: linear-gradient(180deg, rgba(74, 57, 22, 0.94), rgba(11, 20, 36, 0.9));
+}
+
+html[data-theme="dark"] .officeRoomToneBerry {
+  background: linear-gradient(180deg, rgba(69, 24, 42, 0.94), rgba(11, 20, 36, 0.9));
+}
+
+html[data-theme="dark"] .officeRoomToneSlate {
+  background: linear-gradient(180deg, rgba(27, 35, 48, 0.94), rgba(11, 20, 36, 0.9));
+}
+
+html[data-theme="dark"] .agentDeskMeter,
+html[data-theme="dark"] .queueLaneBar {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .officeRoomMeta span {
+  border-color: rgba(111, 131, 170, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.virtualOfficeLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.62fr) minmax(280px, 0.78fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.virtualOfficePanel,
+.virtualOfficeLower {
+  display: grid;
+  gap: 18px;
+}
+
+.virtualOfficeShell {
+  display: grid;
+  gap: 18px;
+}
+
+.virtualOfficeHero {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.62), transparent 20%),
+    linear-gradient(180deg, rgba(247, 241, 231, 0.98), rgba(236, 227, 215, 0.96));
+}
+
+.virtualOfficeHeroTop,
+.virtualOfficeHeroMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.virtualOfficeHeroMeta {
+  flex-wrap: wrap;
+}
+
+.virtualOfficeHeroScene {
+  margin-top: 0;
+}
+
+.virtualOfficeSceneHud {
+  position: absolute;
+  inset: 14px 14px auto 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.virtualOfficeSceneBadge {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  max-width: 16rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 251, 244, 0.78);
+  box-shadow: 0 10px 24px rgba(60, 39, 16, 0.08);
+}
+
+.virtualOfficeSceneBadge strong {
+  color: var(--ink);
+  font-size: 0.96rem;
+  letter-spacing: -0.04em;
+}
+
+.virtualOfficeStatsGrid {
+  margin-bottom: 0;
+}
+
+.virtualOfficeDigestGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.virtualOfficeStage,
+.virtualOfficeRailStack {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.virtualOfficeBoard,
+.virtualOfficeRail,
+.virtualRoomPulse {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.virtualOfficeBoard,
+.virtualOfficeRail {
+  border-radius: 30px;
+}
+
+.virtualOfficeBoard {
+  padding: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.72), transparent 24%),
+    linear-gradient(180deg, rgba(244, 238, 228, 0.94), rgba(235, 229, 219, 0.92));
+}
+
+.virtualOfficeRail {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-panel);
+}
+
+.virtualOfficeBoardHeader,
+.virtualOfficeRailHeader,
+.virtualDeskCardHead,
+.virtualAlertItemHead,
+.virtualRoomPulseHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.virtualOfficeBoardHeader h3,
+.virtualOfficeRailHeader h3 {
+  margin: 4px 0 0;
+  color: var(--ink);
+  letter-spacing: -0.05em;
+}
+
+.virtualOfficeBoardHeader h3 {
+  font-size: clamp(1.45rem, 1.8vw, 2rem);
+}
+
+.virtualOfficeRailHeader h3 {
+  font-size: clamp(1.08rem, 1.35vw, 1.4rem);
+}
+
+.virtualOfficeBoardCopy,
+.virtualOfficeRailCopy,
+.virtualRoomPulseCopy {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.virtualOfficeBoardCopy {
+  max-width: 42rem;
+}
+
+.virtualOfficeToolbar {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.virtualOfficeFocusHint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.virtualOfficeFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.virtualOfficeFilter {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 12px;
+  border-radius: 999px;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.virtualOfficeFilter:hover,
+.virtualOfficeFilter:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
+.virtualOfficeFilterActive {
+  border-color: color-mix(in srgb, var(--accent-2) 26%, var(--line));
+  background: var(--surface-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 14%, transparent);
+}
+
+.virtualOfficeFilteractive {
+  border-color: rgba(18, 87, 68, 0.24);
+}
+
+.virtualOfficeFilterwaiting {
+  border-color: rgba(185, 123, 28, 0.24);
+}
+
+.virtualOfficeFilterblocked {
+  border-color: rgba(178, 60, 45, 0.24);
+}
+
+.virtualOfficeFilteridle,
+.virtualOfficeFilteroffline {
+  border-color: rgba(109, 120, 136, 0.18);
+}
+
+.virtualOfficeRailCopy {
+  max-width: 22rem;
+}
+
+.virtualOfficeLegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.virtualOfficeLegendChip,
+.virtualRoomStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--ink);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.virtualOfficeLegendChipactive,
+.virtualRoomStatusactive,
+.virtualDeskCardactive,
+.virtualAlertItemactive {
+  border-color: rgba(18, 87, 68, 0.24);
+  background: rgba(237, 247, 242, 0.86);
+}
+
+.virtualOfficeLegendChipwaiting,
+.virtualRoomStatuswaiting,
+.virtualDeskCardwaiting,
+.virtualAlertItemwaiting {
+  border-color: rgba(185, 123, 28, 0.22);
+  background: rgba(255, 247, 231, 0.86);
+}
+
+.virtualOfficeLegendChipblocked,
+.virtualRoomStatusblocked,
+.virtualDeskCardblocked,
+.virtualAlertItemblocked {
+  border-color: rgba(178, 60, 45, 0.24);
+  background: rgba(255, 240, 236, 0.86);
+}
+
+.virtualOfficeLegendChipidle,
+.virtualRoomStatusidle,
+.virtualDeskCardidle,
+.virtualAlertItemidle {
+  border-color: rgba(90, 104, 128, 0.16);
+  background: rgba(244, 246, 249, 0.86);
+}
+
+.virtualOfficeLegendChipoffline,
+.virtualRoomStatusoffline,
+.virtualDeskCardoffline,
+.virtualAlertItemoffline {
+  border-color: rgba(109, 120, 136, 0.14);
+  background: rgba(240, 241, 244, 0.72);
+}
+
+.virtualOfficeScene {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 24px;
+  border: 1px solid rgba(23, 21, 19, 0.08);
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.92), rgba(246, 240, 231, 0.88));
+  transition: background 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+}
+
+.virtualOfficeScene::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+  transform: scale(1);
+  transition: opacity 220ms ease, transform 220ms ease, background 220ms ease;
+}
+
+.virtualOfficeScene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.18;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(133, 116, 92, 0.08));
+  transition: opacity 220ms ease, background 220ms ease;
+}
+
+.virtualOfficeScene > * {
+  position: relative;
+  z-index: 1;
+}
+
+.virtualOfficeSceneFocused {
+  padding: 10px;
+  box-shadow: inset 0 0 0 1px rgba(23, 21, 19, 0.06), 0 18px 34px rgba(15, 23, 42, 0.08);
+}
+
+.virtualOfficeSceneFocused::before {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.virtualOfficeSceneFocused::after {
+  opacity: 0.4;
+}
+
+.virtualOfficeSceneToneall::before {
+  background: radial-gradient(circle at 50% 16%, rgba(255, 255, 255, 0.22), transparent 58%);
+}
+
+.virtualOfficeSceneTonedispatch::before {
+  background:
+    radial-gradient(circle at 18% 36%, rgba(47, 127, 105, 0.24), transparent 30%),
+    linear-gradient(180deg, rgba(217, 243, 233, 0.2), transparent 62%);
+}
+
+.virtualOfficeSceneToneresearch::before {
+  background:
+    radial-gradient(circle at 34% 34%, rgba(95, 141, 176, 0.24), transparent 32%),
+    linear-gradient(180deg, rgba(221, 234, 248, 0.18), transparent 58%);
+}
+
+.virtualOfficeSceneTonebuild::before {
+  background:
+    radial-gradient(circle at 60% 34%, rgba(91, 155, 213, 0.24), transparent 32%),
+    linear-gradient(180deg, rgba(225, 238, 251, 0.18), transparent 60%);
+}
+
+.virtualOfficeSceneTonereview::before {
+  background:
+    radial-gradient(circle at 35% 56%, rgba(193, 162, 106, 0.22), transparent 30%),
+    linear-gradient(180deg, rgba(248, 240, 219, 0.14), transparent 60%);
+}
+
+.virtualOfficeSceneTonerelease::before {
+  background:
+    radial-gradient(circle at 58% 52%, rgba(197, 82, 66, 0.24), transparent 28%),
+    linear-gradient(180deg, rgba(255, 232, 226, 0.14), transparent 56%);
+}
+
+.virtualOfficeSceneToneconcierge::before {
+  background:
+    radial-gradient(circle at 80% 52%, rgba(150, 160, 173, 0.22), transparent 28%),
+    linear-gradient(180deg, rgba(239, 241, 244, 0.16), transparent 58%);
+}
+
+.virtualOfficeCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  transition: transform 240ms ease, filter 240ms ease;
+}
+
+.virtualOfficeSceneFocused .virtualOfficeCanvas {
+  filter: saturate(1.08) contrast(1.02);
+}
+
+.virtualOfficeCanvas .virtualRoomSprite {
+  cursor: pointer;
+  transition: opacity 180ms ease, transform 180ms ease, filter 180ms ease;
+}
+
+.virtualOfficeCanvas .virtualRoomSpriteActive {
+  filter: saturate(1.08) brightness(1.04);
+}
+
+.virtualOfficeCanvas .virtualRoomSpriteMuted {
+  opacity: 0.46;
+  filter: saturate(0.88);
+}
+
+.virtualOfficeCanvas .pixelLobster,
+.virtualOfficeCanvas .pixelLobsterBadge,
+.virtualOfficeCanvas .pixelLobsterMarker,
+.virtualOfficeCanvas .pixelLobsterAccessory,
+.virtualOfficeCanvas .pixelDeskProp {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.virtualOfficeCanvas .pixelLobster {
+  transition: opacity 180ms ease, filter 180ms ease, transform 180ms ease;
+}
+
+.virtualOfficeCanvas .pixelLobsterGlow {
+  opacity: 0.78;
+}
+
+.virtualOfficeCanvas .pixelLobsterBusy {
+  animation: lobsterBob 1.3s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelLobsterIdle {
+  opacity: 0.92;
+  transform: translateY(1px);
+  filter: saturate(0.98);
+}
+
+.virtualOfficeCanvas .pixelLobsteractive .pixelLobsterGlow {
+  opacity: 0.96;
+}
+
+.virtualOfficeCanvas .pixelLobsterwaiting .pixelLobsterGlow {
+  opacity: 0.92;
+}
+
+.virtualOfficeCanvas .pixelLobsterblocked .pixelLobsterGlow {
+  opacity: 1;
+}
+
+.virtualOfficeCanvas .pixelLobsterblocked {
+  animation-duration: 0.95s;
+}
+
+.virtualOfficeCanvas .pixelLobsteroffline {
+  opacity: 0.4;
+  transform: translateY(1px);
+  filter: grayscale(0.28) saturate(0.65);
+}
+
+.virtualOfficeCanvas .pixelLobsterBadgeactive {
+  animation: lobsterSpark 1.5s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelLobsterBadgewaiting {
+  animation: lobsterSpark 2.3s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelLobsterBadgeblocked {
+  animation: lobsterAlarm 0.95s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelLobsterMarkeroffline {
+  opacity: 0.42;
+}
+
+.virtualOfficeCanvas .pixelLobsterMarkeridle {
+  opacity: 0.86;
+}
+
+.virtualOfficeCanvas .pixelDeskEmpty {
+  opacity: 0.55;
+  filter: saturate(0.75);
+}
+
+.virtualOfficeCanvas .pixelDeskMotionscan .pixelLobsterAccessoryLens,
+.virtualOfficeCanvas .pixelDeskMotiontyping .pixelDeskPropScreen,
+.virtualOfficeCanvas .pixelDeskMotionsip .pixelDeskPropSteam,
+.virtualOfficeCanvas .pixelDeskMotionwave .pixelDeskPropBanner {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.virtualOfficeCanvas .pixelDeskMotionpaperwork {
+  animation: lobsterPaperwork 2.6s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelDeskMotionreview {
+  animation: lobsterReview 2.1s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelDeskMotiontyping .pixelDeskPropScreen {
+  animation: lobsterTyping 1.2s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelDeskMotionwave .pixelDeskPropBanner {
+  animation: lobsterWave 1.35s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelDeskMotionsip .pixelDeskPropSteam {
+  animation: lobsterSteam 1.6s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelDeskMotionscan .pixelLobsterAccessoryLens,
+.virtualOfficeCanvas .pixelDeskPropnotes.pixelDeskMotionscan {
+  animation: lobsterScan 1.9s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelDeskMotionsignal {
+  animation: lobsterSignal 1.8s steps(2, end) infinite;
+}
+
+.virtualOfficeCanvas .pixelDeskPropchecklist.pixelDeskMotionreview,
+.virtualOfficeCanvas .pixelDeskPropclipboard.pixelDeskMotionpaperwork,
+.virtualOfficeCanvas .pixelDeskPropnotes.pixelDeskMotionpaperwork {
+  opacity: 0.92;
+}
+
+@keyframes lobsterBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes lobsterSpark {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes lobsterAlarm {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.28;
+  }
+}
+
+@keyframes lobsterPaperwork {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(1px);
+  }
+}
+
+@keyframes lobsterReview {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes lobsterTyping {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes lobsterWave {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(-1px);
+  }
+}
+
+@keyframes lobsterSteam {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes lobsterScan {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes lobsterSignal {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .virtualOfficeCanvas .pixelLobsterBusy,
+  .virtualOfficeCanvas .pixelLobsterBadgeactive,
+  .virtualOfficeCanvas .pixelLobsterBadgewaiting,
+  .virtualOfficeCanvas .pixelLobsterBadgeblocked,
+  .virtualOfficeCanvas .pixelDeskMotionpaperwork,
+  .virtualOfficeCanvas .pixelDeskMotionreview,
+  .virtualOfficeCanvas .pixelDeskMotiontyping .pixelDeskPropScreen,
+  .virtualOfficeCanvas .pixelDeskMotionwave .pixelDeskPropBanner,
+  .virtualOfficeCanvas .pixelDeskMotionsip .pixelDeskPropSteam,
+  .virtualOfficeCanvas .pixelDeskMotionscan .pixelLobsterAccessoryLens,
+  .virtualOfficeCanvas .pixelDeskPropnotes.pixelDeskMotionscan,
+  .virtualOfficeCanvas .pixelDeskMotionsignal {
+    animation: none;
+  }
+}
+
+.virtualRoomPulseGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.virtualRoomPulse {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 22px;
+  background: var(--surface-card);
+}
+
+.virtualRoomPulseButton {
+  width: 100%;
+  appearance: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.virtualRoomPulseButton:hover,
+.virtualRoomPulseButton:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
+.virtualRoomPulseActive {
+  border-color: color-mix(in srgb, var(--accent-2) 24%, var(--line));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 14%, transparent), var(--shadow);
+}
+
+.virtualRoomPulseMuted {
+  opacity: 0.58;
+}
+
+.virtualRoomPulseHead strong,
+.virtualDeskCardHead strong,
+.virtualAlertItemHead strong {
+  color: var(--ink);
+}
+
+.virtualRoomPulseMeta,
+.virtualDeskCardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.virtualRoomPulseMeta span,
+.virtualDeskCardMeta span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.virtualDeskCard,
+.virtualAlertItem {
+  min-width: 0;
+  border-radius: 22px;
+  border: 1px solid rgba(23, 21, 19, 0.08);
+  padding: 14px;
+}
+
+.virtualDeskList,
+.virtualAlertList {
+  display: grid;
+  gap: 12px;
+}
+
+.virtualDeskCardHead span,
+.virtualAlertItemHead span {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.virtualDeskCard p,
+.virtualAlertItem p,
+.virtualOfficeEmpty {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.58;
+}
+
+.virtualOfficeEmpty {
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-panel-strong);
+}
+
+html[data-theme="dark"] .virtualOfficeBoard,
+html[data-theme="dark"] .virtualOfficeRail,
+html[data-theme="dark"] .virtualRoomPulse,
+html[data-theme="dark"] .virtualDeskCard,
+html[data-theme="dark"] .virtualAlertItem,
+html[data-theme="dark"] .virtualOfficeLegendChip,
+html[data-theme="dark"] .virtualRoomStatus,
+html[data-theme="dark"] .virtualOfficeEmpty,
+html[data-theme="dark"] .virtualOfficeScene {
+  border-color: rgba(111, 131, 170, 0.22);
+}
+
+html[data-theme="dark"] .virtualOfficeBoard,
+html[data-theme="dark"] .virtualOfficeRail,
+html[data-theme="dark"] .virtualRoomPulse {
+  background: rgba(11, 20, 36, 0.9);
+}
+
+html[data-theme="dark"] .virtualOfficeHero {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 18%),
+    linear-gradient(180deg, rgba(17, 28, 43, 0.98), rgba(12, 20, 35, 0.96));
+}
+
+html[data-theme="dark"] .virtualOfficeSceneBadge {
+  border-color: rgba(116, 143, 185, 0.18);
+  background: rgba(10, 17, 31, 0.76);
+  box-shadow: 0 14px 28px rgba(1, 5, 12, 0.28);
+}
+
+html[data-theme="dark"] .virtualOfficeFilter {
+  border-color: rgba(111, 131, 170, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"] .virtualOfficeBoard {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 20%),
+    linear-gradient(180deg, rgba(18, 28, 45, 0.95), rgba(13, 22, 36, 0.94));
+}
+
+html[data-theme="dark"] .virtualOfficeScene {
+  background: linear-gradient(180deg, rgba(27, 35, 48, 0.9), rgba(16, 24, 38, 0.9));
 }
 
 .footerPanel {
@@ -1644,6 +2949,23 @@ html[data-theme="dark"] .historyGridLine {
   .hero {
     grid-template-columns: 1fr;
   }
+
+  .officeFloorPlan {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "dispatch research"
+      "build build"
+      "review release"
+      "concierge concierge";
+  }
+
+  .roomLoadGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .virtualRoomPulseGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 1180px) {
@@ -1653,6 +2975,11 @@ html[data-theme="dark"] .historyGridLine {
 
   .dashboardSidebar {
     position: static;
+    order: 2;
+  }
+
+  .dashboardMain {
+    order: 1;
   }
 
   .sidebarNav,
@@ -1680,8 +3007,56 @@ html[data-theme="dark"] .historyGridLine {
 
   .heroSummary,
   .historyChartGrid,
-  .miniSummaryGrid {
+  .miniSummaryGrid,
+  .officeSecondaryGrid,
+  .roomLoadGrid,
+  .virtualRoomPulseGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .officeBoardHeader,
+  .officeRailHeader,
+  .officeRoomHeader,
+  .roomLoadHead,
+  .queueLaneHead,
+  .agentDeskTop,
+  .agentStripHead,
+  .timelineHead,
+  .virtualOfficeBoardHeader,
+  .virtualOfficeRailHeader,
+  .virtualDeskCardHead,
+  .virtualAlertItemHead,
+  .virtualRoomPulseHead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .officeLegend {
+    justify-content: flex-start;
+  }
+
+  .virtualOfficeLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .virtualOfficeLegend {
+    justify-content: flex-start;
+  }
+
+  .virtualOfficeHeroTop,
+  .virtualOfficeHeroMeta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .virtualOfficeSceneHud {
+    position: static;
+    margin-bottom: 10px;
+    pointer-events: auto;
+  }
+
+  .virtualOfficeDigestGrid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1704,8 +3079,26 @@ html[data-theme="dark"] .historyGridLine {
   .heroSummary,
   .sidebarNav,
   .sidebarControls,
-  .sidebarFactGrid {
+  .sidebarFactGrid,
+  .officeSecondaryGrid,
+  .roomLoadGrid,
+  .agentDeskGrid,
+  .virtualRoomPulseGrid {
     grid-template-columns: 1fr;
+  }
+
+  .officeFloorPlan {
+    grid-template-columns: 1fr;
+    grid-template-areas: none;
+  }
+
+  .officeRoomAreaDispatch,
+  .officeRoomAreaResearch,
+  .officeRoomAreaBuild,
+  .officeRoomAreaReview,
+  .officeRoomAreaRelease,
+  .officeRoomAreaConcierge {
+    grid-area: auto;
   }
 
   .providerProfileFacts,
@@ -1718,13 +3111,41 @@ html[data-theme="dark"] .historyGridLine {
   .shareLabelRow,
   .historyChartHeader,
   .signalRow,
-  .sidebarHeader {
+  .sidebarHeader,
+  .agentStripMeta {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .sidebarStatusCard {
     padding: 16px;
+  }
+
+  .officeBoard,
+  .officeRailCard,
+  .roomLoadCard,
+  .virtualOfficeBoard,
+  .virtualOfficeRail {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .virtualOfficeHero {
+    padding: 18px;
+  }
+
+  .virtualOfficeScene {
+    padding: 10px;
+    border-radius: 20px;
+  }
+
+  .virtualOfficeSceneHud {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .virtualOfficeSceneBadge {
+    max-width: 100%;
   }
 
   .themeOption {
