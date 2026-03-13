@@ -9,6 +9,17 @@ OpenClaw dashboard with dedicated Agents, Overview, History, Usage, and Schedule
   <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard agents virtual office mobile preview" width="19%" />
 </p>
 
+## Other Workspaces
+
+<p align="center">
+  <img src="./.github/assets/preview-overview.png" alt="OpenClaw Dashboard overview workspace preview" width="49%" />
+  <img src="./.github/assets/preview-history.png" alt="OpenClaw Dashboard history workspace preview" width="49%" />
+</p>
+<p align="center">
+  <img src="./.github/assets/preview-usage.png" alt="OpenClaw Dashboard usage workspace preview" width="49%" />
+  <img src="./.github/assets/preview-scheduler.png" alt="OpenClaw Dashboard scheduler workspace preview" width="49%" />
+</p>
+
 ## Features
 
 - top-level dashboard shell with a primary menu, contextual left navigation, and single-panel rendering
