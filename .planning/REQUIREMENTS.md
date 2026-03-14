@@ -11,7 +11,7 @@ Current milestone: explicit ownership and office actions.
 
 - [x] **OWN-01**: Mission Control task snapshots expose `ownerAgentId`, `ownerRoomId`, `startedAt`, `lastWorkedAt`, `nextPlannedStep`, `blockedReason`, and `waitingOn`
 - [x] **OWN-02**: Agent snapshots expose structured task references for `currentTaskId`, `lastTaskId`, and `nextTaskId`
-- [ ] **OWN-03**: The dashboard join layer distinguishes explicit ownership from inferred fallback instead of silently treating inference as ground truth
+- [x] **OWN-03**: The dashboard join layer distinguishes explicit ownership from inferred fallback instead of silently treating inference as ground truth
 - [x] **OWN-04**: Bundled demo data and `/api/snapshot` include at least one explicit-ownership example safe for public screenshots and README assets
 
 ### Detail Surfaces
@@ -59,7 +59,7 @@ Current milestone: explicit ownership and office actions.
 |-------------|-------|--------|
 | OWN-01 | Phase 1 | Complete |
 | OWN-02 | Phase 1 | Complete |
-| OWN-03 | Phase 1 | Pending |
+| OWN-03 | Phase 1 | Complete |
 | OWN-04 | Phase 1 | Complete |
 | DRAW-01 | Phase 2 | Pending |
 | DRAW-02 | Phase 2 | Pending |

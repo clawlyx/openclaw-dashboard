@@ -6,7 +6,7 @@ This milestone turns the current joined workstation into an explicit ownership c
 
 ## Phases
 
-- [ ] **Phase 1: Ownership Contract** - Make mission ownership explicit in the snapshot contract and preserve labeled fallback behavior
+- [x] **Phase 1: Ownership Contract** - Make mission ownership explicit in the snapshot contract and preserve labeled fallback behavior
 - [ ] **Phase 2: Detail Drawers** - Add room and agent drawers that answer what the owner is doing now, what happened last, and what is next
 - [ ] **Phase 3: Office Actions** - Reuse Mission Control mutations so the office surface can move supported tasks forward
 - [ ] **Phase 4: Pressure Signals** - Surface urgency and release the milestone with refreshed demo data and validation assets
@@ -26,7 +26,7 @@ This milestone turns the current joined workstation into an explicit ownership c
 
 Plans:
 - [x] 01-01: Extend mission and agent snapshot types, readers, and demo data for explicit ownership fields
-- [ ] 01-02: Join explicit ownership into dashboard presenters and label inferred fallback in the office surface
+- [x] 01-02: Join explicit ownership into dashboard presenters and label inferred fallback in the office surface
 
 ### Phase 2: Detail Drawers
 **Goal:** Add focused room and agent detail drawers that make current ownership and recent handoff context inspectable from the office view.
@@ -80,7 +80,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Ownership Contract | 1/2 | In Progress | - |
+| 1. Ownership Contract | 2/2 | Complete | 2026-03-14 |
 | 2. Detail Drawers | 0/2 | Not started | - |
 | 3. Office Actions | 0/2 | Not started | - |
 | 4. Pressure Signals | 0/2 | Not started | - |
