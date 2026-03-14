@@ -9,6 +9,7 @@ import type {
   MissionControlTaskSnapshot,
   MissionControlTaskStatus
 } from "@/lib/mission-control";
+import { MissionIntakeForm } from "@/components/mission-intake-form";
 import { SectionShell } from "@/components/section-shell";
 
 type MissionControlMessages = {
@@ -89,6 +90,24 @@ type MissionControlMessages = {
   deliveryCommitRequired: string;
   deliveryPushRequired: string;
   deliveryPrRequired: string;
+  intakeTitle: string;
+  intakeDescription: string;
+  intakeTitleField: string;
+  intakeDetailsField: string;
+  intakeRepoField: string;
+  intakeProjectField: string;
+  intakeWorkspaceField: string;
+  intakeDeliveryModeField: string;
+  intakeStartLaneField: string;
+  intakeSubmit: string;
+  intakeSubmitting: string;
+  intakeSuccess: string;
+  intakeError: string;
+  intakeTitlePlaceholder: string;
+  intakeDetailsPlaceholder: string;
+  intakeRepoPlaceholder: string;
+  intakeProjectPlaceholder: string;
+  intakeWorkspacePlaceholder: string;
 };
 
 type MissionControlPanelProps = {
@@ -321,6 +340,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
         copy
       )}`
     : copy.latestTaskFallback;
+  const defaultRepo = missionControl.features.find((feature) => feature.repo && feature.repo !== "unbound")?.repo || "openclaw-dashboard";
 
   if (!missionControl.available) {
     return (
@@ -520,6 +540,10 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
         </div>
 
         <aside className="missionSidebar">
+          <article className="missionSidebarCard missionSidebarCardForm">
+            <MissionIntakeForm copy={copy} defaultRepo={defaultRepo} />
+          </article>
+
           <article className="missionSidebarCard">
             <span className="miniSummaryLabel">{copy.workerStatus}</span>
             <strong className="missionSidebarValue">{workerLabel}</strong>

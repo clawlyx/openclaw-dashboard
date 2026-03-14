@@ -1625,6 +1625,12 @@ tbody tr:last-child td {
   color: var(--muted);
 }
 
+.missionSidebarCardForm {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.8), transparent 34%),
+    linear-gradient(150deg, color-mix(in srgb, var(--accent) 10%, var(--surface-card)), var(--surface-card));
+}
+
 .missionSidebarFacts,
 .missionFeatureFacts {
   display: grid;
@@ -1821,6 +1827,116 @@ tbody tr:last-child td {
   font-size: 0.74rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.missionIntakeForm {
+  display: grid;
+  gap: 14px;
+}
+
+.missionIntakeHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.missionIntakeHeader .eyebrow {
+  margin: 0;
+}
+
+.missionIntakeCopy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.missionField,
+.missionIntakeActions {
+  display: grid;
+  gap: 8px;
+}
+
+.missionFieldLabel {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.missionFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.missionFieldInput {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 55%, white);
+  color: var(--ink);
+  font: inherit;
+}
+
+.missionFieldInput::placeholder {
+  color: color-mix(in srgb, var(--muted) 78%, transparent);
+}
+
+.missionFieldInput:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.missionFieldTextarea {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.missionSubmitButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 180px;
+  padding: 12px 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+  border-radius: 999px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 88%, white), var(--accent));
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+  box-shadow: 0 16px 34px -24px color-mix(in srgb, var(--accent) 58%, transparent);
+}
+
+.missionSubmitButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.missionSubmitButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.missionFormStatus {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.missionFormStatusSuccess {
+  color: color-mix(in srgb, var(--accent-2) 82%, var(--ink));
+}
+
+.missionFormStatusError {
+  color: color-mix(in srgb, var(--warning) 72%, var(--ink));
 }
 
 .officeBoard,
@@ -3305,6 +3421,11 @@ html[data-theme="dark"] .historyGridLine {
   }
 
   .virtualOfficeDigestGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .missionOverviewGrid,
+  .missionFieldGrid {
     grid-template-columns: 1fr;
   }
 }
