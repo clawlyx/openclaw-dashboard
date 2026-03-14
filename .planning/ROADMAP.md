@@ -17,6 +17,7 @@ This milestone turns the current joined workstation into an explicit ownership c
 **Goal:** Make explicit mission ownership and structured task references available to the dashboard without breaking existing fallback behavior.
 **Depends on:** Nothing (first phase)
 **Requirements:** [OWN-01, OWN-02, OWN-03, OWN-04]
+**Requirements**: [OWN-01, OWN-02, OWN-03, OWN-04]
 **Success Criteria** (what must be TRUE):
   1. `/api/snapshot` exposes explicit ownership metadata for at least one mission task in the happy path.
   2. Agent snapshots expose structured task references instead of relying only on free-text fields.
@@ -31,6 +32,7 @@ Plans:
 **Goal:** Add focused room and agent detail drawers that make current ownership and recent handoff context inspectable from the office view.
 **Depends on:** Phase 1
 **Requirements:** [DRAW-01, DRAW-02, DRAW-03]
+**Requirements**: [DRAW-01, DRAW-02, DRAW-03]
 **Success Criteria** (what must be TRUE):
   1. Clicking a room or agent opens a drawer tied to the exact mission owner context.
   2. The drawer shows current task, last completed task, next planned step, and blocker or waiting information.
@@ -45,6 +47,7 @@ Plans:
 **Goal:** Let the operator run supported Mission Control transitions from the office surface without losing server truth.
 **Depends on:** Phase 2
 **Requirements:** [ACT-01, ACT-02, ACT-03]
+**Requirements**: [ACT-01, ACT-02, ACT-03]
 **Success Criteria** (what must be TRUE):
   1. Supported actions can be triggered from the office surface for the active task.
   2. Unsupported transitions remain visible but disabled rather than disappearing.
@@ -59,6 +62,7 @@ Plans:
 **Goal:** Prioritize urgent work and package the milestone with refreshed demo data, docs, and acceptance coverage.
 **Depends on:** Phase 3
 **Requirements:** [PRES-01, PRES-02, PRES-03]
+**Requirements**: [PRES-01, PRES-02, PRES-03]
 **Success Criteria** (what must be TRUE):
   1. The office surface highlights stale review, blocked-too-long, waiting-on-human, and no-owner states.
   2. Attention ordering and room overload cues make the highest urgency work obvious.
