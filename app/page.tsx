@@ -759,6 +759,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             id="agents"
             agents={agents}
             missionControl={missionControl}
+            generatedAt={snapshot.generatedAt}
             locale={locale}
             copy={t.agents}
             common={t.common}
