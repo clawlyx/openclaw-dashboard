@@ -6,6 +6,24 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-03-14
+
+### Added
+
+- Room-level mission ownership in the `Agents` virtual office so each office zone shows which live mission it currently covers.
+- An inline mission queue rail in the `Agents` office view so operators can inspect active Launchpad tasks without leaving the office surface.
+- Click-through mission queue cards that focus the owning room directly from the office view.
+
+### Changed
+
+- Promoted the `Agents` workspace from a status board into a tighter Mission Control companion surface.
+- Bumped the app version to `1.1.0` for the first post-`1.0.0` workstation enhancement release.
+
+### Fixed
+
+- Kept focused offline desks visible in room detail mode so rooms like `Review Booth` still show the responsible desk when no recent session activity exists.
+- Corrected room occupancy math so live seat counts no longer exceed configured room capacity.
+
 ## [1.0.0] - 2026-03-14
 
 ### Added
