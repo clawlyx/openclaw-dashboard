@@ -25,7 +25,7 @@ This milestone turns the current joined workstation into an explicit ownership c
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01: Extend mission and agent snapshot types, readers, and demo data for explicit ownership fields
+- [x] 01-01: Extend mission and agent snapshot types, readers, and demo data for explicit ownership fields
 - [ ] 01-02: Join explicit ownership into dashboard presenters and label inferred fallback in the office surface
 
 ### Phase 2: Detail Drawers
@@ -80,7 +80,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Ownership Contract | 0/2 | Not started | - |
+| 1. Ownership Contract | 1/2 | In Progress | - |
 | 2. Detail Drawers | 0/2 | Not started | - |
 | 3. Office Actions | 0/2 | Not started | - |
 | 4. Pressure Signals | 0/2 | Not started | - |
