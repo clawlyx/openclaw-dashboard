@@ -198,12 +198,14 @@ const TaskCard = ({
   task,
   copy,
   common,
-  locale
+  locale,
+  mutationMode
 }: {
   task: MissionControlTaskSnapshot;
   copy: MissionControlMessages;
   common: { na: string };
   locale: Locale;
+  mutationMode: "local" | "remote";
 }) => (
   <article className="missionTaskCard">
     <div className="missionTaskTop">
@@ -220,7 +222,7 @@ const TaskCard = ({
       <span>{task.repo}</span>
       <span>{formatDateTimeLabel(Date.parse(task.updatedAt), locale, common.na)}</span>
     </div>
-    <MissionTaskActions task={task} copy={copy} />
+    <MissionTaskActions task={task} copy={copy} mode={mutationMode} />
   </article>
 );
 
@@ -229,13 +231,15 @@ const QueueColumn = ({
   tasks,
   copy,
   common,
-  locale
+  locale,
+  mutationMode
 }: {
   title: string;
   tasks: MissionControlTaskSnapshot[];
   copy: MissionControlMessages;
   common: { na: string };
   locale: Locale;
+  mutationMode: "local" | "remote";
 }) => (
   <article className="missionLaneCard">
     <div className="missionLaneHead">
@@ -245,7 +249,7 @@ const QueueColumn = ({
     {tasks.length ? (
       <div className="missionLaneList">
         {tasks.map((task) => (
-          <TaskCard key={task.tqId} task={task} copy={copy} common={common} locale={locale} />
+          <TaskCard key={task.tqId} task={task} copy={copy} common={common} locale={locale} mutationMode={mutationMode} />
         ))}
       </div>
     ) : (
@@ -365,6 +369,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
       )}`
     : copy.latestTaskFallback;
   const defaultRepo = missionControl.features.find((feature) => feature.repo && feature.repo !== "unbound")?.repo || "openclaw-dashboard";
+  const mutationMode = process.env.AGENT_LAUNCHPAD_API_BASE_URL?.trim() ? "remote" : "local";
 
   if (!missionControl.available) {
     return (
@@ -400,10 +405,38 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
         </div>
 
         <div className="missionLaneGrid">
-          <QueueColumn title={copy.queueReady} tasks={missionControl.queue.readyTasks} copy={copy} common={common} locale={locale} />
-          <QueueColumn title={copy.queueRunning} tasks={missionControl.queue.runningTasks} copy={copy} common={common} locale={locale} />
-          <QueueColumn title={copy.queueReview} tasks={missionControl.queue.reviewTasks} copy={copy} common={common} locale={locale} />
-          <QueueColumn title={copy.queueBlocked} tasks={missionControl.queue.blockedTasks} copy={copy} common={common} locale={locale} />
+          <QueueColumn
+            title={copy.queueReady}
+            tasks={missionControl.queue.readyTasks}
+            copy={copy}
+            common={common}
+            locale={locale}
+            mutationMode={mutationMode}
+          />
+          <QueueColumn
+            title={copy.queueRunning}
+            tasks={missionControl.queue.runningTasks}
+            copy={copy}
+            common={common}
+            locale={locale}
+            mutationMode={mutationMode}
+          />
+          <QueueColumn
+            title={copy.queueReview}
+            tasks={missionControl.queue.reviewTasks}
+            copy={copy}
+            common={common}
+            locale={locale}
+            mutationMode={mutationMode}
+          />
+          <QueueColumn
+            title={copy.queueBlocked}
+            tasks={missionControl.queue.blockedTasks}
+            copy={copy}
+            common={common}
+            locale={locale}
+            mutationMode={mutationMode}
+          />
         </div>
       </SectionShell>
     );
@@ -481,7 +514,14 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
             {missionControl.review.reviewTasks.length ? (
               <div className="missionLaneList">
                 {missionControl.review.reviewTasks.map((task) => (
-                  <TaskCard key={task.tqId} task={task} copy={copy} common={common} locale={locale} />
+                  <TaskCard
+                    key={task.tqId}
+                    task={task}
+                    copy={copy}
+                    common={common}
+                    locale={locale}
+                    mutationMode={mutationMode}
+                  />
                 ))}
               </div>
             ) : (

@@ -3,8 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import type { MissionControlTaskLane, MissionControlTaskSnapshot, MissionControlTaskStatus } from "@/lib/mission-control";
-import type { MissionTaskAction } from "@/lib/mission-control-mutations";
+import type { MissionControlTaskSnapshot } from "@/lib/mission-control";
+import {
+  getMissionTaskActions,
+  type MissionTaskAction,
+  type MissionTaskMutationMode
+} from "@/lib/mission-control-actions";
 
 type MissionTaskActionMessages = {
   actionStart: string;
@@ -24,44 +28,42 @@ type TaskActionDefinition = {
 };
 
 const buildActions = (
-  status: MissionControlTaskStatus,
-  lane: MissionControlTaskLane,
-  copy: MissionTaskActionMessages
+  status: MissionControlTaskSnapshot["status"],
+  lane: MissionControlTaskSnapshot["lane"],
+  copy: MissionTaskActionMessages,
+  mode: MissionTaskMutationMode
 ): TaskActionDefinition[] => {
-  switch (status) {
-    case "ready":
-      return [
-        { action: "start", label: copy.actionStart, tone: "primary" },
-        { action: "block", label: copy.actionBlock, tone: "warning" }
-      ];
-    case "running":
-      return [
-        { action: "send-to-review", label: copy.actionSendToReview, tone: "primary" },
-        { action: "block", label: copy.actionBlock, tone: "warning" }
-      ];
-    case "review":
-      return [
-        { action: "advance", label: lane === "release" ? copy.actionRelease : copy.actionAdvance, tone: "primary" },
-        { action: "block", label: copy.actionBlock, tone: "warning" }
-      ];
-    case "blocked":
-      return [{ action: "ready", label: copy.actionReady, tone: "secondary" }];
-    case "done":
-      return [];
-  }
+  return getMissionTaskActions({ status, lane, mode }).map((action) => ({
+    action,
+    label:
+      action === "start"
+        ? copy.actionStart
+        : action === "send-to-review"
+          ? copy.actionSendToReview
+          : action === "advance"
+            ? lane === "release"
+              ? copy.actionRelease
+              : copy.actionAdvance
+            : action === "ready"
+              ? copy.actionReady
+              : copy.actionBlock,
+    tone: action === "block" ? "warning" : action === "ready" ? "secondary" : "primary"
+  }));
 };
 
 export function MissionTaskActions({
   task,
-  copy
+  copy,
+  mode
 }: {
   task: MissionControlTaskSnapshot;
   copy: MissionTaskActionMessages;
+  mode: MissionTaskMutationMode;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
-  const actions = buildActions(task.status, task.lane, copy);
+  const actions = buildActions(task.status, task.lane, copy, mode);
 
   if (!actions.length) return null;
 

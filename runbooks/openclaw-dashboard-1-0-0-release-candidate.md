@@ -32,11 +32,12 @@
 - browser-verified Mission Control read path
 - browser-verified mission intake flow against isolated temp Launchpad state
 - browser-verified queue action flow against isolated temp Launchpad state
+- browser-verified remote workflow action flow against a real temp `agent-launchpad` backend
 - `/api/snapshot` verified to expose the updated `missionControl` branch
 
 ## Known limits before merge
 
-- remote Launchpad write APIs are proxied when `AGENT_LAUNCHPAD_API_BASE_URL` is configured, but this branch was validated primarily with the local state mutation path
+- remote Launchpad write APIs are now smoke-verified against the Launchpad backend for `block`, `ready`, and research-review `advance`
 - release/PR evidence still depends on Launchpad/runtime data; the dashboard is not inventing its own PR state
 - the app package name remains `openclaw-dashboard`; the workstation framing is a product/version milestone, not a repo rename
 

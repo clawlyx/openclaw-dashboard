@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { isMissionTaskActionAllowed, type MissionTaskAction } from "@/lib/mission-control-actions";
 import type { MissionControlDeliveryMode, MissionControlTaskLane } from "@/lib/mission-control";
 
 type MutableIdeaStatus = "captured" | "promoted";
@@ -91,8 +92,6 @@ export type MissionIntakeResult = {
   createdTask: MutableTaskRecord | null;
 };
 
-export type MissionTaskAction = "start" | "send-to-review" | "advance" | "ready" | "block";
-
 export type MissionTaskMutationResult = {
   feature: MutableFeatureRecord;
   task: MutableTaskRecord;
@@ -117,6 +116,16 @@ const slugify = (value: string) =>
 const formatIdeaNumber = (value: number) => `IDEA-${String(value).padStart(3, "0")}`;
 const formatFeatureNumber = (value: number, title: string) => `F-${String(value).padStart(4, "0")}-${slugify(title)}`;
 const formatTaskNumber = (value: number) => `TQ-${String(value).padStart(3, "0")}`;
+const numericSuffix = (value: string, prefix: string) => {
+  const match = value.match(new RegExp(`^${prefix}-(\\d+)`));
+  return match ? Number(match[1]) : 0;
+};
+const deriveNextIdeaNumber = (ideas: MutableIdeaRecord[]) =>
+  Math.max(0, ...ideas.map((idea) => numericSuffix(idea.ideaId, "IDEA"))) + 1;
+const deriveNextFeatureNumber = (features: MutableFeatureRecord[]) =>
+  Math.max(0, ...features.map((feature) => numericSuffix(feature.featureId, "F"))) + 1;
+const deriveNextTaskNumber = (features: MutableFeatureRecord[]) =>
+  Math.max(0, ...features.flatMap((feature) => feature.tasks.map((task) => numericSuffix(task.tqId, "TQ")))) + 1;
 
 const normalizeDeliveryMode = (input: string, hasRepoBinding: boolean): MissionControlDeliveryMode => {
   const value = normalizeText(input) as MissionControlDeliveryMode;
@@ -254,12 +263,14 @@ const readState = async (stateFile: string): Promise<MutableState> => {
 
   try {
     const parsed = JSON.parse(raw) as Partial<MutableState>;
+    const ideas = Array.isArray(parsed.ideas) ? (parsed.ideas as MutableIdeaRecord[]) : [];
+    const features = Array.isArray(parsed.features) ? (parsed.features as MutableFeatureRecord[]) : [];
     return {
-      nextIdeaNumber: parsed.nextIdeaNumber || 1,
-      nextFeatureNumber: parsed.nextFeatureNumber || 1,
-      nextTaskNumber: parsed.nextTaskNumber || 1,
-      ideas: Array.isArray(parsed.ideas) ? (parsed.ideas as MutableIdeaRecord[]) : [],
-      features: Array.isArray(parsed.features) ? (parsed.features as MutableFeatureRecord[]) : []
+      nextIdeaNumber: parsed.nextIdeaNumber || deriveNextIdeaNumber(ideas),
+      nextFeatureNumber: parsed.nextFeatureNumber || deriveNextFeatureNumber(features),
+      nextTaskNumber: parsed.nextTaskNumber || deriveNextTaskNumber(features),
+      ideas,
+      features
     };
   } catch {
     return defaultState();
@@ -502,6 +513,22 @@ export const updateMissionControlTask = async ({
     let tasks = sourceFeature.tasks.map((task) => ({ ...task }));
 
     const sourceTask = tasks[taskIndex];
+    if (sourceTask.lane !== sourceFeature.currentLane) {
+      throw new Error(
+        `Task ${sourceTask.tqId} is in the ${sourceTask.lane} lane, but the feature is currently in ${sourceFeature.currentLane}.`
+      );
+    }
+    if (
+      !isMissionTaskActionAllowed({
+        status: sourceTask.status,
+        lane: sourceTask.lane,
+        mode: "local",
+        action
+      })
+    ) {
+      throw new Error(`Action ${action} is not allowed for a ${sourceTask.status} task in the ${sourceTask.lane} lane.`);
+    }
+
     const updateSelectedTask = (status: MutableTaskStatus, summary: string) => {
       tasks = tasks.map((task, index) =>
         index === taskIndex
