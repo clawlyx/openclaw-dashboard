@@ -971,7 +971,7 @@ export function AgentsVirtualOfficePanel({
     return liveMissionTasks.filter((task) => getMissionRoomId(task) === roomId).slice(0, 4);
   }, [liveMissionTasks, selectedRoomEntry]);
   const deskFeedAgents = [...(selectedRoomEntry ? selectedRoomEntry.roomAgents : onlineAgents)]
-    .filter((agent) => agent.status !== "offline")
+    .filter((agent) => (selectedRoomEntry ? true : agent.status !== "offline"))
     .sort(sortByLoad)
     .slice(0, 4);
   const attentionAgents = [...(selectedRoomEntry ? selectedRoomEntry.roomAgents : agents.agents)]
