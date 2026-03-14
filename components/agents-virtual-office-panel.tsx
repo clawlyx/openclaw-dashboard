@@ -12,6 +12,7 @@ import type {
   AgentSnapshot,
   AgentWorkStatus
 } from "@/lib/agents";
+import type { MissionControlSnapshot, MissionControlTaskSnapshot, MissionControlTaskStatus } from "@/lib/mission-control";
 
 type AgentsVirtualOfficeMessages = {
   section: string;
@@ -25,6 +26,8 @@ type AgentsVirtualOfficeMessages = {
   summaryAttention: string;
   summaryQueues: string;
   summaryRooms: string;
+  summaryMissions: string;
+  summaryReviews: string;
   statusActive: string;
   statusBlocked: string;
   statusWaiting: string;
@@ -36,10 +39,15 @@ type AgentsVirtualOfficeMessages = {
   roomLead: string;
   roomCapacity: string;
   roomQueue: string;
+  roomMission: string;
+  roomMissionIdle: string;
   roomEmpty: string;
   queueCount: string;
   utilization: string;
   sessionCount: string;
+  missionTasks: string;
+  missionReviews: string;
+  missionBlocked: string;
   focus: string;
   task: string;
   nextHandoff: string;
@@ -98,6 +106,24 @@ type SceneArea = {
   seatSpots: SceneSpot[];
   focusSpots?: SceneSpot[];
 };
+
+type RoomMissionCoverage = {
+  roomId: string;
+  taskCount: number;
+  featureCount: number;
+  reviewCount: number;
+  blockedCount: number;
+  primaryFeatureTitle?: string;
+  primaryTaskTitle?: string;
+};
+
+const createEmptyRoomMissionCoverage = (roomId: string): RoomMissionCoverage => ({
+  roomId,
+  taskCount: 0,
+  featureCount: 0,
+  reviewCount: 0,
+  blockedCount: 0
+});
 
 const VIEWBOX_WIDTH = 160;
 const VIEWBOX_HEIGHT = 96;
@@ -300,6 +326,14 @@ const STATUS_PRIORITY: Record<AgentWorkStatus, number> = {
   offline: 0
 };
 
+const MISSION_STATUS_PRIORITY: Record<MissionControlTaskStatus, number> = {
+  blocked: 4,
+  review: 3,
+  running: 2,
+  ready: 1,
+  done: 0
+};
+
 type LobsterAccessory = "beanie" | "beret" | "cap" | "glasses" | "headband" | "headset" | "visor";
 
 type LobsterDeskProp = "badge" | "checklist" | "clipboard" | "flag" | "laptop" | "mug" | "notes";
@@ -426,6 +460,32 @@ const getRoomStatus = (roomAgents: AgentSnapshot[]): AgentWorkStatus => {
 
   return [...roomAgents].sort((left, right) => STATUS_PRIORITY[right.status] - STATUS_PRIORITY[left.status])[0]?.status || "idle";
 };
+
+const getMissionRoomId = (task: MissionControlTaskSnapshot) => {
+  if (task.status === "review" || task.lane === "qa") return "review";
+  if (task.lane === "research") return "research";
+  if (task.lane === "build") return "build";
+  if (task.lane === "release") return "release";
+  return "dispatch";
+};
+
+const sortMissionTasks = (left: MissionControlTaskSnapshot, right: MissionControlTaskSnapshot) => {
+  const statusDelta = MISSION_STATUS_PRIORITY[right.status] - MISSION_STATUS_PRIORITY[left.status];
+  if (statusDelta !== 0) return statusDelta;
+
+  const updatedDelta = (parseTimestampMs(right.updatedAt) || 0) - (parseTimestampMs(left.updatedAt) || 0);
+  if (updatedDelta !== 0) return updatedDelta;
+
+  return left.title.localeCompare(right.title);
+};
+
+const getLiveMissionTasks = (missionControl: MissionControlSnapshot) =>
+  [
+    ...missionControl.queue.blockedTasks,
+    ...missionControl.queue.reviewTasks,
+    ...missionControl.queue.runningTasks,
+    ...missionControl.queue.readyTasks
+  ].sort(sortMissionTasks);
 
 const getCompactRoomLabel = (roomId: string, roomLabel: string) => ROOM_SHORT_LABELS[roomId] || roomLabel.split(" ")[0] || roomLabel;
 
@@ -779,12 +839,14 @@ const getScenePlacements = (roomAgents: AgentSnapshot[], area: SceneArea, densit
 export function AgentsVirtualOfficePanel({
   id,
   agents,
+  missionControl,
   locale,
   copy,
   common
 }: {
   id?: string;
   agents: AgentsSnapshot;
+  missionControl: MissionControlSnapshot;
   locale: Locale;
   copy: AgentsVirtualOfficeMessages;
   common: { na: string; unavailable: string };
@@ -797,23 +859,90 @@ export function AgentsVirtualOfficePanel({
   const updatedLabel = formatDateTimeLabel(parseTimestampMs(agents.updatedAt), locale, common.na);
   const latestEventLabel = formatDateTimeLabel(parseTimestampMs(agents.recentEvents[0]?.at), locale, common.na);
   const agentNameById = useMemo(() => new Map(agents.agents.map((agent) => [agent.id, agent.name])), [agents.agents]);
+  const liveMissionTasks = useMemo(() => getLiveMissionTasks(missionControl), [missionControl]);
+  const liveMissionFeatureCount = useMemo(
+    () => new Set(liveMissionTasks.map((task) => task.featureId)).size,
+    [liveMissionTasks]
+  );
+  const roomMissionCoverage = useMemo(() => {
+    const coverageByRoom = new Map<string, RoomMissionCoverage & { tasks: MissionControlTaskSnapshot[]; features: Set<string> }>(
+      agents.rooms.map((room) => [
+        room.id,
+        {
+          ...createEmptyRoomMissionCoverage(room.id),
+          tasks: [],
+          features: new Set<string>()
+        }
+      ])
+    );
 
-  const summaryCards = [
-    { label: copy.summaryAgents, value: String(onlineAgents.length) },
-    { label: copy.summaryAttention, value: String(blockedAgents.length), warning: blockedAgents.length > 0 },
-    { label: copy.summaryQueues, value: String(queueTotal) },
-    { label: copy.summaryRooms, value: String(agents.rooms.length) }
-  ];
+    liveMissionTasks.forEach((task) => {
+      const roomId = getMissionRoomId(task);
+      const current =
+        coverageByRoom.get(roomId) ||
+        ({
+          ...createEmptyRoomMissionCoverage(roomId),
+          tasks: [],
+          features: new Set<string>()
+        } satisfies RoomMissionCoverage & { tasks: MissionControlTaskSnapshot[]; features: Set<string> });
+
+      current.taskCount += 1;
+      current.reviewCount += task.status === "review" ? 1 : 0;
+      current.blockedCount += task.status === "blocked" ? 1 : 0;
+      current.tasks.push(task);
+      current.features.add(task.featureId);
+      coverageByRoom.set(roomId, current);
+    });
+
+    return new Map(
+      [...coverageByRoom.entries()].map(([roomId, entry]) => {
+        const sortedTasks = [...entry.tasks].sort(sortMissionTasks);
+        const primaryTask = sortedTasks[0];
+
+        return [
+          roomId,
+          {
+            roomId,
+            taskCount: entry.taskCount,
+            featureCount: entry.features.size,
+            reviewCount: entry.reviewCount,
+            blockedCount: entry.blockedCount,
+            primaryFeatureTitle: primaryTask?.featureTitle,
+            primaryTaskTitle: primaryTask?.title
+          } satisfies RoomMissionCoverage
+        ];
+      })
+    );
+  }, [agents.rooms, liveMissionTasks]);
+
+  const summaryCards = missionControl.available
+    ? [
+        { label: copy.summaryAgents, value: String(onlineAgents.length) },
+        { label: copy.summaryAttention, value: String(blockedAgents.length), warning: blockedAgents.length > 0 },
+        { label: copy.summaryMissions, value: String(liveMissionFeatureCount) },
+        {
+          label: copy.summaryReviews,
+          value: String(missionControl.queue.reviewTasks.length),
+          warning: missionControl.queue.reviewTasks.length > 0
+        }
+      ]
+    : [
+        { label: copy.summaryAgents, value: String(onlineAgents.length) },
+        { label: copy.summaryAttention, value: String(blockedAgents.length), warning: blockedAgents.length > 0 },
+        { label: copy.summaryQueues, value: String(queueTotal) },
+        { label: copy.summaryRooms, value: String(agents.rooms.length) }
+      ];
 
   const roomEntries = useMemo(
     () =>
       agents.rooms.map((room) => {
         const roomAgents = agents.agents.filter((agent) => agent.roomId === room.id).sort(sortByLoad);
         const roomQueue = roomAgents.reduce((sum, agent) => sum + (agent.queueCount || 0), 0);
-        const roomCapacity = room.capacity || Math.max(2, roomAgents.length);
+        const roomCapacity = Math.max(room.capacity || 0, Math.max(2, roomAgents.length));
         const roomLead = room.lead || roomAgents[0]?.name || common.na;
         const roomStatus = getRoomStatus(roomAgents);
         const area = SCENE_AREAS[room.id];
+        const missionCoverage = roomMissionCoverage.get(room.id) || createEmptyRoomMissionCoverage(room.id);
 
         return {
           room,
@@ -822,11 +951,12 @@ export function AgentsVirtualOfficePanel({
           roomCapacity,
           roomLead,
           roomStatus,
+          missionCoverage,
           area,
           occupancy: `${roomAgents.length}/${roomCapacity}`
         };
       }),
-    [agents.agents, agents.rooms, common.na]
+    [agents.agents, agents.rooms, common.na, roomMissionCoverage]
   );
 
   const selectedRoomEntry = roomEntries.find(({ room }) => room.id === selectedRoomId) || null;
@@ -1062,7 +1192,7 @@ export function AgentsVirtualOfficePanel({
 
         <div className="virtualOfficeLower">
           <div className="virtualRoomPulseGrid">
-            {roomEntries.map(({ room, roomLead, roomQueue, occupancy, roomStatus }) => (
+            {roomEntries.map(({ room, roomLead, roomQueue, occupancy, roomStatus, missionCoverage }) => (
               <button
                 key={room.id}
                 type="button"
@@ -1078,12 +1208,31 @@ export function AgentsVirtualOfficePanel({
                 <p className="virtualRoomPulseCopy">
                   {copy.roomLead}: {roomLead}
                 </p>
+                {missionCoverage.primaryFeatureTitle ? (
+                  <>
+                    <p className="virtualRoomPulseMission">
+                      {copy.roomMission}: {missionCoverage.primaryFeatureTitle}
+                    </p>
+                    <p className="virtualRoomPulseHint">
+                      {copy.task}: {missionCoverage.primaryTaskTitle || common.na}
+                    </p>
+                  </>
+                ) : (
+                  <p className="virtualRoomPulseHint">{copy.roomMissionIdle}</p>
+                )}
                 <div className="virtualRoomPulseMeta">
                   <span>
                     {copy.roomOccupancy}: {occupancy}
                   </span>
                   <span>
                     {copy.roomQueue}: {roomQueue}
+                  </span>
+                  <span>
+                    {copy.missionTasks}: {missionCoverage.taskCount}
+                  </span>
+                  <span>
+                    {missionCoverage.blockedCount > 0 ? copy.missionBlocked : copy.missionReviews}:{" "}
+                    {missionCoverage.blockedCount > 0 ? missionCoverage.blockedCount : missionCoverage.reviewCount}
                   </span>
                 </div>
               </button>

@@ -2634,6 +2634,22 @@ html[data-theme="dark"] .officeRoomMeta span {
   line-height: 1.6;
 }
 
+.virtualRoomPulseMission,
+.virtualRoomPulseHint {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.virtualRoomPulseMission {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.virtualRoomPulseHint {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .virtualOfficeBoardCopy {
   max-width: 42rem;
 }
@@ -3194,6 +3210,10 @@ html[data-theme="dark"] .officeRoomMeta span {
 .virtualDeskCardMeta span {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.virtualRoomPulseMeta span:last-child {
+  color: color-mix(in srgb, var(--ink) 68%, var(--muted));
 }
 
 .virtualDeskCard,
