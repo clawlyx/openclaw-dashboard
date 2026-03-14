@@ -2680,6 +2680,17 @@ html[data-theme="dark"] .officeRoomMeta span {
   line-height: 1.5;
 }
 
+.virtualOfficeDrawerEventList {
+  display: grid;
+  gap: 12px;
+}
+
+.virtualOfficeArtifactLink {
+  color: var(--accent-2);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .virtualOfficeBoardHeader,
 .virtualOfficeRailHeader,
 .virtualDeskCardHead,

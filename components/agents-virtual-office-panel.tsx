@@ -75,6 +75,25 @@ type AgentsVirtualOfficeMessages = {
   detailDrawerIdleTitle: string;
   detailDrawerIdleCopy: string;
   detailDrawerClear: string;
+  detailMissionTitle: string;
+  detailFeature: string;
+  detailTaskId: string;
+  detailStatus: string;
+  detailPathTitle: string;
+  detailLastCompleted: string;
+  detailNextStep: string;
+  detailBlockedReason: string;
+  detailWaitingOn: string;
+  detailHandoffTitle: string;
+  detailHandoffEmpty: string;
+  detailArtifactsTitle: string;
+  detailBranch: string;
+  detailPr: string;
+  detailBrief: string;
+  detailRfc: string;
+  detailQa: string;
+  detailRelease: string;
+  detailArtifactsEmpty: string;
   deskFeedTitle: string;
   deskFeedCopy: string;
   attentionTitle: string;
@@ -411,6 +430,17 @@ const parseTimestampMs = (value?: string) => {
   const valueMs = Date.parse(value);
   return Number.isFinite(valueMs) ? valueMs : undefined;
 };
+
+const sortUpdatedDesc = (left: { updatedAt?: string }, right: { updatedAt?: string }) =>
+  (parseTimestampMs(right.updatedAt) || 0) - (parseTimestampMs(left.updatedAt) || 0);
+
+const humanizeStateLabel = (value?: string) =>
+  value
+    ? value
+        .split("-")
+        .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+        .join(" ")
+    : undefined;
 
 const getFallbackPersona = (roomId: string): LobsterPersona => {
   switch (roomId) {
@@ -918,6 +948,15 @@ export function AgentsVirtualOfficePanel({
   const agentRoomById = useMemo(() => new Map(agents.agents.map((agent) => [agent.id, agent.roomId])), [agents.agents]);
   const roomLabelById = useMemo(() => new Map(agents.rooms.map((room) => [room.id, room.label])), [agents.rooms]);
   const liveMissionTasks = useMemo(() => getLiveMissionTasks(missionControl), [missionControl]);
+  const allMissionTasks = useMemo(
+    () => missionControl.features.flatMap((feature) => feature.tasks),
+    [missionControl.features]
+  );
+  const featureById = useMemo(
+    () => new Map(missionControl.features.map((feature) => [feature.featureId, feature])),
+    [missionControl.features]
+  );
+  const taskById = useMemo(() => new Map(allMissionTasks.map((task) => [task.tqId, task])), [allMissionTasks]);
   const liveMissionFeatureCount = useMemo(
     () => new Set(liveMissionTasks.map((task) => task.featureId)).size,
     [liveMissionTasks]
@@ -1048,6 +1087,40 @@ export function AgentsVirtualOfficePanel({
   const selectedAgentStatusLabel = selectedAgent ? getStatusLabel(selectedAgent.status, copy) : null;
   const selectedAgentTaskLabel = selectedAgent ? getDeskTask(selectedAgent, copy, common.unavailable) : null;
   const selectedRoomMissionLabel = selectedRoomEntry?.missionCoverage.primaryFeatureTitle || copy.roomMissionIdle;
+  const focusedMissionTasks = selectedAgent
+    ? [
+        ...liveMissionTasks.filter((task) => task.ownerAgentId === selectedAgent.id),
+        ...(selectedAgent.currentTaskId ? [taskById.get(selectedAgent.currentTaskId)] : [])
+      ].filter((task, index, tasks): task is MissionControlTaskSnapshot => Boolean(task) && tasks.indexOf(task) === index)
+    : selectedRoomId
+      ? liveMissionTasks.filter((task) => getMissionOwnership(task, agentRoomById).roomId === selectedRoomId)
+      : [];
+  const activeDetailTask =
+    focusedMissionTasks[0] ||
+    (selectedAgent?.currentTaskId ? taskById.get(selectedAgent.currentTaskId) || null : null);
+  const activeDetailFeature = activeDetailTask ? featureById.get(activeDetailTask.featureId) || null : null;
+  const activeDetailOwnership = activeDetailTask ? getMissionOwnership(activeDetailTask, agentRoomById) : null;
+  const lastCompletedTask =
+    (selectedAgent?.lastTaskId ? taskById.get(selectedAgent.lastTaskId) : undefined) ||
+    (activeDetailFeature
+      ? [...activeDetailFeature.tasks].filter((task) => task.status === "done").sort(sortUpdatedDesc)[0]
+      : undefined) ||
+    null;
+  const nextPlannedTask =
+    (selectedAgent?.nextTaskId ? taskById.get(selectedAgent.nextTaskId) : undefined) ||
+    (activeDetailFeature
+      ? [...activeDetailFeature.tasks]
+          .filter((task) => task.status !== "done" && task.tqId !== activeDetailTask?.tqId)
+          .sort(sortMissionTasks)[0]
+      : undefined) ||
+    null;
+  const detailEvents = (
+    selectedAgent
+      ? agents.recentEvents.filter((event) => event.agentId === selectedAgent.id)
+      : selectedRoomEntry
+        ? agents.recentEvents.filter((event) => selectedAgentIds.has(event.agentId))
+        : []
+  ).slice(0, 3);
 
   const focusRoom = (roomId: string) => {
     setSelectedFocus({ kind: "room", roomId });
@@ -1422,48 +1495,157 @@ export function AgentsVirtualOfficePanel({
                   </article>
 
                   <article className="virtualOfficeDrawerPanel">
-                    <p className="eyebrow">{selectedAgent ? copy.latest : copy.missionQueueTitle}</p>
+                    <p className="eyebrow">{copy.detailMissionTitle}</p>
                     <dl className="virtualOfficeDetailList">
-                      {selectedAgent ? (
+                      {activeDetailTask ? (
                         <>
                           <div>
-                            <dt>{copy.queueCount}</dt>
-                            <dd>{selectedAgent.queueCount || 0}</dd>
+                            <dt>{copy.detailFeature}</dt>
+                            <dd>{activeDetailFeature?.title || activeDetailTask.featureTitle || common.na}</dd>
                           </div>
                           <div>
-                            <dt>{copy.sessionCount}</dt>
-                            <dd>{selectedAgent.sessionCount}</dd>
+                            <dt>{copy.task}</dt>
+                            <dd>{activeDetailTask.title}</dd>
                           </div>
                           <div>
-                            <dt>{copy.lastEvent}</dt>
-                            <dd>{formatDateTimeLabel(parseTimestampMs(selectedAgent.lastEventAt), locale, common.na)}</dd>
+                            <dt>{copy.detailTaskId}</dt>
+                            <dd>{activeDetailTask.tqId}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailStatus}</dt>
+                            <dd>{humanizeStateLabel(activeDetailTask.status) || common.na}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.missionOwnership}</dt>
+                            <dd>{activeDetailOwnership ? getOwnershipLabel(activeDetailOwnership.source, copy) : common.na}</dd>
                           </div>
                           <div>
                             <dt>{copy.updated}</dt>
-                            <dd>{updatedLabel}</dd>
+                            <dd>{formatDateTimeLabel(parseTimestampMs(activeDetailTask.updatedAt), locale, common.na)}</dd>
+                          </div>
+                        </>
+                      ) : selectedAgent ? (
+                        <>
+                          <div>
+                            <dt>{copy.task}</dt>
+                            <dd>{selectedAgentTaskLabel || common.unavailable}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailTaskId}</dt>
+                            <dd>{selectedAgent.currentTaskId || common.na}</dd>
                           </div>
                         </>
                       ) : selectedRoomEntry ? (
                         <>
                           <div>
+                            <dt>{copy.roomMission}</dt>
+                            <dd>{selectedRoomMissionLabel}</dd>
+                          </div>
+                          <div>
                             <dt>{copy.missionTasks}</dt>
                             <dd>{selectedRoomEntry.missionCoverage.taskCount}</dd>
-                          </div>
-                          <div>
-                            <dt>{copy.missionReviews}</dt>
-                            <dd>{selectedRoomEntry.missionCoverage.reviewCount}</dd>
-                          </div>
-                          <div>
-                            <dt>{copy.missionBlocked}</dt>
-                            <dd>{selectedRoomEntry.missionCoverage.blockedCount}</dd>
-                          </div>
-                          <div>
-                            <dt>{copy.latest}</dt>
-                            <dd>{latestEventLabel}</dd>
                           </div>
                         </>
                       ) : null}
                     </dl>
+                  </article>
+
+                  <article className="virtualOfficeDrawerPanel">
+                    <p className="eyebrow">{copy.detailPathTitle}</p>
+                    <dl className="virtualOfficeDetailList">
+                      <div>
+                        <dt>{copy.detailLastCompleted}</dt>
+                        <dd>
+                          {lastCompletedTask
+                            ? `${lastCompletedTask.title} · ${formatDateTimeLabel(
+                                parseTimestampMs(lastCompletedTask.updatedAt),
+                                locale,
+                                common.na
+                              )}`
+                            : common.na}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{copy.detailNextStep}</dt>
+                        <dd>{activeDetailTask?.nextPlannedStep || nextPlannedTask?.summary || nextPlannedTask?.title || common.na}</dd>
+                      </div>
+                      <div>
+                        <dt>{copy.detailBlockedReason}</dt>
+                        <dd>{activeDetailTask?.blockedReason || common.na}</dd>
+                      </div>
+                      <div>
+                        <dt>{copy.detailWaitingOn}</dt>
+                        <dd>{activeDetailTask?.waitingOn || common.na}</dd>
+                      </div>
+                    </dl>
+                  </article>
+
+                  <article className="virtualOfficeDrawerPanel">
+                    <p className="eyebrow">{copy.detailHandoffTitle}</p>
+                    {detailEvents.length ? (
+                      <div className="virtualOfficeDrawerEventList">
+                        {detailEvents.map((event) => (
+                          <article key={event.id} className={`timelineItem ${event.tone === "warning" ? "timelineItemWarning" : ""}`}>
+                            <span className="timelineDot" />
+                            <div className="timelineBody">
+                              <div className="timelineHead">
+                                <strong>{agentNameById.get(event.agentId) || common.na}</strong>
+                                <span>{formatDateTimeLabel(parseTimestampMs(event.at), locale, common.na)}</span>
+                              </div>
+                              <p>{getEventSummary(event, copy)}</p>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="virtualOfficeEmpty">
+                        <p>{copy.detailHandoffEmpty}</p>
+                      </div>
+                    )}
+                  </article>
+
+                  <article className="virtualOfficeDrawerPanel">
+                    <p className="eyebrow">{copy.detailArtifactsTitle}</p>
+                    {activeDetailFeature ? (
+                      <dl className="virtualOfficeDetailList">
+                        <div>
+                          <dt>{copy.detailBranch}</dt>
+                          <dd>{activeDetailFeature.delivery.branch || common.na}</dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailPr}</dt>
+                          <dd>
+                            {activeDetailFeature.delivery.prUrl ? (
+                              <a className="virtualOfficeArtifactLink" href={activeDetailFeature.delivery.prUrl} target="_blank" rel="noreferrer">
+                                {activeDetailFeature.delivery.prUrl}
+                              </a>
+                            ) : (
+                              common.na
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailBrief}</dt>
+                          <dd>{activeDetailFeature.artifacts.brief || common.na}</dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailRfc}</dt>
+                          <dd>{activeDetailFeature.artifacts.rfc || common.na}</dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailQa}</dt>
+                          <dd>{activeDetailFeature.artifacts.qa || common.na}</dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailRelease}</dt>
+                          <dd>{activeDetailFeature.artifacts.release || common.na}</dd>
+                        </div>
+                      </dl>
+                    ) : (
+                      <div className="virtualOfficeEmpty">
+                        <p>{copy.detailArtifactsEmpty}</p>
+                      </div>
+                    )}
                   </article>
                 </div>
               ) : (
