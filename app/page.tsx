@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 import { AgentsOfficePanel } from "@/components/agents-office-panel";
 import { AgentsVirtualOfficePanel } from "@/components/agents-virtual-office-panel";
+import { MissionControlPanel } from "@/components/mission-control-panel";
 import { SectionShell } from "@/components/section-shell";
 import { ProviderLimitWindows } from "@/components/provider-limit-windows";
 import { UsageHistoryPanel } from "@/components/usage-history-panel";
@@ -25,7 +26,7 @@ import { resolveTheme, THEME_COOKIE } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 
-const DASHBOARD_VIEWS = ["overview", "agents", "history", "usage", "scheduler"] as const;
+const DASHBOARD_VIEWS = ["overview", "agents", "mission-control", "history", "usage", "scheduler"] as const;
 
 type DashboardView = (typeof DASHBOARD_VIEWS)[number];
 type DashboardPanel =
@@ -36,6 +37,10 @@ type DashboardPanel =
   | "floor"
   | "queues"
   | "activity"
+  | "missions"
+  | "queue"
+  | "reviews"
+  | "release"
   | "trend"
   | "requests"
   | "tokens"
@@ -49,6 +54,7 @@ type DashboardPanel =
 const DASHBOARD_PANELS: Record<DashboardView, DashboardPanel[]> = {
   overview: ["summary", "providers", "source"],
   agents: ["virtual", "floor", "queues", "activity"],
+  "mission-control": ["missions", "queue", "reviews", "release"],
   history: ["trend", "requests", "tokens"],
   usage: ["breakdown", "limits", "models"],
   scheduler: ["health", "jobs", "attention"]
@@ -102,6 +108,19 @@ const parseOptionalTimestampMs = (value?: string) => {
   return Number.isFinite(timestampMs) ? timestampMs : undefined;
 };
 
+const formatMissionLaneLabel = (lane: "research" | "build" | "qa" | "release", copy: ReturnType<typeof getMessages>["missionControl"]) => {
+  switch (lane) {
+    case "research":
+      return copy.laneResearch;
+    case "build":
+      return copy.laneBuild;
+    case "qa":
+      return copy.laneQa;
+    case "release":
+      return copy.laneRelease;
+  }
+};
+
 export async function generateMetadata({ searchParams }: HomePageProps): Promise<Metadata> {
   const params = searchParams ? await searchParams : undefined;
   const locale = resolveLocale(params?.lang);
@@ -123,7 +142,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const theme = resolveTheme(cookieStore.get(THEME_COOKIE)?.value);
 
   const snapshot = await getDashboardSnapshot();
-  const { usage, cron, agents, openclawHome, openclawSourceKind, openclawSourceLabel } = snapshot;
+  const { usage, cron, agents, missionControl, openclawHome, openclawSourceKind, openclawSourceLabel } = snapshot;
   const na = t.common.na;
   const unavailable = t.common.unavailable;
 
@@ -296,6 +315,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const agentsBlockedCount = agents.agents.filter((agent) => agent.status === "blocked").length;
   const agentsQueueCount = agents.agents.reduce((sum, agent) => sum + (agent.queueCount || 0), 0);
   const agentsRoomCount = agents.rooms.filter((room) => agents.agents.some((agent) => agent.roomId === room.id)).length;
+  const missionUpdatedLabel = formatDateTimeLabel(parseOptionalTimestampMs(missionControl.updatedAt), locale, na);
+  const missionWorkerLabel = missionControl.worker.connected
+    ? t.missionControl.workerConnected
+    : t.missionControl.workerDisconnected;
+  const missionLatestTaskLabel = missionControl.worker.latestTask
+    ? `${missionControl.worker.latestTask.tqId} · ${formatMissionLaneLabel(
+        missionControl.worker.latestTask.lane,
+        t.missionControl
+      )}`
+    : t.missionControl.latestTaskFallback;
   const latestHistoryPoint = localizedUsage.history.points.at(-1);
   const latestRequestsLabel = latestHistoryPoint
     ? formatCompactValue(latestHistoryPoint.totalRequestsValue, locale, na)
@@ -307,6 +336,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const viewItems: Array<{ id: DashboardView; label: string; hint: string }> = [
     { id: "overview", label: t.nav.overview, hint: statusValue },
     { id: "agents", label: t.nav.agents, hint: agentsOnlineCount ? String(agentsOnlineCount) : t.agents.title },
+    {
+      id: "mission-control",
+      label: t.nav.missionControl,
+      hint: missionControl.stats.activeFeatures ? String(missionControl.stats.activeFeatures) : t.missionControl.title
+    },
     {
       id: "history",
       label: t.nav.history,
@@ -349,6 +383,32 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         label: t.agents.activityTitle,
         hint: agentsLatestEventLabel,
         description: t.agents.activityDescription
+      }
+    ],
+    "mission-control": [
+      {
+        id: "missions",
+        label: t.missionControl.overviewTitle,
+        hint: String(missionControl.stats.activeFeatures),
+        description: t.missionControl.overviewDescription
+      },
+      {
+        id: "queue",
+        label: t.missionControl.queueTitle,
+        hint: String(missionControl.stats.openTasks),
+        description: t.missionControl.queueDescription
+      },
+      {
+        id: "reviews",
+        label: t.missionControl.reviewTitle,
+        hint: String(missionControl.stats.reviewTasks),
+        description: t.missionControl.reviewDescription
+      },
+      {
+        id: "release",
+        label: t.missionControl.releaseTitle,
+        hint: String(missionControl.stats.readyToRelease),
+        description: t.missionControl.releaseDescription
       }
     ],
     history: [
@@ -419,6 +479,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       hint: formatMessage(t.agents.floorHint, { count: agentsOnlineCount }),
       tone: agentsBlockedCount > 0 ? "warning" : "default"
     },
+    "mission-control": {
+      label: t.missionControl.workerStatus,
+      value: missionWorkerLabel,
+      hint: missionLatestTaskLabel,
+      tone: missionControl.stats.blockedTasks > 0 ? "warning" : "default"
+    },
     history: {
       label: t.history.title,
       value: String(localizedUsage.history.reportCount || 0),
@@ -449,6 +515,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       { label: t.agents.summaryQueues, value: String(agentsQueueCount) },
       { label: t.agents.summaryRooms, value: String(agentsRoomCount || agents.rooms.length) },
       { label: t.agents.latest, value: agentsLatestEventLabel }
+    ],
+    "mission-control": [
+      { label: t.missionControl.updated, value: missionUpdatedLabel },
+      { label: t.missionControl.summaryTasks, value: String(missionControl.stats.openTasks) },
+      { label: t.missionControl.summaryReview, value: String(missionControl.stats.reviewTasks) },
+      { label: t.missionControl.summaryReady, value: String(missionControl.stats.readyToRelease) }
     ],
     history: [
       { label: t.history.title, value: historyRangeLabel },
@@ -702,6 +774,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           copy={t.agents}
           common={t.common}
           focus={agentsFocus}
+        />
+      );
+    }
+
+    if (activeView === "mission-control") {
+      const missionFocus =
+        activePanel === "queue" ? "queue" : activePanel === "reviews" ? "reviews" : activePanel === "release" ? "release" : "missions";
+
+      return (
+        <MissionControlPanel
+          id="mission-control"
+          missionControl={missionControl}
+          locale={locale}
+          copy={t.missionControl}
+          common={t.common}
+          focus={missionFocus}
         />
       );
     }

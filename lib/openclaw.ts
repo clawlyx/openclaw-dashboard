@@ -5,6 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { readAgentsSnapshot, type AgentsSnapshot } from "@/lib/agents";
+import { readMissionControlSnapshot, type MissionControlSnapshot } from "@/lib/mission-control";
 
 type TableRow = Record<string, string>;
 
@@ -157,6 +158,7 @@ export type DashboardSnapshot = {
   usage: UsageSnapshot;
   cron: CronSnapshot;
   agents: AgentsSnapshot;
+  missionControl: MissionControlSnapshot;
 };
 
 type ResolvedOpenClawHome = {
@@ -1144,6 +1146,7 @@ export const getDashboardSnapshot = async (): Promise<DashboardSnapshot> => {
     openclawSourceLabel: openclawHome.sourceLabel,
     usage: await readUsageReports(openclawHome),
     cron: await readCronJobs(openclawHome),
-    agents: await readAgentsSnapshot(openclawHome)
+    agents: await readAgentsSnapshot(openclawHome),
+    missionControl: await readMissionControlSnapshot()
   };
 };

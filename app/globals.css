@@ -1574,6 +1574,255 @@ tbody tr:last-child td {
   margin-bottom: 18px;
 }
 
+.missionOverviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.missionFeatureStack,
+.missionReviewStack {
+  display: grid;
+  gap: 16px;
+}
+
+.missionSidebar {
+  display: grid;
+  gap: 16px;
+}
+
+.missionSidebarCard,
+.missionLaneCard,
+.missionReviewCard,
+.missionFeatureCard {
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: var(--surface-card);
+}
+
+.missionSidebarCard,
+.missionLaneCard,
+.missionReviewCard {
+  padding: 18px;
+}
+
+.missionSidebarValue {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.missionSidebarValueCompact {
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.missionSidebarCopy {
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+.missionSidebarFacts,
+.missionFeatureFacts {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.missionSidebarFactsTight {
+  margin-top: 16px;
+}
+
+.missionFact {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.missionFact:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.missionFact span {
+  color: var(--muted);
+}
+
+.missionLaneGrid,
+.missionReviewGrid {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.missionLaneGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.missionReviewGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.missionLaneHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.missionLaneList {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.missionTaskCard {
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface-panel-strong);
+}
+
+.missionTaskTop,
+.missionMetaRow,
+.missionBadgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 12px;
+}
+
+.missionMetaRow {
+  margin-top: 10px;
+  font-size: 0.88rem;
+}
+
+.missionMetaRowMuted {
+  color: var(--muted);
+}
+
+.missionTiny {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.missionTaskTitle {
+  display: block;
+  margin-top: 10px;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.missionTaskSummary,
+.missionFeatureSummary {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.missionFeatureCard {
+  padding: 20px;
+}
+
+.missionFeatureCardCompact {
+  padding: 16px;
+}
+
+.missionFeatureHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.missionFeatureHead h3 {
+  margin: 6px 0 0;
+  font-size: 1.15rem;
+}
+
+.missionBadgeRow {
+  margin-top: 14px;
+}
+
+.missionBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-chip);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.missionBadgeNeutral {
+  color: var(--ink);
+}
+
+.missionBadgeStatus,
+.missionBadgeFeature {
+  color: var(--ink-soft);
+}
+
+.missionStatus-ready,
+.missionFeature-ready-to-release {
+  border-color: color-mix(in srgb, var(--accent-2) 36%, var(--line));
+  background: color-mix(in srgb, var(--accent-2) 12%, var(--surface-chip));
+}
+
+.missionStatus-running,
+.missionFeature-building,
+.missionFeature-researching,
+.missionFeature-qa {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-chip));
+}
+
+.missionStatus-review,
+.missionFeature-rfc-approved {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-chip));
+}
+
+.missionStatus-blocked,
+.missionFeature-blocked {
+  border-color: color-mix(in srgb, var(--warning) 38%, var(--line));
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface-chip));
+}
+
+.missionStatus-done,
+.missionFeature-released,
+.missionFeature-intake {
+  border-color: var(--line);
+  background: var(--surface-chip);
+}
+
+.missionArtifacts {
+  margin-top: 16px;
+}
+
+.missionArtifactsLabel {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .officeBoard,
 .officeRailCard,
 .roomLoadCard {
