@@ -167,6 +167,7 @@
     "missionQueueCopy": "Live Mission Control tasks for the current room stay visible here, so you can inspect ownership without leaving the office view.",
     "missionQueueEmpty": "No live Mission Control tasks are routed through this room right now.",
     "missionUpdated": "Mission updated",
+    "missionOwnerRoom": "Owner room",
     "eventAssistant": "Assistant response",
     "eventUser": "New user handoff",
     "eventTool": "Tool result",

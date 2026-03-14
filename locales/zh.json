@@ -167,6 +167,7 @@
     "missionQueueCopy": "当前房间负责的 Mission Control 任务会固定显示在这里，不用切到任务指挥台也能看清归属。",
     "missionQueueEmpty": "当前没有 Mission Control 任务路由到这个房间。",
     "missionUpdated": "任务更新时间",
+    "missionOwnerRoom": "归属房间",
     "eventAssistant": "Assistant 回复",
     "eventUser": "新的用户交接",
     "eventTool": "工具结果",

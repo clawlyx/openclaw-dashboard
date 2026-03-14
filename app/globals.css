@@ -3231,6 +3231,24 @@ html[data-theme="dark"] .officeRoomMeta span {
   background: color-mix(in srgb, var(--surface-card) 84%, white);
 }
 
+.virtualMissionCardButton {
+  width: 100%;
+  appearance: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.virtualMissionCardButton:hover,
+.virtualMissionCardButton:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
 .virtualMissionCardHead {
   display: flex;
   justify-content: space-between;

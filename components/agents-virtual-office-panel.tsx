@@ -65,6 +65,7 @@ type AgentsVirtualOfficeMessages = {
   missionQueueCopy: string;
   missionQueueEmpty: string;
   missionUpdated: string;
+  missionOwnerRoom: string;
   deskFeedTitle: string;
   deskFeedCopy: string;
   attentionTitle: string;
@@ -863,6 +864,7 @@ export function AgentsVirtualOfficePanel({
   const updatedLabel = formatDateTimeLabel(parseTimestampMs(agents.updatedAt), locale, common.na);
   const latestEventLabel = formatDateTimeLabel(parseTimestampMs(agents.recentEvents[0]?.at), locale, common.na);
   const agentNameById = useMemo(() => new Map(agents.agents.map((agent) => [agent.id, agent.name])), [agents.agents]);
+  const roomLabelById = useMemo(() => new Map(agents.rooms.map((room) => [room.id, room.label])), [agents.rooms]);
   const liveMissionTasks = useMemo(() => getLiveMissionTasks(missionControl), [missionControl]);
   const liveMissionFeatureCount = useMemo(
     () => new Set(liveMissionTasks.map((task) => task.featureId)).size,
@@ -985,6 +987,9 @@ export function AgentsVirtualOfficePanel({
   const activeViewBox = getSceneViewBox(selectedRoomEntry?.area, selectedRoomEntry ? "focus" : "overview");
   const activeRoomLabel = selectedRoomEntry?.room.label || copy.allRooms;
   const activeRoomToneClass = `virtualOfficeSceneTone${selectedRoomEntry?.room.id || "all"}`;
+  const focusRoom = (roomId: string) => {
+    setSelectedRoomId(roomId);
+  };
 
   const toggleRoomFocus = (roomId: string | null) => {
     setSelectedRoomId((current) => (current === roomId ? null : roomId));
@@ -1262,7 +1267,12 @@ export function AgentsVirtualOfficePanel({
                 <div className="virtualMissionList">
                   {missionFeedTasks.length ? (
                     missionFeedTasks.map((task) => (
-                      <article key={task.tqId} className="virtualMissionCard">
+                      <button
+                        key={task.tqId}
+                        type="button"
+                        className="virtualMissionCard virtualMissionCardButton"
+                        onClick={() => focusRoom(getMissionRoomId(task))}
+                      >
                         <div className="virtualMissionCardHead">
                           <strong>{task.featureTitle}</strong>
                           <span>{task.tqId}</span>
@@ -1271,10 +1281,13 @@ export function AgentsVirtualOfficePanel({
                         {task.summary ? <p className="virtualMissionCardSummary">{task.summary}</p> : null}
                         <div className="virtualDeskCardMeta">
                           <span>
+                            {copy.missionOwnerRoom}: {roomLabelById.get(getMissionRoomId(task)) || common.na}
+                          </span>
+                          <span>
                             {copy.missionUpdated}: {formatDateTimeLabel(parseTimestampMs(task.updatedAt), locale, common.na)}
                           </span>
                         </div>
-                      </article>
+                      </button>
                     ))
                   ) : (
                     <div className="virtualOfficeEmpty">{copy.missionQueueEmpty}</div>
