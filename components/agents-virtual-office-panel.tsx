@@ -66,6 +66,10 @@ type AgentsVirtualOfficeMessages = {
   missionQueueEmpty: string;
   missionUpdated: string;
   missionOwnerRoom: string;
+  missionOwnerAgent: string;
+  missionOwnership: string;
+  ownershipExplicit: string;
+  ownershipInferred: string;
   deskFeedTitle: string;
   deskFeedCopy: string;
   attentionTitle: string;
@@ -112,6 +116,14 @@ type SceneArea = {
   focusSpots?: SceneSpot[];
 };
 
+type MissionOwnershipSource = "explicit" | "inferred";
+
+type MissionOwnership = {
+  roomId: string;
+  agentId?: string;
+  source: MissionOwnershipSource;
+};
+
 type RoomMissionCoverage = {
   roomId: string;
   taskCount: number;
@@ -120,6 +132,8 @@ type RoomMissionCoverage = {
   blockedCount: number;
   primaryFeatureTitle?: string;
   primaryTaskTitle?: string;
+  primaryOwnerAgentId?: string;
+  primaryOwnershipSource?: MissionOwnershipSource;
 };
 
 const createEmptyRoomMissionCoverage = (roomId: string): RoomMissionCoverage => ({
@@ -466,13 +480,32 @@ const getRoomStatus = (roomAgents: AgentSnapshot[]): AgentWorkStatus => {
   return [...roomAgents].sort((left, right) => STATUS_PRIORITY[right.status] - STATUS_PRIORITY[left.status])[0]?.status || "idle";
 };
 
-const getMissionRoomId = (task: MissionControlTaskSnapshot) => {
+const getInferredMissionRoomId = (task: MissionControlTaskSnapshot) => {
   if (task.status === "review" || task.lane === "qa") return "review";
   if (task.lane === "research") return "research";
   if (task.lane === "build") return "build";
   if (task.lane === "release") return "release";
   return "dispatch";
 };
+
+const getMissionOwnership = (
+  task: MissionControlTaskSnapshot,
+  agentRoomById: Map<string, string>
+): MissionOwnership => {
+  const source: MissionOwnershipSource = task.ownerAgentId || task.ownerRoomId ? "explicit" : "inferred";
+
+  return {
+    roomId:
+      task.ownerRoomId ||
+      (task.ownerAgentId ? agentRoomById.get(task.ownerAgentId) : undefined) ||
+      getInferredMissionRoomId(task),
+    agentId: task.ownerAgentId,
+    source
+  };
+};
+
+const getOwnershipLabel = (source: MissionOwnershipSource, copy: AgentsVirtualOfficeMessages) =>
+  source === "explicit" ? copy.ownershipExplicit : copy.ownershipInferred;
 
 const sortMissionTasks = (left: MissionControlTaskSnapshot, right: MissionControlTaskSnapshot) => {
   const statusDelta = MISSION_STATUS_PRIORITY[right.status] - MISSION_STATUS_PRIORITY[left.status];
@@ -864,6 +897,7 @@ export function AgentsVirtualOfficePanel({
   const updatedLabel = formatDateTimeLabel(parseTimestampMs(agents.updatedAt), locale, common.na);
   const latestEventLabel = formatDateTimeLabel(parseTimestampMs(agents.recentEvents[0]?.at), locale, common.na);
   const agentNameById = useMemo(() => new Map(agents.agents.map((agent) => [agent.id, agent.name])), [agents.agents]);
+  const agentRoomById = useMemo(() => new Map(agents.agents.map((agent) => [agent.id, agent.roomId])), [agents.agents]);
   const roomLabelById = useMemo(() => new Map(agents.rooms.map((room) => [room.id, room.label])), [agents.rooms]);
   const liveMissionTasks = useMemo(() => getLiveMissionTasks(missionControl), [missionControl]);
   const liveMissionFeatureCount = useMemo(
@@ -883,7 +917,8 @@ export function AgentsVirtualOfficePanel({
     );
 
     liveMissionTasks.forEach((task) => {
-      const roomId = getMissionRoomId(task);
+      const ownership = getMissionOwnership(task, agentRoomById);
+      const roomId = ownership.roomId;
       const current =
         coverageByRoom.get(roomId) ||
         ({
@@ -914,12 +949,14 @@ export function AgentsVirtualOfficePanel({
             reviewCount: entry.reviewCount,
             blockedCount: entry.blockedCount,
             primaryFeatureTitle: primaryTask?.featureTitle,
-            primaryTaskTitle: primaryTask?.title
+            primaryTaskTitle: primaryTask?.title,
+            primaryOwnerAgentId: primaryTask ? getMissionOwnership(primaryTask, agentRoomById).agentId : undefined,
+            primaryOwnershipSource: primaryTask ? getMissionOwnership(primaryTask, agentRoomById).source : undefined
           } satisfies RoomMissionCoverage
         ];
       })
     );
-  }, [agents.rooms, liveMissionTasks]);
+  }, [agentRoomById, agents.rooms, liveMissionTasks]);
 
   const summaryCards = missionControl.available
     ? [
@@ -970,8 +1007,8 @@ export function AgentsVirtualOfficePanel({
   const missionFeedTasks = useMemo(() => {
     const roomId = selectedRoomEntry?.room.id;
     if (!roomId) return liveMissionTasks.slice(0, 4);
-    return liveMissionTasks.filter((task) => getMissionRoomId(task) === roomId).slice(0, 4);
-  }, [liveMissionTasks, selectedRoomEntry]);
+    return liveMissionTasks.filter((task) => getMissionOwnership(task, agentRoomById).roomId === roomId).slice(0, 4);
+  }, [agentRoomById, liveMissionTasks, selectedRoomEntry]);
   const deskFeedAgents = [...(selectedRoomEntry ? selectedRoomEntry.roomAgents : onlineAgents)]
     .filter((agent) => (selectedRoomEntry ? true : agent.status !== "offline"))
     .sort(sortByLoad)
@@ -1230,6 +1267,17 @@ export function AgentsVirtualOfficePanel({
                     <p className="virtualRoomPulseHint">
                       {copy.task}: {missionCoverage.primaryTaskTitle || common.na}
                     </p>
+                    <p className="virtualRoomPulseHint">
+                      {copy.missionOwnership}:{" "}
+                      {missionCoverage.primaryOwnershipSource
+                        ? getOwnershipLabel(missionCoverage.primaryOwnershipSource, copy)
+                        : common.na}
+                      {missionCoverage.primaryOwnerAgentId
+                        ? ` · ${copy.missionOwnerAgent}: ${
+                            agentNameById.get(missionCoverage.primaryOwnerAgentId) || common.na
+                          }`
+                        : ""}
+                    </p>
                   </>
                 ) : (
                   <p className="virtualRoomPulseHint">{copy.roomMissionIdle}</p>
@@ -1266,29 +1314,41 @@ export function AgentsVirtualOfficePanel({
 
                 <div className="virtualMissionList">
                   {missionFeedTasks.length ? (
-                    missionFeedTasks.map((task) => (
-                      <button
-                        key={task.tqId}
-                        type="button"
-                        className="virtualMissionCard virtualMissionCardButton"
-                        onClick={() => focusRoom(getMissionRoomId(task))}
-                      >
-                        <div className="virtualMissionCardHead">
-                          <strong>{task.featureTitle}</strong>
-                          <span>{task.tqId}</span>
-                        </div>
-                        <p>{task.title}</p>
-                        {task.summary ? <p className="virtualMissionCardSummary">{task.summary}</p> : null}
-                        <div className="virtualDeskCardMeta">
-                          <span>
-                            {copy.missionOwnerRoom}: {roomLabelById.get(getMissionRoomId(task)) || common.na}
-                          </span>
-                          <span>
-                            {copy.missionUpdated}: {formatDateTimeLabel(parseTimestampMs(task.updatedAt), locale, common.na)}
-                          </span>
-                        </div>
-                      </button>
-                    ))
+                    missionFeedTasks.map((task) => {
+                      const ownership = getMissionOwnership(task, agentRoomById);
+
+                      return (
+                        <button
+                          key={task.tqId}
+                          type="button"
+                          className="virtualMissionCard virtualMissionCardButton"
+                          onClick={() => focusRoom(ownership.roomId)}
+                        >
+                          <div className="virtualMissionCardHead">
+                            <strong>{task.featureTitle}</strong>
+                            <span>{task.tqId}</span>
+                          </div>
+                          <p>{task.title}</p>
+                          {task.summary ? <p className="virtualMissionCardSummary">{task.summary}</p> : null}
+                          <div className="virtualDeskCardMeta">
+                            <span>
+                              {copy.missionOwnerRoom}: {roomLabelById.get(ownership.roomId) || common.na}
+                            </span>
+                            <span>
+                              {copy.missionOwnership}: {getOwnershipLabel(ownership.source, copy)}
+                            </span>
+                            {ownership.agentId ? (
+                              <span>
+                                {copy.missionOwnerAgent}: {agentNameById.get(ownership.agentId) || common.na}
+                              </span>
+                            ) : null}
+                            <span>
+                              {copy.missionUpdated}: {formatDateTimeLabel(parseTimestampMs(task.updatedAt), locale, common.na)}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })
                   ) : (
                     <div className="virtualOfficeEmpty">{copy.missionQueueEmpty}</div>
                   )}
