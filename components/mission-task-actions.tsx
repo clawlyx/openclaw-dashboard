@@ -5,12 +5,12 @@ import { useState, useTransition } from "react";
 
 import type { MissionControlTaskSnapshot } from "@/lib/mission-control";
 import {
-  getMissionTaskActions,
+  getMissionTaskActionStates,
   type MissionTaskAction,
   type MissionTaskMutationMode
 } from "@/lib/mission-control-actions";
 
-type MissionTaskActionMessages = {
+export type MissionTaskActionMessages = {
   actionStart: string;
   actionSendToReview: string;
   actionAdvance: string;
@@ -23,6 +23,7 @@ type MissionTaskActionMessages = {
 
 type TaskActionDefinition = {
   action: MissionTaskAction;
+  enabled: boolean;
   label: string;
   tone?: "primary" | "secondary" | "warning";
 };
@@ -33,8 +34,9 @@ const buildActions = (
   copy: MissionTaskActionMessages,
   mode: MissionTaskMutationMode
 ): TaskActionDefinition[] => {
-  return getMissionTaskActions({ status, lane, mode }).map((action) => ({
+  return getMissionTaskActionStates({ status, lane, mode }).map(({ action, enabled }) => ({
     action,
+    enabled,
     label:
       action === "start"
         ? copy.actionStart
@@ -54,16 +56,18 @@ const buildActions = (
 export function MissionTaskActions({
   task,
   copy,
-  mode
+  mode,
+  showDisabledActions = false
 }: {
   task: MissionControlTaskSnapshot;
   copy: MissionTaskActionMessages;
   mode: MissionTaskMutationMode;
+  showDisabledActions?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
-  const actions = buildActions(task.status, task.lane, copy, mode);
+  const actions = buildActions(task.status, task.lane, copy, mode).filter((action) => showDisabledActions || action.enabled);
 
   if (!actions.length) return null;
 
@@ -100,9 +104,11 @@ export function MissionTaskActions({
         {actions.map((action) => (
           <button
             key={`${task.tqId}:${action.action}`}
-            className={`missionTaskActionButton missionTaskActionButton-${action.tone || "secondary"}`}
+            className={`missionTaskActionButton missionTaskActionButton-${action.tone || "secondary"} ${
+              !action.enabled ? "missionTaskActionButton-disabled" : ""
+            } ${isPending ? "missionTaskActionButton-pending" : ""}`}
             type="button"
-            disabled={isPending}
+            disabled={isPending || !action.enabled}
             onClick={() => handleAction(action.action)}
           >
             {isPending ? copy.actionUpdating : action.label}

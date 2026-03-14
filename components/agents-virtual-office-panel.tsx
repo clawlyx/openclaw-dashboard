@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type KeyboardEvent } from "react";
 
+import { MissionTaskActions, type MissionTaskActionMessages } from "@/components/mission-task-actions";
 import { SectionShell } from "@/components/section-shell";
 import { formatDateTimeLabel } from "@/lib/dashboard-presenters";
 import { formatMessage, type Locale } from "@/lib/i18n";
@@ -13,6 +14,7 @@ import type {
   AgentWorkStatus
 } from "@/lib/agents";
 import type { MissionControlSnapshot, MissionControlTaskSnapshot, MissionControlTaskStatus } from "@/lib/mission-control";
+import type { MissionTaskMutationMode } from "@/lib/mission-control-actions";
 
 type AgentsVirtualOfficeMessages = {
   section: string;
@@ -79,6 +81,7 @@ type AgentsVirtualOfficeMessages = {
   detailFeature: string;
   detailTaskId: string;
   detailStatus: string;
+  detailActionsTitle: string;
   detailPathTitle: string;
   detailLastCompleted: string;
   detailNextStep: string;
@@ -927,7 +930,9 @@ export function AgentsVirtualOfficePanel({
   missionControl,
   locale,
   copy,
-  common
+  common,
+  actionCopy,
+  mutationMode
 }: {
   id?: string;
   agents: AgentsSnapshot;
@@ -935,6 +940,8 @@ export function AgentsVirtualOfficePanel({
   locale: Locale;
   copy: AgentsVirtualOfficeMessages;
   common: { na: string; unavailable: string };
+  actionCopy: MissionTaskActionMessages;
+  mutationMode: MissionTaskMutationMode;
 }) {
   const [selectedFocus, setSelectedFocus] = useState<DetailFocus>(null);
   const officeName = agents.officeName || copy.fallbackOffice;
@@ -1548,6 +1555,17 @@ export function AgentsVirtualOfficePanel({
                         </>
                       ) : null}
                     </dl>
+                    {activeDetailTask ? (
+                      <div className="virtualOfficeDrawerActions">
+                        <p className="eyebrow">{copy.detailActionsTitle}</p>
+                        <MissionTaskActions
+                          task={activeDetailTask}
+                          copy={actionCopy}
+                          mode={mutationMode}
+                          showDisabledActions
+                        />
+                      </div>
+                    ) : null}
                   </article>
 
                   <article className="virtualOfficeDrawerPanel">

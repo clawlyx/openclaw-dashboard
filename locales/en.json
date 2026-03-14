@@ -181,6 +181,7 @@
     "detailFeature": "Feature",
     "detailTaskId": "Task ID",
     "detailStatus": "Status",
+    "detailActionsTitle": "Office actions",
     "detailPathTitle": "Task path",
     "detailLastCompleted": "Last completed",
     "detailNextStep": "Next step",

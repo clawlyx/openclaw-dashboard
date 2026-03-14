@@ -181,6 +181,7 @@
     "detailFeature": "Feature",
     "detailTaskId": "任务 ID",
     "detailStatus": "状态",
+    "detailActionsTitle": "办公室操作",
     "detailPathTitle": "任务路径",
     "detailLastCompleted": "最近完成",
     "detailNextStep": "下一步",

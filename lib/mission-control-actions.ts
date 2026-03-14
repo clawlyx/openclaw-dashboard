@@ -2,6 +2,12 @@ import type { MissionControlTaskLane, MissionControlTaskStatus } from "@/lib/mis
 
 export type MissionTaskAction = "start" | "send-to-review" | "advance" | "ready" | "block";
 export type MissionTaskMutationMode = "local" | "remote";
+export type MissionTaskActionState = {
+  action: MissionTaskAction;
+  enabled: boolean;
+};
+
+const ALL_MISSION_TASK_ACTIONS: MissionTaskAction[] = ["start", "send-to-review", "advance", "ready", "block"];
 
 export const getMissionTaskActions = ({
   status,
@@ -51,3 +57,19 @@ export const isMissionTaskActionAllowed = ({
   mode: MissionTaskMutationMode;
   action: MissionTaskAction;
 }) => getMissionTaskActions({ status, lane, mode }).includes(action);
+
+export const getMissionTaskActionStates = ({
+  status,
+  lane,
+  mode
+}: {
+  status: MissionControlTaskStatus;
+  lane: MissionControlTaskLane;
+  mode: MissionTaskMutationMode;
+}): MissionTaskActionState[] => {
+  const allowed = new Set(getMissionTaskActions({ status, lane, mode }));
+  return ALL_MISSION_TASK_ACTIONS.map((action) => ({
+    action,
+    enabled: allowed.has(action)
+  }));
+};
