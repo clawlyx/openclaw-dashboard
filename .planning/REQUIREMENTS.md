@@ -16,9 +16,9 @@ Current milestone: explicit ownership and office actions.
 
 ### Detail Surfaces
 
-- [ ] **DRAW-01**: Operator can open a room drawer from the office view and see owner room, owner agent, current task, last completed task, next step, and blocker or waiting reason
-- [ ] **DRAW-02**: Operator can open an agent drawer from desk cards or mission queue cards and stay scoped to the exact owner context
-- [ ] **DRAW-03**: Detail drawers surface recent handoff context and linked artifacts when those links are available
+- [x] **DRAW-01**: Operator can open a room drawer from the office view and see owner room, owner agent, current task, last completed task, next step, and blocker or waiting reason
+- [x] **DRAW-02**: Operator can open an agent drawer from desk cards or mission queue cards and stay scoped to the exact owner context
+- [x] **DRAW-03**: Detail drawers surface recent handoff context and linked artifacts when those links are available
 
 ### Office Actions
 
@@ -61,9 +61,9 @@ Current milestone: explicit ownership and office actions.
 | OWN-02 | Phase 1 | Complete |
 | OWN-03 | Phase 1 | Complete |
 | OWN-04 | Phase 1 | Complete |
-| DRAW-01 | Phase 2 | Pending |
-| DRAW-02 | Phase 2 | Pending |
-| DRAW-03 | Phase 2 | Pending |
+| DRAW-01 | Phase 2 | Complete |
+| DRAW-02 | Phase 2 | Complete |
+| DRAW-03 | Phase 2 | Complete |
 | ACT-01 | Phase 3 | Pending |
 | ACT-02 | Phase 3 | Pending |
 | ACT-03 | Phase 3 | Pending |
@@ -78,4 +78,4 @@ Current milestone: explicit ownership and office actions.
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-14 after GSD-2 initialization*
+*Last updated: 2026-03-14 after completing Phase 2 detail drawers*

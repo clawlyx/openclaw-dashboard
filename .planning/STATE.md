@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.
-**Current focus:** Phase 2: Detail Drawers
+**Current focus:** Phase 3: Office Actions
 
 ## Current Position
 
-Phase: 2 of 4 (Detail Drawers)
-Plan: 1 of 2 completed in current phase
-Status: Executing plan 02-02
-Last activity: 2026-03-14 — Completed the shared drawer shell and unified room/mission/desk routing into one owner-detail surface
+Phase: 3 of 4 (Office Actions)
+Plan: 0 of 2 in current phase
+Status: Ready to plan
+Last activity: 2026-03-14 — Completed Phase 2 with focused room/agent drawers, task-path detail, handoff context, and artifact evidence
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -52,11 +52,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Drawer content still needs the current-task, handoff, and artifact joins promised by plan 02-02
 - Inline office actions must reuse Mission Control mutation rules instead of creating a second workflow layer
+- Office actions need to respect the same supported transition rules and remote/local mutation split already established in Mission Control
 
 ## Session Continuity
 
 Last session: 2026-03-14 14:05 EDT
-Stopped at: Plan 02-01 complete; next step is filling the drawer with focused task, handoff, and artifact content
+Stopped at: Phase 2 complete; next step is planning Phase 3 office actions
 Resume file: None
