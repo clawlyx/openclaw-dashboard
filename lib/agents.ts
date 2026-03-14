@@ -43,6 +43,9 @@ export type AgentSnapshot = {
   role: string;
   roomId: string;
   status: AgentWorkStatus;
+  currentTaskId?: string;
+  lastTaskId?: string;
+  nextTaskId?: string;
   currentTask?: string;
   focus?: string;
   model?: string;
@@ -546,6 +549,9 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
           role: asString(entry?.role) || formatAgentRole(agentId),
           roomId,
           status: normalizeAgentStatus(asString(entry?.status)) || "idle",
+          currentTaskId: asString(entry?.currentTaskId),
+          lastTaskId: asString(entry?.lastTaskId),
+          nextTaskId: asString(entry?.nextTaskId),
           currentTask: asString(entry?.currentTask),
           focus: asString(entry?.focus),
           model: asString(entry?.model),

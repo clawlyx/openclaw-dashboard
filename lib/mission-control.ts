@@ -44,7 +44,14 @@ export type MissionControlTaskSnapshot = {
   lane: MissionControlTaskLane;
   status: MissionControlTaskStatus;
   updatedAt: string;
+  startedAt?: string;
+  lastWorkedAt?: string;
   summary: string;
+  nextPlannedStep?: string;
+  blockedReason?: string;
+  waitingOn?: string;
+  ownerAgentId?: string;
+  ownerRoomId?: string;
   featureId: string;
   featureTitle: string;
   featureStatus: MissionControlFeatureStatus;
@@ -242,8 +249,14 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           title: "Open release PR",
           lane: "release",
           status: "review",
+          startedAt: "2026-03-10T09:10:00.000Z",
+          lastWorkedAt: "2026-03-10T10:44:00.000Z",
           updatedAt: "2026-03-10T10:44:00.000Z",
-          summary: "PR is open and waiting for a merge decision."
+          summary: "PR is open and waiting for a merge decision.",
+          nextPlannedStep: "Merge the release PR and publish the release note once screenshots are approved.",
+          waitingOn: "human-merge",
+          ownerAgentId: "release-agent",
+          ownerRoomId: "release"
         }
       ],
       history: [{ at: "2026-03-10T10:44:00.000Z" }]
@@ -278,8 +291,13 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           title: "Research concierge experience",
           lane: "research",
           status: "running",
+          startedAt: "2026-03-10T09:48:00.000Z",
+          lastWorkedAt: "2026-03-10T10:12:00.000Z",
           updatedAt: "2026-03-10T10:12:00.000Z",
-          summary: "Gathering first-release interaction patterns and concierge flows."
+          summary: "Gathering first-release interaction patterns and concierge flows.",
+          nextPlannedStep: "Package the research notes into a short product brief for review.",
+          ownerAgentId: "research-agent",
+          ownerRoomId: "research"
         }
       ],
       history: [{ at: "2026-03-10T10:12:00.000Z" }]
@@ -471,6 +489,14 @@ const normalizeFeature = (value: unknown): MissionControlFeatureSnapshot | null 
       const updatedAt = asString(task?.updatedAt);
       if (!tqId || !taskTitle || !updatedAt) return null;
 
+      const startedAt = asString(task?.startedAt);
+      const lastWorkedAt = asString(task?.lastWorkedAt);
+      const nextPlannedStep = asString(task?.nextPlannedStep);
+      const blockedReason = asString(task?.blockedReason);
+      const waitingOn = asString(task?.waitingOn);
+      const ownerAgentId = asString(task?.ownerAgentId);
+      const ownerRoomId = asString(task?.ownerRoomId);
+
       return {
         tqId,
         title: taskTitle,
@@ -485,7 +511,14 @@ const normalizeFeature = (value: unknown): MissionControlFeatureSnapshot | null 
         project,
         workspace,
         repo,
-        deliveryMode
+        deliveryMode,
+        ...(startedAt ? { startedAt } : {}),
+        ...(lastWorkedAt ? { lastWorkedAt } : {}),
+        ...(nextPlannedStep ? { nextPlannedStep } : {}),
+        ...(blockedReason ? { blockedReason } : {}),
+        ...(waitingOn ? { waitingOn } : {}),
+        ...(ownerAgentId ? { ownerAgentId } : {}),
+        ...(ownerRoomId ? { ownerRoomId } : {})
       } satisfies MissionControlTaskSnapshot;
     })
     .filter((task): task is MissionControlTaskSnapshot => Boolean(task));
