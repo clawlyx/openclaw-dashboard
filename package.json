@@ -1,8 +1,8 @@
 {
   "name": "openclaw-dashboard",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "OpenClaw dashboard for agents, usage, provider limits, and scheduler health.",
+  "description": "OpenClaw workstation for agents, mission control, usage, provider limits, and scheduler health.",
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "node scripts/next-runner.mjs dev",

@@ -6,6 +6,28 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-14
+
+### Added
+
+- A top-level `Mission Control` workspace with dedicated `Active missions`, `Execution queue`, `Review desk`, and `Release lane` views.
+- A new Launchpad-backed `missionControl` branch in `/api/snapshot` so the workstation can render live feature, task, review, and release state beside `agents`.
+- In-app mission intake from the dashboard, including repo/project/workspace binding and delivery-mode selection.
+- Operator task controls for Mission Control so queue items can be started, sent to review, advanced, blocked, or reset to ready as supported by the active mode.
+- A tracked `1.0.0` release-candidate runbook for the workstation milestone.
+
+### Changed
+
+- Promoted the product from a read-heavy dashboard to a workstation surface for agents, missions, usage, providers, and scheduler health.
+- Bumped the package version to `1.0.0` and aligned the V2 Mission Control plan with that release target.
+- Updated Mission Control remote-mode task actions to route through Launchpad workflow APIs instead of assuming direct task mutation support.
+
+### Fixed
+
+- Hardened Mission Control task mutation rules so unsupported transitions are rejected server-side instead of relying only on UI buttons.
+- Derived local Launchpad fallback counters from existing state to avoid ID reuse and artifact collisions when older state files are missing next-number fields.
+- Corrected the remote research-review advance flow so repo-bound features move into the next build lane instead of stalling at review-approved status.
+
 ## [0.4.0] - 2026-03-13
 
 ### Added
