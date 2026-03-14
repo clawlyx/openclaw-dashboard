@@ -6,6 +6,26 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-14
+
+### Added
+
+- Explicit mission ownership/task references across the workstation snapshot so agents and tasks can point at each other directly.
+- A shared room or agent detail drawer in the `Agents` workspace with current mission, handoff history, and artifact evidence.
+- Inline office actions that reuse Mission Control transitions from the office drawer.
+- A mission-aware pressure rail covering stale review, blocked-too-long, waiting-on-human, inferred ownership, and overloaded rooms.
+
+### Changed
+
+- Promoted the `Agents` workspace from a joined office view into the workstation's operator-priority surface.
+- Refreshed the bundled demo data and public screenshots so the `1.2.0` preview shows explicit ownership and pressure cues safely.
+- Bumped the app version to `1.2.0` for the explicit-ownership milestone.
+
+### Fixed
+
+- Anchored pressure age calculations to the stable snapshot timestamp so the office UI stays deterministic across hydration.
+- Prioritized mission queue cards by active pressure so the hottest work surfaces ahead of quieter tasks.
+
 ## [1.1.0] - 2026-03-14
 
 ### Added

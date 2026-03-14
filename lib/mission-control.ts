@@ -192,6 +192,16 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
       repo: "family-claw",
       featureId: "F-0002-family-claw-concierge",
       updatedAt: "2026-03-10T09:42:00.000Z"
+    },
+    {
+      ideaId: "IDEA-003",
+      title: "Agent Workflow schema sync",
+      status: "clarifying",
+      project: "agent-workflow",
+      workspace: "agent-workflow",
+      repo: "agent-workflow",
+      featureId: "F-0003-agent-workflow-schema",
+      updatedAt: "2026-03-10T07:20:00.000Z"
     }
   ],
   features: [
@@ -254,9 +264,7 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           updatedAt: "2026-03-10T10:44:00.000Z",
           summary: "PR is open and waiting for a merge decision.",
           nextPlannedStep: "Merge the release PR and publish the release note once screenshots are approved.",
-          waitingOn: "human-merge",
-          ownerAgentId: "release-agent",
-          ownerRoomId: "release"
+          waitingOn: "human-merge"
         }
       ],
       history: [{ at: "2026-03-10T10:44:00.000Z" }]
@@ -301,6 +309,48 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
         }
       ],
       history: [{ at: "2026-03-10T10:12:00.000Z" }]
+    },
+    {
+      featureId: "F-0003-agent-workflow-schema",
+      title: "Agent Workflow schema sync",
+      status: "building",
+      project: "agent-workflow",
+      workspace: "agent-workflow",
+      repo: "agent-workflow",
+      deliveryMode: "push-required",
+      linkedIdeaId: "IDEA-003",
+      currentLane: "build",
+      artifactRoot: "/Users/clawlyx/Documents/GitHub/agent-workflow/docs",
+      artifacts: {
+        brief: "docs/briefs/F-0003-agent-workflow-schema.md",
+        rfc: "docs/rfc/F-0003-agent-workflow-schema.md",
+        qa: "docs/qa/F-0003-agent-workflow-schema.md",
+        release: "docs/release/F-0003-agent-workflow-schema.md"
+      },
+      summary: "Schema alignment is blocked on the shared workflow contract.",
+      delivery: {
+        branch: "feat/F-0003-agent-workflow-schema",
+        prUrl: null,
+        prMerged: false,
+        repoRoot: "/Users/clawlyx/Documents/GitHub/agent-workflow"
+      },
+      tasks: [
+        {
+          tqId: "TQ-108",
+          title: "Unify workflow ownership schema",
+          lane: "build",
+          status: "blocked",
+          startedAt: "2026-03-09T14:05:00.000Z",
+          lastWorkedAt: "2026-03-09T16:25:00.000Z",
+          updatedAt: "2026-03-09T16:25:00.000Z",
+          summary: "Waiting for a final contract that keeps workstation ownership and workflow specs aligned.",
+          nextPlannedStep: "Resume implementation once the shared ownership fields are approved.",
+          blockedReason: "Waiting for the shared ownership contract to land in agent-workflow.",
+          ownerAgentId: "coding-agent",
+          ownerRoomId: "build"
+        }
+      ],
+      history: [{ at: "2026-03-09T16:25:00.000Z" }]
     }
   ]
 };
@@ -308,15 +358,15 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
 const SAMPLE_HEARTBEAT: WorkerHeartbeatRecord = {
   at: "2026-03-10T07:11:00.021Z",
   pollMs: 15000,
-  activeFeatures: 2,
+  activeFeatures: 3,
   readyTasks: 0,
   reviewTasks: 1,
-  blockedTasks: 0,
+  blockedTasks: 1,
   latestTask: {
-    tqId: "TQ-097",
-    featureId: "F-0001-openclaw-dashboard",
-    lane: "release",
-    status: "review"
+    tqId: "TQ-108",
+    featureId: "F-0003-agent-workflow-schema",
+    lane: "build",
+    status: "blocked"
   }
 };
 
