@@ -2565,6 +2565,10 @@ html[data-theme="dark"] .officeRoomMeta span {
   gap: 18px;
 }
 
+.virtualOfficeDrawer {
+  grid-column: 1 / -1;
+}
+
 .virtualOfficeStage,
 .virtualOfficeRailStack {
   display: grid;
@@ -2598,6 +2602,82 @@ html[data-theme="dark"] .officeRoomMeta span {
   gap: 16px;
   padding: 20px;
   background: var(--surface-panel);
+}
+
+.virtualOfficeDrawerHeaderMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+}
+
+.virtualOfficeDrawerClear {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 12px;
+  border-radius: 999px;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.virtualOfficeDrawerClear:hover,
+.virtualOfficeDrawerClear:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
+.virtualOfficeDrawerBody {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.virtualOfficeDrawerPanel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(23, 21, 19, 0.08);
+  background: color-mix(in srgb, var(--surface-card) 86%, white);
+}
+
+.virtualOfficeDrawerEmpty {
+  display: grid;
+  gap: 8px;
+}
+
+.virtualOfficeDrawerEmpty strong {
+  color: var(--ink);
+}
+
+.virtualOfficeDetailList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.virtualOfficeDetailList div {
+  display: grid;
+  gap: 4px;
+}
+
+.virtualOfficeDetailList dt {
+  color: var(--muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.virtualOfficeDetailList dd {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.5;
 }
 
 .virtualOfficeBoardHeader,
@@ -3283,6 +3363,29 @@ html[data-theme="dark"] .officeRoomMeta span {
   padding: 14px;
 }
 
+.virtualDeskCardButton {
+  width: 100%;
+  appearance: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.virtualDeskCardButton:hover,
+.virtualDeskCardButton:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
+.virtualDeskCardSelected {
+  border-color: color-mix(in srgb, var(--accent-2) 26%, var(--line));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 14%, transparent), var(--shadow);
+}
+
 .virtualDeskList,
 .virtualAlertList {
   display: grid;
@@ -3343,6 +3446,11 @@ html[data-theme="dark"] .virtualOfficeSceneBadge {
   box-shadow: 0 14px 28px rgba(1, 5, 12, 0.28);
 }
 
+html[data-theme="dark"] .virtualOfficeDrawerClear {
+  border-color: rgba(111, 131, 170, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 html[data-theme="dark"] .virtualOfficeFilter {
   border-color: rgba(111, 131, 170, 0.22);
   background: rgba(255, 255, 255, 0.06);
@@ -3352,6 +3460,11 @@ html[data-theme="dark"] .virtualOfficeBoard {
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 20%),
     linear-gradient(180deg, rgba(18, 28, 45, 0.95), rgba(13, 22, 36, 0.94));
+}
+
+html[data-theme="dark"] .virtualOfficeDrawerPanel {
+  border-color: rgba(111, 131, 170, 0.18);
+  background: rgba(12, 20, 35, 0.74);
 }
 
 html[data-theme="dark"] .virtualOfficeScene {
@@ -3554,6 +3667,10 @@ html[data-theme="dark"] .historyGridLine {
   }
 
   .virtualOfficeDigestGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .virtualOfficeDrawerBody {
     grid-template-columns: 1fr;
   }
 
