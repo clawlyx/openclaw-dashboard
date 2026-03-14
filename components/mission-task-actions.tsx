@@ -57,12 +57,14 @@ export function MissionTaskActions({
   task,
   copy,
   mode,
-  showDisabledActions = false
+  showDisabledActions = false,
+  onActionTriggered
 }: {
   task: MissionControlTaskSnapshot;
   copy: MissionTaskActionMessages;
   mode: MissionTaskMutationMode;
   showDisabledActions?: boolean;
+  onActionTriggered?: (input: { action: MissionTaskAction; task: MissionControlTaskSnapshot }) => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -74,6 +76,7 @@ export function MissionTaskActions({
   const handleAction = (action: MissionTaskAction) => {
     if (isPending) return;
 
+    onActionTriggered?.({ action, task });
     setError("");
     startTransition(async () => {
       try {

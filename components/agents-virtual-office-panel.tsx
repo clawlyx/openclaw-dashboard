@@ -167,11 +167,15 @@ type DetailFocus =
   | {
       kind: "room";
       roomId: string;
+      taskId?: string;
+      featureId?: string;
     }
   | {
       kind: "agent";
       roomId: string;
       agentId: string;
+      taskId?: string;
+      featureId?: string;
     }
   | null;
 
@@ -574,6 +578,31 @@ const getLiveMissionTasks = (missionControl: MissionControlSnapshot) =>
     ...missionControl.queue.runningTasks,
     ...missionControl.queue.readyTasks
   ].sort(sortMissionTasks);
+
+const buildFocusForTask = (
+  task: MissionControlTaskSnapshot,
+  agentRoomById: Map<string, string>,
+  agentById: Map<string, AgentSnapshot>
+): DetailFocus => {
+  const ownership = getMissionOwnership(task, agentRoomById);
+
+  if (ownership.agentId && agentById.has(ownership.agentId)) {
+    return {
+      kind: "agent",
+      agentId: ownership.agentId,
+      roomId: ownership.roomId,
+      taskId: task.tqId,
+      featureId: task.featureId
+    };
+  }
+
+  return {
+    kind: "room",
+    roomId: ownership.roomId,
+    taskId: task.tqId,
+    featureId: task.featureId
+  };
+};
 
 const getCompactRoomLabel = (roomId: string, roomLabel: string) => ROOM_SHORT_LABELS[roomId] || roomLabel.split(" ")[0] || roomLabel;
 
@@ -1066,9 +1095,56 @@ export function AgentsVirtualOfficePanel({
     [agents.agents, agents.rooms, common.na, roomMissionCoverage]
   );
 
-  const selectedRoomId = selectedFocus?.roomId || null;
+  const pinnedTask = selectedFocus?.taskId ? taskById.get(selectedFocus.taskId) || null : null;
+  const pinnedFeature =
+    (selectedFocus?.featureId ? featureById.get(selectedFocus.featureId) || null : null) ||
+    (pinnedTask ? featureById.get(pinnedTask.featureId) || null : null);
+  const replacementPinnedTask =
+    pinnedTask && pinnedTask.status !== "done"
+      ? pinnedTask
+      : pinnedFeature
+        ? [...pinnedFeature.tasks].filter((task) => task.status !== "done").sort(sortMissionTasks)[0] || null
+        : null;
+  const resolvedFocus = useMemo<DetailFocus>(() => {
+    if (!selectedFocus) return null;
+
+    if (selectedFocus.taskId || selectedFocus.featureId) {
+      if (replacementPinnedTask) {
+        return buildFocusForTask(replacementPinnedTask, agentRoomById, agentById);
+      }
+
+      if (selectedFocus.kind === "agent") {
+        const refreshedAgent = agentById.get(selectedFocus.agentId) || null;
+        return refreshedAgent ? { kind: "agent", agentId: refreshedAgent.id, roomId: refreshedAgent.roomId } : { kind: "room", roomId: selectedFocus.roomId };
+      }
+
+      return { kind: "room", roomId: selectedFocus.roomId };
+    }
+
+    if (selectedFocus.kind === "agent") {
+      const refreshedAgent = agentById.get(selectedFocus.agentId) || null;
+      if (!refreshedAgent) {
+        return { kind: "room", roomId: selectedFocus.roomId };
+      }
+
+      if (refreshedAgent.roomId !== selectedFocus.roomId) {
+        return { kind: "agent", agentId: refreshedAgent.id, roomId: refreshedAgent.roomId };
+      }
+    }
+
+    return selectedFocus;
+  }, [agentById, agentRoomById, replacementPinnedTask, selectedFocus]);
+  const selectedRoomId = resolvedFocus?.roomId || null;
   const selectedRoomEntry = roomEntries.find(({ room }) => room.id === selectedRoomId) || null;
-  const selectedAgent = selectedFocus?.kind === "agent" ? agentById.get(selectedFocus.agentId) || null : null;
+  const selectedAgent = resolvedFocus?.kind === "agent" ? agentById.get(resolvedFocus.agentId) || null : null;
+  const focusedMissionTasks = selectedAgent
+    ? [
+        ...liveMissionTasks.filter((task) => task.ownerAgentId === selectedAgent.id),
+        ...(selectedAgent.currentTaskId ? [taskById.get(selectedAgent.currentTaskId)] : [])
+      ].filter((task, index, tasks): task is MissionControlTaskSnapshot => Boolean(task) && tasks.indexOf(task) === index)
+    : selectedRoomId
+      ? liveMissionTasks.filter((task) => getMissionOwnership(task, agentRoomById).roomId === selectedRoomId)
+      : [];
   const selectedAgentIds = new Set(selectedRoomEntry?.roomAgents.map((agent) => agent.id) || []);
   const missionFeedTasks = useMemo(() => {
     const roomId = selectedRoomId;
@@ -1094,15 +1170,8 @@ export function AgentsVirtualOfficePanel({
   const selectedAgentStatusLabel = selectedAgent ? getStatusLabel(selectedAgent.status, copy) : null;
   const selectedAgentTaskLabel = selectedAgent ? getDeskTask(selectedAgent, copy, common.unavailable) : null;
   const selectedRoomMissionLabel = selectedRoomEntry?.missionCoverage.primaryFeatureTitle || copy.roomMissionIdle;
-  const focusedMissionTasks = selectedAgent
-    ? [
-        ...liveMissionTasks.filter((task) => task.ownerAgentId === selectedAgent.id),
-        ...(selectedAgent.currentTaskId ? [taskById.get(selectedAgent.currentTaskId)] : [])
-      ].filter((task, index, tasks): task is MissionControlTaskSnapshot => Boolean(task) && tasks.indexOf(task) === index)
-    : selectedRoomId
-      ? liveMissionTasks.filter((task) => getMissionOwnership(task, agentRoomById).roomId === selectedRoomId)
-      : [];
   const activeDetailTask =
+    replacementPinnedTask ||
     focusedMissionTasks[0] ||
     (selectedAgent?.currentTaskId ? taskById.get(selectedAgent.currentTaskId) || null : null);
   const activeDetailFeature = activeDetailTask ? featureById.get(activeDetailTask.featureId) || null : null;
@@ -1137,28 +1206,53 @@ export function AgentsVirtualOfficePanel({
     setSelectedFocus({ kind: "agent", agentId, roomId });
   };
 
-  const focusMissionOwnership = (ownership: MissionOwnership) => {
-    if (ownership.agentId && agentById.has(ownership.agentId)) {
-      focusAgent(ownership.agentId, ownership.roomId);
-      return;
-    }
+  const focusMissionTask = (task: MissionControlTaskSnapshot) => {
+    setSelectedFocus(buildFocusForTask(task, agentRoomById, agentById));
+  };
 
-    focusRoom(ownership.roomId);
+  const pinFocusedTask = (task: MissionControlTaskSnapshot) => {
+    setSelectedFocus((current) => {
+      if (!current) {
+        return buildFocusForTask(task, agentRoomById, agentById);
+      }
+
+      if (current.kind === "agent") {
+        return {
+          ...current,
+          taskId: task.tqId,
+          featureId: task.featureId
+        };
+      }
+
+      return {
+        ...current,
+        taskId: task.tqId,
+        featureId: task.featureId
+      };
+    });
   };
 
   const toggleRoomFocus = (roomId: string | null) => {
-    setSelectedFocus((current) => {
-      if (!roomId) return null;
-      if (current?.kind === "room" && current.roomId === roomId) return null;
-      return { kind: "room", roomId };
-    });
+    if (!roomId) {
+      setSelectedFocus(null);
+      return;
+    }
+
+    if (resolvedFocus?.kind === "room" && resolvedFocus.roomId === roomId) {
+      setSelectedFocus(null);
+      return;
+    }
+
+    setSelectedFocus({ kind: "room", roomId });
   };
 
   const toggleAgentFocus = (agent: AgentSnapshot) => {
-    setSelectedFocus((current) => {
-      if (current?.kind === "agent" && current.agentId === agent.id) return null;
-      return { kind: "agent", agentId: agent.id, roomId: agent.roomId };
-    });
+    if (resolvedFocus?.kind === "agent" && resolvedFocus.agentId === agent.id) {
+      setSelectedFocus(null);
+      return;
+    }
+
+    setSelectedFocus({ kind: "agent", agentId: agent.id, roomId: agent.roomId });
   };
 
   const handleRoomSpriteKeyDown = (event: KeyboardEvent<SVGGElement>, roomId: string) => {
@@ -1563,6 +1657,7 @@ export function AgentsVirtualOfficePanel({
                           copy={actionCopy}
                           mode={mutationMode}
                           showDisabledActions
+                          onActionTriggered={({ task }) => pinFocusedTask(task)}
                         />
                       </div>
                     ) : null}
@@ -1694,7 +1789,7 @@ export function AgentsVirtualOfficePanel({
                           key={task.tqId}
                           type="button"
                           className="virtualMissionCard virtualMissionCardButton"
-                          onClick={() => focusMissionOwnership(ownership)}
+                          onClick={() => focusMissionTask(task)}
                         >
                           <div className="virtualMissionCardHead">
                             <strong>{task.featureTitle}</strong>
