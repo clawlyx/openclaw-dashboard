@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 ## Current Position
 
 Phase: 2 of 4 (Detail Drawers)
-Plan: 2 of 2 in current phase
-Status: Ready to execute
-Last activity: 2026-03-14 — Planned Phase 2 around a shared office drawer, owner-context routing, and read-only detail content
+Plan: 1 of 2 completed in current phase
+Status: Executing plan 02-02
+Last activity: 2026-03-14 — Completed the shared drawer shell and unified room/mission/desk routing into one owner-detail surface
 
 Progress: [█████░░░░░] 50%
 
@@ -52,11 +52,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Detail drawers are planned; execution needs to preserve office readability while introducing the new focused detail surface
+- Drawer content still needs the current-task, handoff, and artifact joins promised by plan 02-02
 - Inline office actions must reuse Mission Control mutation rules instead of creating a second workflow layer
 
 ## Session Continuity
 
 Last session: 2026-03-14 14:05 EDT
-Stopped at: Phase 2 planned; next step is executing the drawer shell and detail-content plans
+Stopped at: Plan 02-01 complete; next step is filling the drawer with focused task, handoff, and artifact content
 Resume file: None
