@@ -1734,6 +1734,60 @@ tbody tr:last-child td {
   line-height: 1.6;
 }
 
+.missionTaskActions {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.missionTaskActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.missionTaskActionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--button-secondary-border);
+  background: var(--button-secondary-bg);
+  color: var(--button-secondary-color);
+  box-shadow: var(--button-secondary-shadow);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.missionTaskActionButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.missionTaskActionButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.missionTaskActionButton-primary {
+  border-color: var(--button-primary-border);
+  background: var(--button-primary-bg);
+  color: var(--button-primary-color);
+  box-shadow: var(--button-primary-shadow);
+}
+
+.missionTaskActionButton-warning {
+  border-color: color-mix(in srgb, var(--warning) 28%, var(--line));
+  background: color-mix(in srgb, var(--warning) 14%, var(--surface-chip));
+  color: var(--ink);
+}
+
 .missionFeatureCard {
   padding: 20px;
 }

@@ -277,7 +277,15 @@
     "intakeDetailsPlaceholder": "Describe the operator goal, the surface to change, and what done should look like.",
     "intakeRepoPlaceholder": "openclaw-dashboard",
     "intakeProjectPlaceholder": "mission-control-v1",
-    "intakeWorkspacePlaceholder": "openclaw-dashboard"
+    "intakeWorkspacePlaceholder": "openclaw-dashboard",
+    "actionStart": "Start",
+    "actionSendToReview": "Send to review",
+    "actionAdvance": "Advance lane",
+    "actionRelease": "Mark released",
+    "actionReady": "Return to ready",
+    "actionBlock": "Block",
+    "actionUpdating": "Updating...",
+    "actionError": "Unable to update this task right now."
   },
   "common": {
     "na": "N/A",

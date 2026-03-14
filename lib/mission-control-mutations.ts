@@ -91,8 +91,17 @@ export type MissionIntakeResult = {
   createdTask: MutableTaskRecord | null;
 };
 
+export type MissionTaskAction = "start" | "send-to-review" | "advance" | "ready" | "block";
+
+export type MissionTaskMutationResult = {
+  feature: MutableFeatureRecord;
+  task: MutableTaskRecord;
+  nextTask: MutableTaskRecord | null;
+};
+
 const DEFAULT_LAUNCHPAD_HOME = path.join(os.homedir(), ".agent-launchpad");
 const DEFAULT_REPO_ROOT = path.join(os.homedir(), "Documents", "GitHub");
+const TASK_LANES: MissionControlTaskLane[] = ["research", "build", "qa", "release"];
 
 let mutationQueue: Promise<unknown> = Promise.resolve();
 
@@ -166,6 +175,12 @@ const taskTitleForLane = (featureTitle: string, lane: MissionControlTaskLane) =>
     case "release":
       return `Release · ${featureTitle}`;
   }
+};
+
+const nextLaneAfter = (lane: MissionControlTaskLane) => {
+  const currentIndex = TASK_LANES.indexOf(lane);
+  if (currentIndex < 0 || currentIndex >= TASK_LANES.length - 1) return null;
+  return TASK_LANES[currentIndex + 1];
 };
 
 const touchTask = (
@@ -317,6 +332,21 @@ const syncFeatureArtifactBundle = async ({
   return paths;
 };
 
+const resolveArtifactIdea = (feature: MutableFeatureRecord, state: MutableState, at: string): MutableIdeaRecord =>
+  state.ideas.find((idea) => idea.ideaId === feature.linkedIdeaId) || {
+    ideaId: feature.linkedIdeaId || `${feature.featureId}-idea`,
+    title: feature.title,
+    status: "promoted",
+    project: feature.project,
+    workspace: feature.workspace,
+    repo: feature.repo,
+    rawPrompt: feature.summary,
+    brief: feature.summary,
+    featureId: feature.featureId,
+    createdAt: at,
+    updatedAt: at
+  };
+
 export const createMissionControlIntake = async (input: MissionIntakeInput): Promise<MissionIntakeResult> =>
   withStateLock(async () => {
     const title = normalizeText(input.title);
@@ -433,5 +463,171 @@ export const createMissionControlIntake = async (input: MissionIntakeInput): Pro
       idea,
       feature,
       createdTask: feature.tasks[0] || null
+    };
+  });
+
+export const updateMissionControlTask = async ({
+  tqId,
+  action
+}: {
+  tqId: string;
+  action: MissionTaskAction;
+}): Promise<MissionTaskMutationResult> =>
+  withStateLock(async () => {
+    const taskId = normalizeText(tqId);
+    if (!taskId) {
+      throw new Error("Task id is required");
+    }
+
+    const { launchpadHome, stateFile } = resolveRuntimePaths();
+    const state = await readState(stateFile);
+    const featureIndex = state.features.findIndex((feature) => feature.tasks.some((task) => task.tqId === taskId));
+
+    if (featureIndex < 0) {
+      throw new Error(`Task ${taskId} was not found in Launchpad state.`);
+    }
+
+    const sourceFeature = state.features[featureIndex];
+    const taskIndex = sourceFeature.tasks.findIndex((task) => task.tqId === taskId);
+    if (taskIndex < 0) {
+      throw new Error(`Task ${taskId} was not found in feature ${sourceFeature.featureId}.`);
+    }
+
+    const now = new Date().toISOString();
+    let nextTaskNumber = state.nextTaskNumber;
+    let nextTask: MutableTaskRecord | null = null;
+    let featureStatus = sourceFeature.status;
+    let currentLane = sourceFeature.currentLane;
+    let history = [...sourceFeature.history];
+    let tasks = sourceFeature.tasks.map((task) => ({ ...task }));
+
+    const sourceTask = tasks[taskIndex];
+    const updateSelectedTask = (status: MutableTaskStatus, summary: string) => {
+      tasks = tasks.map((task, index) =>
+        index === taskIndex
+          ? {
+              ...task,
+              status,
+              summary,
+              updatedAt: now
+            }
+          : task
+      );
+    };
+
+    switch (action) {
+      case "start":
+        updateSelectedTask("running", "Mission Control marked this task as running.");
+        featureStatus = transitionStatusForTarget(sourceTask.lane);
+        currentLane = sourceTask.lane;
+        history = appendHistory(history, "task", `${sourceTask.tqId} started from Mission Control.`, now);
+        break;
+      case "send-to-review":
+        updateSelectedTask("review", "Mission Control sent this task to review.");
+        featureStatus = sourceTask.lane === "research" ? "rfc-approved" : transitionStatusForTarget(sourceTask.lane);
+        currentLane = sourceTask.lane;
+        history = appendHistory(history, "task", `${sourceTask.tqId} moved to review.`, now);
+        break;
+      case "block":
+        updateSelectedTask("blocked", "Mission Control marked this task as blocked.");
+        featureStatus = "blocked";
+        currentLane = sourceTask.lane;
+        history = appendHistory(history, "task", `${sourceTask.tqId} was blocked.`, now);
+        break;
+      case "ready":
+        updateSelectedTask("ready", "Mission Control returned this task to ready.");
+        featureStatus = transitionStatusForTarget(sourceTask.lane);
+        currentLane = sourceTask.lane;
+        history = appendHistory(history, "task", `${sourceTask.tqId} returned to ready.`, now);
+        break;
+      case "advance": {
+        const followingLane = nextLaneAfter(sourceTask.lane);
+        updateSelectedTask(
+          "done",
+          followingLane
+            ? `Mission Control completed ${sourceTask.lane} and queued ${followingLane}.`
+            : "Mission Control completed the release lane."
+        );
+
+        if (followingLane) {
+          const existingNextTask = tasks.find((task) => task.lane === followingLane) ?? null;
+          const nextTaskId = existingNextTask?.tqId || formatTaskNumber(nextTaskNumber);
+          const followOnSummary =
+            followingLane === "build"
+              ? "Research is complete. Build is ready to start."
+              : followingLane === "qa"
+                ? "Build is complete. QA is ready to start."
+                : "QA is complete. Release is ready to start.";
+
+          tasks = touchTask(tasks, followingLane, nextTaskId, sourceFeature.title, followOnSummary, "ready");
+          nextTask = tasks.find((task) => task.lane === followingLane) || null;
+          if (!existingNextTask) {
+            nextTaskNumber += 1;
+          }
+          currentLane = followingLane;
+          featureStatus = transitionStatusForTarget(followingLane);
+          history = appendHistory(
+            history,
+            "advance",
+            `${sourceTask.tqId} completed and ${nextTaskId} entered ${followingLane}.`,
+            now
+          );
+        } else {
+          currentLane = "release";
+          featureStatus = "released";
+          history = appendHistory(history, "release", `${sourceTask.tqId} completed and the feature was released.`, now);
+        }
+        break;
+      }
+    }
+
+    let feature: MutableFeatureRecord = {
+      ...sourceFeature,
+      status: featureStatus,
+      currentLane,
+      tasks,
+      history
+    };
+
+    const artifactIdea = resolveArtifactIdea(feature, state, now);
+    const artifactRepoRoot = feature.delivery.repoRoot || advisoryArtifactRoot(launchpadHome, feature.featureId);
+    const artifacts = await syncFeatureArtifactBundle({
+      repoRoot: artifactRepoRoot,
+      feature,
+      idea: artifactIdea
+    });
+
+    feature = {
+      ...feature,
+      artifactRoot: artifacts.root,
+      artifacts: {
+        brief: artifacts.brief,
+        rfc: artifacts.rfc,
+        qa: artifacts.qa,
+        release: artifacts.release
+      },
+      delivery: {
+        ...feature.delivery,
+        repoRoot: artifactRepoRoot
+      }
+    };
+
+    const nextState: MutableState = {
+      ...state,
+      nextTaskNumber,
+      features: state.features.map((featureEntry, index) => (index === featureIndex ? feature : featureEntry))
+    };
+
+    await writeState(stateFile, nextState);
+
+    const task = feature.tasks.find((taskEntry) => taskEntry.tqId === taskId);
+    if (!task) {
+      throw new Error(`Task ${taskId} was updated but could not be resolved afterwards.`);
+    }
+
+    return {
+      feature,
+      task,
+      nextTask
     };
   });

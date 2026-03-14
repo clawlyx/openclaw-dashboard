@@ -277,7 +277,15 @@
     "intakeDetailsPlaceholder": "描述操作目标、需要调整的界面，以及完成后的验收状态。",
     "intakeRepoPlaceholder": "openclaw-dashboard",
     "intakeProjectPlaceholder": "mission-control-v1",
-    "intakeWorkspacePlaceholder": "openclaw-dashboard"
+    "intakeWorkspacePlaceholder": "openclaw-dashboard",
+    "actionStart": "开始执行",
+    "actionSendToReview": "送审",
+    "actionAdvance": "推进下一泳道",
+    "actionRelease": "标记为已发布",
+    "actionReady": "恢复 Ready",
+    "actionBlock": "标记阻塞",
+    "actionUpdating": "更新中...",
+    "actionError": "当前无法更新这个任务。"
   },
   "common": {
     "na": "N/A",

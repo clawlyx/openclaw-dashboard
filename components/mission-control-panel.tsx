@@ -10,6 +10,7 @@ import type {
   MissionControlTaskStatus
 } from "@/lib/mission-control";
 import { MissionIntakeForm } from "@/components/mission-intake-form";
+import { MissionTaskActions } from "@/components/mission-task-actions";
 import { SectionShell } from "@/components/section-shell";
 
 type MissionControlMessages = {
@@ -108,6 +109,14 @@ type MissionControlMessages = {
   intakeRepoPlaceholder: string;
   intakeProjectPlaceholder: string;
   intakeWorkspacePlaceholder: string;
+  actionStart: string;
+  actionSendToReview: string;
+  actionAdvance: string;
+  actionRelease: string;
+  actionReady: string;
+  actionBlock: string;
+  actionUpdating: string;
+  actionError: string;
 };
 
 type MissionControlPanelProps = {
@@ -185,6 +194,36 @@ const labelDeliveryMode = (mode: MissionControlDeliveryMode, copy: MissionContro
   }
 };
 
+const TaskCard = ({
+  task,
+  copy,
+  common,
+  locale
+}: {
+  task: MissionControlTaskSnapshot;
+  copy: MissionControlMessages;
+  common: { na: string };
+  locale: Locale;
+}) => (
+  <article className="missionTaskCard">
+    <div className="missionTaskTop">
+      <span className="missionTiny">{task.tqId}</span>
+      <span className={`missionBadge missionBadgeStatus missionStatus-${task.status}`}>{labelTaskStatus(task.status, copy)}</span>
+    </div>
+    <strong className="missionTaskTitle">{task.title}</strong>
+    <p className="missionTaskSummary">{task.summary || common.na}</p>
+    <div className="missionMetaRow">
+      <span>{task.featureTitle}</span>
+      <span>{labelLane(task.lane, copy)}</span>
+    </div>
+    <div className="missionMetaRow missionMetaRowMuted">
+      <span>{task.repo}</span>
+      <span>{formatDateTimeLabel(Date.parse(task.updatedAt), locale, common.na)}</span>
+    </div>
+    <MissionTaskActions task={task} copy={copy} />
+  </article>
+);
+
 const QueueColumn = ({
   title,
   tasks,
@@ -206,22 +245,7 @@ const QueueColumn = ({
     {tasks.length ? (
       <div className="missionLaneList">
         {tasks.map((task) => (
-          <article key={task.tqId} className="missionTaskCard">
-            <div className="missionTaskTop">
-              <span className="missionTiny">{task.tqId}</span>
-              <span className={`missionBadge missionBadgeStatus missionStatus-${task.status}`}>{labelTaskStatus(task.status, copy)}</span>
-            </div>
-            <strong className="missionTaskTitle">{task.title}</strong>
-            <p className="missionTaskSummary">{task.summary || common.na}</p>
-            <div className="missionMetaRow">
-              <span>{task.featureTitle}</span>
-              <span>{labelLane(task.lane, copy)}</span>
-            </div>
-            <div className="missionMetaRow missionMetaRowMuted">
-              <span>{task.repo}</span>
-              <span>{formatDateTimeLabel(Date.parse(task.updatedAt), locale, common.na)}</span>
-            </div>
-          </article>
+          <TaskCard key={task.tqId} task={task} copy={copy} common={common} locale={locale} />
         ))}
       </div>
     ) : (
@@ -457,18 +481,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
             {missionControl.review.reviewTasks.length ? (
               <div className="missionLaneList">
                 {missionControl.review.reviewTasks.map((task) => (
-                  <article key={task.tqId} className="missionTaskCard">
-                    <div className="missionTaskTop">
-                      <span className="missionTiny">{task.tqId}</span>
-                      <span className="missionBadge missionBadgeStatus missionStatus-review">{labelTaskStatus(task.status, copy)}</span>
-                    </div>
-                    <strong className="missionTaskTitle">{task.title}</strong>
-                    <p className="missionTaskSummary">{task.summary || common.na}</p>
-                    <div className="missionMetaRow">
-                      <span>{task.featureTitle}</span>
-                      <span>{task.repo}</span>
-                    </div>
-                  </article>
+                  <TaskCard key={task.tqId} task={task} copy={copy} common={common} locale={locale} />
                 ))}
               </div>
             ) : (
