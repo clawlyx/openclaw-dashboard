@@ -4,6 +4,7 @@
 
 - Name: `OpenClaw Dashboard`
 - Version / phase: `V2 - Mission Control`
+- Release target: `1.0.0`
 
 ## Goal
 
