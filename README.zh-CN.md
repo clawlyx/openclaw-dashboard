@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-一个面向 OpenClaw 的运维仪表盘，提供 Agents、概览、历史、用量和调度等独立工作区。
+一个面向 OpenClaw 的工作站应用，提供 Agents、Mission Control、概览、历史、用量和调度等独立工作区。
 
 <p align="center">
   <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard Agents 虚拟办公室桌面端预览" width="78%" />
@@ -11,6 +11,9 @@
 
 ## 其他页面预览
 
+<p align="center">
+  <img src="./.github/assets/preview-mission-control.png" alt="OpenClaw Dashboard Mission Control 页面预览" width="100%" />
+</p>
 <p align="center">
   <img src="./.github/assets/preview-overview.png" alt="OpenClaw Dashboard 概览页面预览" width="49%" />
   <img src="./.github/assets/preview-history.png" alt="OpenClaw Dashboard 历史页面预览" width="49%" />
@@ -23,8 +26,10 @@
 ## 功能特性
 
 - 顶部主菜单 + 左侧上下文导航 + 单面板渲染的 dashboard shell
-- 独立的 `Agents` 工作区和按房间组织的二级导航
+- 独立的 `Agents` 工作区，带按房间组织的二级导航和 Mission Control 联动
 - 用像素风 `Virtual Office` 直观展示 active / waiting / blocked / idle agents
+- 在办公室视图里直接展示房间级任务归属、内联 mission queue，以及点击任务卡后聚焦归属房间
+- 顶级 `Mission Control` 工作区，用于任务 intake、队列推进、评审压力和发布就绪状态
 - `Office Floor`、`Queues & handoffs`、`Recent activity` 三个补充面板，用于快速理解 agent 运转状态
 - 最新 usage 报告摘要
 - 已连接 providers 视图，包含 auth/profile 元数据、active 高亮和可复用的限额 tile
@@ -38,7 +43,7 @@
 - 面向公开预览和首次运行的内置 demo 数据自动回退
 - 基于多份报告归一化后的 usage 历史和趋势图
 
-这个仓库的目标不局限于单个 usage report skill，而是一个可以继续扩展到 agent 运维、channels、browser telemetry、delivery health 和 host-level schedulers 的完整 OpenClaw dashboard。
+这个仓库的目标不局限于单个 usage report skill，而是一个可以继续扩展到 agent 运维、Mission Control、channels、browser telemetry、delivery health 和 host-level schedulers 的完整 OpenClaw 工作站。
 
 ## 工作方式
 
@@ -115,7 +120,8 @@ pnpm check
 
 ## 当前页面
 
-- `Agents`：Virtual Office、Office Floor、Queues & handoffs、Recent activity
+- `Agents`：Virtual Office、房间级任务归属、内联 mission queue、Office Floor、Queues & handoffs、Recent activity
+- `Mission Control`：Active missions、Execution queue、Review desk、Release lane、Mission intake
 - `Overview`：最新摘要卡片和高优先级运行状态
 - `History`：usage 历史趋势和图表视图
 - `Usage`：provider 状态、滚动限额、来源占比和模型明细
@@ -149,7 +155,7 @@ pnpm check
 - 真实的 `~/.openclaw` 快照，除非你明确要公开
 
 `demo/openclaw-home` 下的 demo 数据是合成的，可以安全发布。  
-`.github/assets/readme-demo.png`、`.github/assets/readme-mobile.png` 和 `.github/assets/social-preview.png` 里的公开截图都应始终基于内置 demo 数据生成。
+`.github/assets/readme-demo.png`、`.github/assets/readme-mobile.png`、`.github/assets/preview-mission-control.png` 和 `.github/assets/social-preview.png` 里的公开截图都应始终基于内置 demo 数据生成。
 
 ## 项目文档
 

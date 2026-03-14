@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-OpenClaw dashboard with dedicated Agents, Overview, History, Usage, and Scheduler workspaces.
+OpenClaw workstation with dedicated Agents, Mission Control, Overview, History, Usage, and Scheduler workspaces.
 
 <p align="center">
   <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard agents virtual office desktop preview" width="78%" />
@@ -11,6 +11,9 @@ OpenClaw dashboard with dedicated Agents, Overview, History, Usage, and Schedule
 
 ## Other Workspaces
 
+<p align="center">
+  <img src="./.github/assets/preview-mission-control.png" alt="OpenClaw Dashboard mission control workspace preview" width="100%" />
+</p>
 <p align="center">
   <img src="./.github/assets/preview-overview.png" alt="OpenClaw Dashboard overview workspace preview" width="49%" />
   <img src="./.github/assets/preview-history.png" alt="OpenClaw Dashboard history workspace preview" width="49%" />
@@ -23,8 +26,10 @@ OpenClaw dashboard with dedicated Agents, Overview, History, Usage, and Schedule
 ## Features
 
 - top-level dashboard shell with a primary menu, contextual left navigation, and single-panel rendering
-- dedicated `Agents` workspace with room-based navigation
+- dedicated `Agents` workspace with room-based navigation and live Mission Control join-up
 - `Virtual Office` pixel office scene for active, waiting, blocked, and idle agents
+- room-level mission ownership inside the office view, including inline mission queue cards that can focus the owning room
+- top-level `Mission Control` workspace for mission intake, queue progress, review pressure, and release readiness
 - `Office Floor`, `Queues & handoffs`, and `Recent activity` panels for simplified agent operations visibility
 - latest usage report summary
 - connected providers with auth/profile metadata, active highlighting, and reusable limit tiles
@@ -38,7 +43,7 @@ OpenClaw dashboard with dedicated Agents, Overview, History, Usage, and Schedule
 - automatic fallback to a bundled demo dataset for public previews and first-run setup
 - normalized usage history and trend charts across multiple reports
 
-The repo is intentionally broader than a single usage report skill. The goal is a proper OpenClaw dashboard that can grow into agent operations, channels, browser telemetry, delivery health, and host-level schedulers.
+The repo is intentionally broader than a single usage report skill. The goal is a proper OpenClaw workstation that can grow into agent operations, mission control, channels, browser telemetry, delivery health, and host-level schedulers.
 
 ## How it works
 
@@ -122,7 +127,8 @@ request.
 
 ## Current Surfaces
 
-- `Agents`: virtual office, office floor, queues and handoffs, recent activity
+- `Agents`: virtual office, room mission ownership, inline mission queue, office floor, queues and handoffs, recent activity
+- `Mission Control`: active missions, execution queue, review desk, release lane, and mission intake
 - `Overview`: latest summary cards and high-signal operational state
 - `History`: usage history trends and chart views
 - `Usage`: provider state, rolling limits, source share, and model breakdown
@@ -156,7 +162,7 @@ Do not commit:
 - real `~/.openclaw` snapshots unless you explicitly want them public
 
 The demo dataset under `demo/openclaw-home` is synthetic and safe to publish.
-The public screenshots in `.github/assets/readme-demo.png`, `.github/assets/readme-mobile.png`, and `.github/assets/social-preview.png` should always be generated from the bundled demo dataset.
+The public screenshots in `.github/assets/readme-demo.png`, `.github/assets/readme-mobile.png`, `.github/assets/preview-mission-control.png`, and `.github/assets/social-preview.png` should always be generated from the bundled demo dataset.
 
 ## Project Docs
 
