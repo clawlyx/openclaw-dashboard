@@ -61,6 +61,10 @@ type AgentsVirtualOfficeMessages = {
   floorAttention: string;
   floorHint: string;
   fallbackOffice: string;
+  missionQueueTitle: string;
+  missionQueueCopy: string;
+  missionQueueEmpty: string;
+  missionUpdated: string;
   deskFeedTitle: string;
   deskFeedCopy: string;
   attentionTitle: string;
@@ -961,6 +965,11 @@ export function AgentsVirtualOfficePanel({
 
   const selectedRoomEntry = roomEntries.find(({ room }) => room.id === selectedRoomId) || null;
   const selectedAgentIds = new Set(selectedRoomEntry?.roomAgents.map((agent) => agent.id) || []);
+  const missionFeedTasks = useMemo(() => {
+    const roomId = selectedRoomEntry?.room.id;
+    if (!roomId) return liveMissionTasks.slice(0, 4);
+    return liveMissionTasks.filter((task) => getMissionRoomId(task) === roomId).slice(0, 4);
+  }, [liveMissionTasks, selectedRoomEntry]);
   const deskFeedAgents = [...(selectedRoomEntry ? selectedRoomEntry.roomAgents : onlineAgents)]
     .filter((agent) => agent.status !== "offline")
     .sort(sortByLoad)
@@ -1240,42 +1249,76 @@ export function AgentsVirtualOfficePanel({
           </div>
 
           <div className="virtualOfficeDigestGrid">
-            <article className="virtualOfficeRail">
-              <div className="virtualOfficeRailHeader">
-                <div>
-                  <p className="eyebrow">{activeRoomLabel}</p>
-                  <h3>{copy.deskFeedTitle}</h3>
+            <div className="virtualOfficeRailStack">
+              <article className="virtualOfficeRail">
+                <div className="virtualOfficeRailHeader">
+                  <div>
+                    <p className="eyebrow">{activeRoomLabel}</p>
+                    <h3>{copy.missionQueueTitle}</h3>
+                  </div>
+                  <p className="virtualOfficeRailCopy">{copy.missionQueueCopy}</p>
                 </div>
-                <p className="virtualOfficeRailCopy">{copy.deskFeedCopy}</p>
-              </div>
 
-              <div className="virtualDeskList">
-                {deskFeedAgents.length ? (
-                  deskFeedAgents.map((agent) => (
-                    <article key={agent.id} className={`virtualDeskCard virtualDeskCard${agent.status}`}>
-                      <div className="virtualDeskCardHead">
-                        <strong>{agent.name}</strong>
-                        <span>{getStatusLabel(agent.status, copy)}</span>
-                      </div>
-                      <p>{getDeskTask(agent, copy, common.unavailable)}</p>
-                      <div className="virtualDeskCardMeta">
-                        <span>
-                          {copy.focus}: {agent.focus || common.na}
-                        </span>
-                        <span>
-                          {copy.nextHandoff}: {agent.nextHandoff || common.na}
-                        </span>
-                        <span>
-                          {copy.lastEvent}: {formatDateTimeLabel(parseTimestampMs(agent.lastEventAt), locale, common.na)}
-                        </span>
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <div className="virtualOfficeEmpty">{copy.roomEmpty}</div>
-                )}
-              </div>
-            </article>
+                <div className="virtualMissionList">
+                  {missionFeedTasks.length ? (
+                    missionFeedTasks.map((task) => (
+                      <article key={task.tqId} className="virtualMissionCard">
+                        <div className="virtualMissionCardHead">
+                          <strong>{task.featureTitle}</strong>
+                          <span>{task.tqId}</span>
+                        </div>
+                        <p>{task.title}</p>
+                        {task.summary ? <p className="virtualMissionCardSummary">{task.summary}</p> : null}
+                        <div className="virtualDeskCardMeta">
+                          <span>
+                            {copy.missionUpdated}: {formatDateTimeLabel(parseTimestampMs(task.updatedAt), locale, common.na)}
+                          </span>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="virtualOfficeEmpty">{copy.missionQueueEmpty}</div>
+                  )}
+                </div>
+              </article>
+
+              <article className="virtualOfficeRail">
+                <div className="virtualOfficeRailHeader">
+                  <div>
+                    <p className="eyebrow">{activeRoomLabel}</p>
+                    <h3>{copy.deskFeedTitle}</h3>
+                  </div>
+                  <p className="virtualOfficeRailCopy">{copy.deskFeedCopy}</p>
+                </div>
+
+                <div className="virtualDeskList">
+                  {deskFeedAgents.length ? (
+                    deskFeedAgents.map((agent) => (
+                      <article key={agent.id} className={`virtualDeskCard virtualDeskCard${agent.status}`}>
+                        <div className="virtualDeskCardHead">
+                          <strong>{agent.name}</strong>
+                          <span>{getStatusLabel(agent.status, copy)}</span>
+                        </div>
+                        <p>{getDeskTask(agent, copy, common.unavailable)}</p>
+                        <div className="virtualDeskCardMeta">
+                          <span>
+                            {copy.focus}: {agent.focus || common.na}
+                          </span>
+                          <span>
+                            {copy.nextHandoff}: {agent.nextHandoff || common.na}
+                          </span>
+                          <span>
+                            {copy.lastEvent}: {formatDateTimeLabel(parseTimestampMs(agent.lastEventAt), locale, common.na)}
+                          </span>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="virtualOfficeEmpty">{copy.roomEmpty}</div>
+                  )}
+                </div>
+              </article>
+            </div>
 
             <article className="virtualOfficeRail">
               <div className="virtualOfficeRailHeader">
