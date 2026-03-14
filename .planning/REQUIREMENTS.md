@@ -5,7 +5,7 @@
 
 ## v1 Requirements
 
-Current milestone: explicit ownership and office actions.
+Current milestone: explicit ownership, office actions, and pressure signals.
 
 ### Ownership Contract
 
@@ -28,9 +28,9 @@ Current milestone: explicit ownership and office actions.
 
 ### Pressure Signals
 
-- [ ] **PRES-01**: Office surfaces highlight stale review, blocked-too-long, no-owner, and waiting-on-human pressure states
-- [ ] **PRES-02**: Room overload and attention ordering surface the highest urgency work first
-- [ ] **PRES-03**: Fallback mode remains readable when explicit ownership fields are missing on live data
+- [x] **PRES-01**: Office surfaces highlight stale review, blocked-too-long, no-owner, and waiting-on-human pressure states
+- [x] **PRES-02**: Room overload and attention ordering surface the highest urgency work first
+- [x] **PRES-03**: Fallback mode remains readable when explicit ownership fields are missing on live data
 
 ## v2 Requirements
 
@@ -67,9 +67,9 @@ Current milestone: explicit ownership and office actions.
 | ACT-01 | Phase 3 | Complete |
 | ACT-02 | Phase 3 | Complete |
 | ACT-03 | Phase 3 | Complete |
-| PRES-01 | Phase 4 | Pending |
-| PRES-02 | Phase 4 | Pending |
-| PRES-03 | Phase 4 | Pending |
+| PRES-01 | Phase 4 | Complete |
+| PRES-02 | Phase 4 | Complete |
+| PRES-03 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 13 total
@@ -78,4 +78,4 @@ Current milestone: explicit ownership and office actions.
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-14 after completing Phase 3 office actions*
+*Last updated: 2026-03-14 after completing Phase 4 pressure signals*

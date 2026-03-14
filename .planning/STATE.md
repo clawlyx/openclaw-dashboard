@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.
-**Current focus:** Phase 4: Pressure Signals
+**Current focus:** Milestone complete: explicit ownership workstation
 
 ## Current Position
 
-Phase: 4 of 4 (Pressure Signals)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-03-14 — Completed Phase 3 with verified office mutations, remote-mode disabled states, and refreshed-focus repair
+Phase: 4 of 4 complete
+Plan: 2 of 2 in current phase
+Status: Ready for milestone completion
+Last activity: 2026-03-14 — Completed Phase 4 with verified pressure signals, bundled demo assets, and `1.2.0` release packaging
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 8
 - Average duration: 1 session
-- Total execution time: 3 sessions
+- Total execution time: 6 sessions
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [████████░░] 75%
 | 1 | 2 | 2 sessions | 1 session |
 | 2 | 2 | 2 sessions | 1 session |
 | 3 | 2 | 1 session | 30 min |
+| 4 | 2 | 1 session | 30 min |
 
 **Recent Trend:**
-- Last 6 plans: 5 sessions
+- Last 8 plans: 6 sessions
 - Trend: Stable
 
 ## Accumulated Context
@@ -54,11 +55,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Pressure signals must stay explainable and operator-facing instead of turning into opaque scoring noise
-- Demo data, screenshots, and validation assets need a safe refresh before the milestone can be packaged
+- None blocking. The next step is milestone completion and archival.
 
 ## Session Continuity
 
-Last session: 2026-03-14 14:05 EDT
-Stopped at: Phase 3 complete; next step is planning pressure signals and release assets
+Last session: 2026-03-14 19:50 EDT
+Stopped at: Phase 4 complete; next step is milestone completion and archival
 Resume file: None
