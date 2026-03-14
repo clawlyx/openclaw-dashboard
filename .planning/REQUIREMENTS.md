@@ -22,9 +22,9 @@ Current milestone: explicit ownership and office actions.
 
 ### Office Actions
 
-- [ ] **ACT-01**: Office surfaces can trigger supported `advance` and `ready` transitions for the selected task
-- [ ] **ACT-02**: Office surfaces can trigger supported `block` and `request review` transitions for the selected task
-- [ ] **ACT-03**: After an office action, the UI refreshes from Mission Control truth and matches the Mission Control workspace state
+- [x] **ACT-01**: Office surfaces can trigger supported `advance` and `ready` transitions for the selected task
+- [x] **ACT-02**: Office surfaces can trigger supported `block` and `request review` transitions for the selected task
+- [x] **ACT-03**: After an office action, the UI refreshes from Mission Control truth and matches the Mission Control workspace state
 
 ### Pressure Signals
 
@@ -64,9 +64,9 @@ Current milestone: explicit ownership and office actions.
 | DRAW-01 | Phase 2 | Complete |
 | DRAW-02 | Phase 2 | Complete |
 | DRAW-03 | Phase 2 | Complete |
-| ACT-01 | Phase 3 | Pending |
-| ACT-02 | Phase 3 | Pending |
-| ACT-03 | Phase 3 | Pending |
+| ACT-01 | Phase 3 | Complete |
+| ACT-02 | Phase 3 | Complete |
+| ACT-03 | Phase 3 | Complete |
 | PRES-01 | Phase 4 | Pending |
 | PRES-02 | Phase 4 | Pending |
 | PRES-03 | Phase 4 | Pending |
@@ -78,4 +78,4 @@ Current milestone: explicit ownership and office actions.
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-14 after completing Phase 2 detail drawers*
+*Last updated: 2026-03-14 after completing Phase 3 office actions*
