@@ -757,6 +757,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <AgentsVirtualOfficePanel
             id="agents"
             agents={agents}
+            missionControl={missionControl}
             locale={locale}
             copy={t.agents}
             common={t.common}
