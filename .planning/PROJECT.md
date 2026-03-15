@@ -16,6 +16,15 @@ OpenClaw Dashboard is the operator workstation for a local OpenClaw setup. It tu
 
 One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.
 
+## Current Milestone: v1.3.0 Operator Intelligence
+
+**Goal:** Turn the workstation from a strong current-state console into a predictive operator surface that shows what is slipping, where pressure is building, and which rooms or missions need intervention first.
+
+**Target features:**
+- aging and SLA-style history for tasks, rooms, and review lanes
+- operator summary surfaces for top stale work, overloaded rooms, and handoff bottlenecks
+- trend-aware room and mission detail views that explain whether pressure is new, ongoing, or improving
+
 ## Requirements
 
 ### Validated
@@ -27,7 +36,10 @@ One workstation should let the operator see who owns work, what needs action nex
 
 ### Active
 
-- No active milestone requirements. Start the next version with `$gsd-new-milestone`.
+- [ ] Operator can see aging and wait-time trends for missions, rooms, and review queues
+- [ ] Operator can compare rooms by throughput, queue age, and overload frequency
+- [ ] Operator can open detail views that show recent pressure history, not just the latest snapshot
+- [ ] Operator can tell whether pressure is new, ongoing, or improving
 
 ### Out of Scope
 
@@ -45,9 +57,9 @@ One workstation should let the operator see who owns work, what needs action nex
 
 ## Next Milestone Goals
 
-- Define the next milestone with `$gsd-new-milestone`
-- Decide whether the next version should prioritize operator intelligence metrics, host/runtime controls, or a broader control surface
-- Keep milestone scope explicit and versioned rather than letting the workstation sprawl without a contract
+- Build `1.3.0` around operator intelligence instead of adding more action surface first
+- Keep the milestone focused on visibility and prioritization, not host/runtime control
+- Preserve the explainable, snapshot-derived model established in `1.2.0`
 
 ## Constraints
 
@@ -77,4 +89,4 @@ One workstation should let the operator see who owns work, what needs action nex
 </details>
 
 ---
-*Last updated: 2026-03-14 after v1.2.0 milestone*
+*Last updated: 2026-03-14 after starting v1.3.0 milestone*
