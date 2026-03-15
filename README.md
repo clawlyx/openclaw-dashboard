@@ -26,9 +26,12 @@ OpenClaw workstation with dedicated Agents, Mission Control, Overview, History, 
 ## Features
 
 - top-level dashboard shell with a primary menu, contextual left navigation, and single-panel rendering
-- dedicated `Agents` workspace with room-based navigation and live Mission Control join-up
+- dedicated `Agents` workspace with room-based navigation, explicit mission ownership, and live Mission Control join-up
 - `Virtual Office` pixel office scene for active, waiting, blocked, and idle agents
 - room-level mission ownership inside the office view, including inline mission queue cards that can focus the owning room
+- shared room or agent detail drawer with task path, handoffs, and linked artifacts
+- inline office actions for advancing, blocking, or resetting the focused Mission Control task
+- a pressure rail that surfaces stale review, blocked-too-long, waiting-on-human, inferred ownership, and overloaded rooms
 - top-level `Mission Control` workspace for mission intake, queue progress, review pressure, and release readiness
 - `Office Floor`, `Queues & handoffs`, and `Recent activity` panels for simplified agent operations visibility
 - latest usage report summary
@@ -47,10 +50,11 @@ The repo is intentionally broader than a single usage report skill. The goal is 
 
 ## How it works
 
-The app supports two data modes:
+The app supports separate source paths for the two live datasets:
 
-- live mode: reads from `OPENCLAW_HOME` or `~/.openclaw`
-- demo mode: if neither path exists, it falls back to `demo/openclaw-home`
+- agents + usage + scheduler: reads from `OPENCLAW_HOME` or `~/.openclaw`
+- mission control: reads from `AGENT_LAUNCHPAD_HOME` or `~/.agent-launchpad`
+- demo mode: if either live path is missing, that surface falls back to bundled demo data
 - local frontend binding: `pnpm dev` / `pnpm start` read `DASHBOARD_URL` from `.env` or `.env.local`
 
 This makes the repo publishable as-is while still preferring real local data on machines that
@@ -101,11 +105,13 @@ DASHBOARD_URL=http://localhost:3000
 
 Then just run `pnpm dev` or `pnpm start`. The scripts will bind Next.js to that host and port. You can keep `.env.example` on `3000` and override your own local `.env` to `3200` or any other free port.
 
-If you want to force the demo dataset for screenshots, previews, or CI, put this in `.env` / `.env.local` or use it inline:
+If you want to force the fully bundled demo dataset for screenshots, previews, or CI, put this in `.env` / `.env.local` or use it inline:
 
 ```bash
-OPENCLAW_HOME=demo/openclaw-home pnpm dev
+OPENCLAW_HOME=demo/openclaw-home AGENT_LAUNCHPAD_HOME=/tmp/openclaw-dashboard-demo pnpm dev
 ```
+
+The `AGENT_LAUNCHPAD_HOME` path above can point to a missing directory. When no Launchpad state file exists there, Mission Control falls back to the bundled sample state instead of your real local queue.
 
 ## Validation
 
@@ -127,7 +133,7 @@ request.
 
 ## Current Surfaces
 
-- `Agents`: virtual office, room mission ownership, inline mission queue, office floor, queues and handoffs, recent activity
+- `Agents`: virtual office, room mission ownership, owner detail drawer, inline office actions, pressure rail, office floor, queues and handoffs, recent activity
 - `Mission Control`: active missions, execution queue, review desk, release lane, and mission intake
 - `Overview`: latest summary cards and high-signal operational state
 - `History`: usage history trends and chart views

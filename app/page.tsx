@@ -143,6 +143,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const snapshot = await getDashboardSnapshot();
   const { usage, cron, agents, missionControl, openclawHome, openclawSourceKind, openclawSourceLabel } = snapshot;
+  const missionMutationMode = process.env.AGENT_LAUNCHPAD_API_BASE_URL?.trim() ? "remote" : "local";
   const na = t.common.na;
   const unavailable = t.common.unavailable;
 
@@ -758,9 +759,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             id="agents"
             agents={agents}
             missionControl={missionControl}
+            generatedAt={snapshot.generatedAt}
             locale={locale}
             copy={t.agents}
             common={t.common}
+            actionCopy={t.missionControl}
+            mutationMode={missionMutationMode}
           />
         );
       }

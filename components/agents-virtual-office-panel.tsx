@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type KeyboardEvent } from "react";
 
+import { MissionTaskActions, type MissionTaskActionMessages } from "@/components/mission-task-actions";
 import { SectionShell } from "@/components/section-shell";
 import { formatDateTimeLabel } from "@/lib/dashboard-presenters";
 import { formatMessage, type Locale } from "@/lib/i18n";
@@ -13,6 +14,8 @@ import type {
   AgentWorkStatus
 } from "@/lib/agents";
 import type { MissionControlSnapshot, MissionControlTaskSnapshot, MissionControlTaskStatus } from "@/lib/mission-control";
+import type { MissionTaskMutationMode } from "@/lib/mission-control-actions";
+import { buildPressureSignalsModel, type PressureSignal, type PressureSignalSeverity } from "@/lib/pressure-signals";
 
 type AgentsVirtualOfficeMessages = {
   section: string;
@@ -39,6 +42,7 @@ type AgentsVirtualOfficeMessages = {
   roomLead: string;
   roomCapacity: string;
   roomQueue: string;
+  roomPressure: string;
   roomMission: string;
   roomMissionIdle: string;
   roomEmpty: string;
@@ -65,11 +69,53 @@ type AgentsVirtualOfficeMessages = {
   missionQueueCopy: string;
   missionQueueEmpty: string;
   missionUpdated: string;
+  missionSignals: string;
   missionOwnerRoom: string;
+  missionOwnerAgent: string;
+  missionOwnership: string;
+  ownershipExplicit: string;
+  ownershipInferred: string;
+  detailDrawerTitle: string;
+  detailDrawerCopy: string;
+  detailDrawerIdleTitle: string;
+  detailDrawerIdleCopy: string;
+  detailDrawerClear: string;
+  detailMissionTitle: string;
+  detailFeature: string;
+  detailTaskId: string;
+  detailStatus: string;
+  detailActionsTitle: string;
+  detailPathTitle: string;
+  detailLastCompleted: string;
+  detailNextStep: string;
+  detailBlockedReason: string;
+  detailWaitingOn: string;
+  detailHandoffTitle: string;
+  detailHandoffEmpty: string;
+  detailArtifactsTitle: string;
+  detailBranch: string;
+  detailPr: string;
+  detailBrief: string;
+  detailRfc: string;
+  detailQa: string;
+  detailRelease: string;
+  detailArtifactsEmpty: string;
   deskFeedTitle: string;
   deskFeedCopy: string;
   attentionTitle: string;
   attentionCopy: string;
+  pressureTitleStaleReview: string;
+  pressureTitleBlocked: string;
+  pressureTitleWaitingHuman: string;
+  pressureTitleNoOwner: string;
+  pressureTitleRoomOverload: string;
+  pressureSeverityCritical: string;
+  pressureSeverityHigh: string;
+  pressureSeverityMedium: string;
+  pressureSeverityLow: string;
+  pressureAgeHours: string;
+  pressureWaitingOnHint: string;
+  pressureSignalCount: string;
   roomOccupancy: string;
   timelineTitle: string;
   timelineCopy: string;
@@ -112,6 +158,14 @@ type SceneArea = {
   focusSpots?: SceneSpot[];
 };
 
+type MissionOwnershipSource = "explicit" | "inferred";
+
+type MissionOwnership = {
+  roomId: string;
+  agentId?: string;
+  source: MissionOwnershipSource;
+};
+
 type RoomMissionCoverage = {
   roomId: string;
   taskCount: number;
@@ -120,7 +174,25 @@ type RoomMissionCoverage = {
   blockedCount: number;
   primaryFeatureTitle?: string;
   primaryTaskTitle?: string;
+  primaryOwnerAgentId?: string;
+  primaryOwnershipSource?: MissionOwnershipSource;
 };
+
+type DetailFocus =
+  | {
+      kind: "room";
+      roomId: string;
+      taskId?: string;
+      featureId?: string;
+    }
+  | {
+      kind: "agent";
+      roomId: string;
+      agentId: string;
+      taskId?: string;
+      featureId?: string;
+    }
+  | null;
 
 const createEmptyRoomMissionCoverage = (roomId: string): RoomMissionCoverage => ({
   roomId,
@@ -133,6 +205,13 @@ const createEmptyRoomMissionCoverage = (roomId: string): RoomMissionCoverage => 
 const VIEWBOX_WIDTH = 160;
 const VIEWBOX_HEIGHT = 96;
 type SceneDensity = "overview" | "focus";
+
+const PRESSURE_SEVERITY_WEIGHT: Record<PressureSignalSeverity, number> = {
+  critical: 400,
+  high: 300,
+  medium: 200,
+  low: 100
+};
 
 const SEAT_SCALE: Record<SceneDensity, number> = {
   overview: 0.82,
@@ -381,6 +460,17 @@ const parseTimestampMs = (value?: string) => {
   return Number.isFinite(valueMs) ? valueMs : undefined;
 };
 
+const sortUpdatedDesc = (left: { updatedAt?: string }, right: { updatedAt?: string }) =>
+  (parseTimestampMs(right.updatedAt) || 0) - (parseTimestampMs(left.updatedAt) || 0);
+
+const humanizeStateLabel = (value?: string) =>
+  value
+    ? value
+        .split("-")
+        .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+        .join(" ")
+    : undefined;
+
 const getFallbackPersona = (roomId: string): LobsterPersona => {
   switch (roomId) {
     case "dispatch":
@@ -466,12 +556,59 @@ const getRoomStatus = (roomAgents: AgentSnapshot[]): AgentWorkStatus => {
   return [...roomAgents].sort((left, right) => STATUS_PRIORITY[right.status] - STATUS_PRIORITY[left.status])[0]?.status || "idle";
 };
 
-const getMissionRoomId = (task: MissionControlTaskSnapshot) => {
+const getInferredMissionRoomId = (task: MissionControlTaskSnapshot) => {
   if (task.status === "review" || task.lane === "qa") return "review";
   if (task.lane === "research") return "research";
   if (task.lane === "build") return "build";
   if (task.lane === "release") return "release";
   return "dispatch";
+};
+
+const getMissionOwnership = (
+  task: MissionControlTaskSnapshot,
+  agentRoomById: Map<string, string>
+): MissionOwnership => {
+  const source: MissionOwnershipSource = task.ownerAgentId || task.ownerRoomId ? "explicit" : "inferred";
+
+  return {
+    roomId:
+      task.ownerRoomId ||
+      (task.ownerAgentId ? agentRoomById.get(task.ownerAgentId) : undefined) ||
+      getInferredMissionRoomId(task),
+    agentId: task.ownerAgentId,
+    source
+  };
+};
+
+const getOwnershipLabel = (source: MissionOwnershipSource, copy: AgentsVirtualOfficeMessages) =>
+  source === "explicit" ? copy.ownershipExplicit : copy.ownershipInferred;
+
+const getPressureSeverityLabel = (severity: PressureSignalSeverity, copy: AgentsVirtualOfficeMessages) => {
+  switch (severity) {
+    case "critical":
+      return copy.pressureSeverityCritical;
+    case "high":
+      return copy.pressureSeverityHigh;
+    case "medium":
+      return copy.pressureSeverityMedium;
+    case "low":
+      return copy.pressureSeverityLow;
+  }
+};
+
+const getPressureSignalLabel = (signal: PressureSignal, copy: AgentsVirtualOfficeMessages) => {
+  switch (signal.kind) {
+    case "stale-review":
+      return copy.pressureTitleStaleReview;
+    case "blocked-too-long":
+      return copy.pressureTitleBlocked;
+    case "waiting-human":
+      return copy.pressureTitleWaitingHuman;
+    case "no-owner":
+      return copy.pressureTitleNoOwner;
+    case "room-overload":
+      return copy.pressureTitleRoomOverload;
+  }
 };
 
 const sortMissionTasks = (left: MissionControlTaskSnapshot, right: MissionControlTaskSnapshot) => {
@@ -491,6 +628,31 @@ const getLiveMissionTasks = (missionControl: MissionControlSnapshot) =>
     ...missionControl.queue.runningTasks,
     ...missionControl.queue.readyTasks
   ].sort(sortMissionTasks);
+
+const buildFocusForTask = (
+  task: MissionControlTaskSnapshot,
+  agentRoomById: Map<string, string>,
+  agentById: Map<string, AgentSnapshot>
+): DetailFocus => {
+  const ownership = getMissionOwnership(task, agentRoomById);
+
+  if (ownership.agentId && agentById.has(ownership.agentId)) {
+    return {
+      kind: "agent",
+      agentId: ownership.agentId,
+      roomId: ownership.roomId,
+      taskId: task.tqId,
+      featureId: task.featureId
+    };
+  }
+
+  return {
+    kind: "room",
+    roomId: ownership.roomId,
+    taskId: task.tqId,
+    featureId: task.featureId
+  };
+};
 
 const getCompactRoomLabel = (roomId: string, roomLabel: string) => ROOM_SHORT_LABELS[roomId] || roomLabel.split(" ")[0] || roomLabel;
 
@@ -845,31 +1007,57 @@ export function AgentsVirtualOfficePanel({
   id,
   agents,
   missionControl,
+  generatedAt,
   locale,
   copy,
-  common
+  common,
+  actionCopy,
+  mutationMode
 }: {
   id?: string;
   agents: AgentsSnapshot;
   missionControl: MissionControlSnapshot;
+  generatedAt: string;
   locale: Locale;
   copy: AgentsVirtualOfficeMessages;
   common: { na: string; unavailable: string };
+  actionCopy: MissionTaskActionMessages;
+  mutationMode: MissionTaskMutationMode;
 }) {
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [selectedFocus, setSelectedFocus] = useState<DetailFocus>(null);
   const officeName = agents.officeName || copy.fallbackOffice;
   const onlineAgents = agents.agents.filter((agent) => agent.status !== "offline");
-  const blockedAgents = agents.agents.filter((agent) => agent.status === "blocked");
   const queueTotal = agents.agents.reduce((sum, agent) => sum + (agent.queueCount || 0), 0);
   const updatedLabel = formatDateTimeLabel(parseTimestampMs(agents.updatedAt), locale, common.na);
   const latestEventLabel = formatDateTimeLabel(parseTimestampMs(agents.recentEvents[0]?.at), locale, common.na);
+  const agentById = useMemo(() => new Map(agents.agents.map((agent) => [agent.id, agent])), [agents.agents]);
   const agentNameById = useMemo(() => new Map(agents.agents.map((agent) => [agent.id, agent.name])), [agents.agents]);
+  const agentRoomById = useMemo(() => new Map(agents.agents.map((agent) => [agent.id, agent.roomId])), [agents.agents]);
   const roomLabelById = useMemo(() => new Map(agents.rooms.map((room) => [room.id, room.label])), [agents.rooms]);
   const liveMissionTasks = useMemo(() => getLiveMissionTasks(missionControl), [missionControl]);
+  const allMissionTasks = useMemo(
+    () => missionControl.features.flatMap((feature) => feature.tasks),
+    [missionControl.features]
+  );
+  const featureById = useMemo(
+    () => new Map(missionControl.features.map((feature) => [feature.featureId, feature])),
+    [missionControl.features]
+  );
+  const taskById = useMemo(() => new Map(allMissionTasks.map((task) => [task.tqId, task])), [allMissionTasks]);
   const liveMissionFeatureCount = useMemo(
     () => new Set(liveMissionTasks.map((task) => task.featureId)).size,
     [liveMissionTasks]
   );
+  const pressureModel = useMemo(
+    () =>
+      buildPressureSignalsModel({
+        agents,
+        missionControl,
+        generatedAt
+      }),
+    [agents, generatedAt, missionControl]
+  );
+  const totalAttentionCount = pressureModel.signals.length;
   const roomMissionCoverage = useMemo(() => {
     const coverageByRoom = new Map<string, RoomMissionCoverage & { tasks: MissionControlTaskSnapshot[]; features: Set<string> }>(
       agents.rooms.map((room) => [
@@ -883,7 +1071,8 @@ export function AgentsVirtualOfficePanel({
     );
 
     liveMissionTasks.forEach((task) => {
-      const roomId = getMissionRoomId(task);
+      const ownership = getMissionOwnership(task, agentRoomById);
+      const roomId = ownership.roomId;
       const current =
         coverageByRoom.get(roomId) ||
         ({
@@ -914,17 +1103,19 @@ export function AgentsVirtualOfficePanel({
             reviewCount: entry.reviewCount,
             blockedCount: entry.blockedCount,
             primaryFeatureTitle: primaryTask?.featureTitle,
-            primaryTaskTitle: primaryTask?.title
+            primaryTaskTitle: primaryTask?.title,
+            primaryOwnerAgentId: primaryTask ? getMissionOwnership(primaryTask, agentRoomById).agentId : undefined,
+            primaryOwnershipSource: primaryTask ? getMissionOwnership(primaryTask, agentRoomById).source : undefined
           } satisfies RoomMissionCoverage
         ];
       })
     );
-  }, [agents.rooms, liveMissionTasks]);
+  }, [agentRoomById, agents.rooms, liveMissionTasks]);
 
   const summaryCards = missionControl.available
     ? [
         { label: copy.summaryAgents, value: String(onlineAgents.length) },
-        { label: copy.summaryAttention, value: String(blockedAgents.length), warning: blockedAgents.length > 0 },
+        { label: copy.summaryAttention, value: String(totalAttentionCount), warning: totalAttentionCount > 0 },
         { label: copy.summaryMissions, value: String(liveMissionFeatureCount) },
         {
           label: copy.summaryReviews,
@@ -934,7 +1125,7 @@ export function AgentsVirtualOfficePanel({
       ]
     : [
         { label: copy.summaryAgents, value: String(onlineAgents.length) },
-        { label: copy.summaryAttention, value: String(blockedAgents.length), warning: blockedAgents.length > 0 },
+        { label: copy.summaryAttention, value: String(totalAttentionCount), warning: totalAttentionCount > 0 },
         { label: copy.summaryQueues, value: String(queueTotal) },
         { label: copy.summaryRooms, value: String(agents.rooms.length) }
       ];
@@ -959,27 +1150,113 @@ export function AgentsVirtualOfficePanel({
           roomStatus,
           missionCoverage,
           area,
+          roomPressureCount: pressureModel.roomSignalCountByRoomId[room.id] || 0,
+          roomPressureSeverity: pressureModel.roomTopSeverityByRoomId[room.id],
+          roomPriority: pressureModel.roomPriorityByRoomId[room.id] || 0,
           occupancy: `${roomAgents.length}/${roomCapacity}`
         };
       }),
-    [agents.agents, agents.rooms, common.na, roomMissionCoverage]
+    [agents.agents, agents.rooms, common.na, pressureModel.roomPriorityByRoomId, pressureModel.roomSignalCountByRoomId, pressureModel.roomTopSeverityByRoomId, roomMissionCoverage]
   );
 
+  const pinnedTask = selectedFocus?.taskId ? taskById.get(selectedFocus.taskId) || null : null;
+  const pinnedFeature =
+    (selectedFocus?.featureId ? featureById.get(selectedFocus.featureId) || null : null) ||
+    (pinnedTask ? featureById.get(pinnedTask.featureId) || null : null);
+  const replacementPinnedTask =
+    pinnedTask && pinnedTask.status !== "done"
+      ? pinnedTask
+      : pinnedFeature
+        ? [...pinnedFeature.tasks].filter((task) => task.status !== "done").sort(sortMissionTasks)[0] || null
+        : null;
+  const resolvedFocus = useMemo<DetailFocus>(() => {
+    if (!selectedFocus) return null;
+
+    if (selectedFocus.taskId || selectedFocus.featureId) {
+      if (replacementPinnedTask) {
+        return buildFocusForTask(replacementPinnedTask, agentRoomById, agentById);
+      }
+
+      if (selectedFocus.kind === "agent") {
+        const refreshedAgent = agentById.get(selectedFocus.agentId) || null;
+        return refreshedAgent ? { kind: "agent", agentId: refreshedAgent.id, roomId: refreshedAgent.roomId } : { kind: "room", roomId: selectedFocus.roomId };
+      }
+
+      return { kind: "room", roomId: selectedFocus.roomId };
+    }
+
+    if (selectedFocus.kind === "agent") {
+      const refreshedAgent = agentById.get(selectedFocus.agentId) || null;
+      if (!refreshedAgent) {
+        return { kind: "room", roomId: selectedFocus.roomId };
+      }
+
+      if (refreshedAgent.roomId !== selectedFocus.roomId) {
+        return { kind: "agent", agentId: refreshedAgent.id, roomId: refreshedAgent.roomId };
+      }
+    }
+
+    return selectedFocus;
+  }, [agentById, agentRoomById, replacementPinnedTask, selectedFocus]);
+  const selectedRoomId = resolvedFocus?.roomId || null;
   const selectedRoomEntry = roomEntries.find(({ room }) => room.id === selectedRoomId) || null;
+  const selectedAgent = resolvedFocus?.kind === "agent" ? agentById.get(resolvedFocus.agentId) || null : null;
+  const focusedMissionTasks = selectedAgent
+    ? [
+        ...liveMissionTasks.filter((task) => task.ownerAgentId === selectedAgent.id),
+        ...(selectedAgent.currentTaskId ? [taskById.get(selectedAgent.currentTaskId)] : [])
+      ].filter((task, index, tasks): task is MissionControlTaskSnapshot => Boolean(task) && tasks.indexOf(task) === index)
+    : selectedRoomId
+      ? liveMissionTasks.filter((task) => getMissionOwnership(task, agentRoomById).roomId === selectedRoomId)
+      : [];
   const selectedAgentIds = new Set(selectedRoomEntry?.roomAgents.map((agent) => agent.id) || []);
+  const roomPulseEntries = useMemo(
+    () =>
+      [...roomEntries].sort((left, right) => {
+        const priorityDelta = right.roomPriority - left.roomPriority;
+        if (priorityDelta !== 0) return priorityDelta;
+        return left.room.label.localeCompare(right.room.label);
+      }),
+    [roomEntries]
+  );
   const missionFeedTasks = useMemo(() => {
-    const roomId = selectedRoomEntry?.room.id;
-    if (!roomId) return liveMissionTasks.slice(0, 4);
-    return liveMissionTasks.filter((task) => getMissionRoomId(task) === roomId).slice(0, 4);
-  }, [liveMissionTasks, selectedRoomEntry]);
+    const roomId = selectedRoomId;
+    const taskScore = (task: MissionControlTaskSnapshot) => {
+      const severity = pressureModel.taskTopSeverityByTaskId[task.tqId];
+      const count = pressureModel.taskSignalCountByTaskId[task.tqId] || 0;
+      return (severity ? PRESSURE_SEVERITY_WEIGHT[severity] : 0) + count * 20;
+    };
+
+    const tasks = roomId
+      ? liveMissionTasks.filter((task) => getMissionOwnership(task, agentRoomById).roomId === roomId)
+      : liveMissionTasks;
+
+    return [...tasks]
+      .sort((left, right) => {
+        const scoreDelta = taskScore(right) - taskScore(left);
+        if (scoreDelta !== 0) return scoreDelta;
+        return sortMissionTasks(left, right);
+      })
+      .slice(0, 4);
+  }, [agentRoomById, liveMissionTasks, pressureModel.taskSignalCountByTaskId, pressureModel.taskTopSeverityByTaskId, selectedRoomId]);
   const deskFeedAgents = [...(selectedRoomEntry ? selectedRoomEntry.roomAgents : onlineAgents)]
     .filter((agent) => (selectedRoomEntry ? true : agent.status !== "offline"))
     .sort(sortByLoad)
     .slice(0, 4);
-  const attentionAgents = [...(selectedRoomEntry ? selectedRoomEntry.roomAgents : agents.agents)]
-    .filter((agent) => agent.status === "blocked" || (agent.status === "waiting" && (agent.queueCount || 0) >= 2))
-    .sort(sortByLoad)
-    .slice(0, 4);
+  const attentionSignals = useMemo(() => {
+    const scopedSignals = selectedAgent
+      ? pressureModel.signals.filter(
+          (signal) =>
+            signal.agentId === selectedAgent.id ||
+            signal.taskId === selectedAgent.currentTaskId ||
+            signal.roomId === selectedAgent.roomId
+        )
+      : selectedRoomId
+        ? pressureModel.signals.filter((signal) => signal.roomId === selectedRoomId)
+        : pressureModel.signals;
+
+    return scopedSignals.slice(0, 4);
+  }, [pressureModel.signals, selectedAgent, selectedRoomId]);
   const timelineEvents = (selectedRoomEntry
     ? agents.recentEvents.filter((event) => selectedAgentIds.has(event.agentId))
     : agents.recentEvents
@@ -987,12 +1264,162 @@ export function AgentsVirtualOfficePanel({
   const activeViewBox = getSceneViewBox(selectedRoomEntry?.area, selectedRoomEntry ? "focus" : "overview");
   const activeRoomLabel = selectedRoomEntry?.room.label || copy.allRooms;
   const activeRoomToneClass = `virtualOfficeSceneTone${selectedRoomEntry?.room.id || "all"}`;
+  const activeRoomStatusLabel = selectedRoomEntry ? getStatusLabel(selectedRoomEntry.roomStatus, copy) : null;
+  const selectedAgentStatusLabel = selectedAgent ? getStatusLabel(selectedAgent.status, copy) : null;
+  const selectedAgentTaskLabel = selectedAgent ? getDeskTask(selectedAgent, copy, common.unavailable) : null;
+  const selectedRoomMissionLabel = selectedRoomEntry?.missionCoverage.primaryFeatureTitle || copy.roomMissionIdle;
+  const activeDetailTask =
+    replacementPinnedTask ||
+    focusedMissionTasks[0] ||
+    (selectedAgent?.currentTaskId ? taskById.get(selectedAgent.currentTaskId) || null : null);
+  const activeDetailFeature = activeDetailTask ? featureById.get(activeDetailTask.featureId) || null : null;
+  const activeDetailOwnership = activeDetailTask ? getMissionOwnership(activeDetailTask, agentRoomById) : null;
+  const lastCompletedTask =
+    (selectedAgent?.lastTaskId ? taskById.get(selectedAgent.lastTaskId) : undefined) ||
+    (activeDetailFeature
+      ? [...activeDetailFeature.tasks].filter((task) => task.status === "done").sort(sortUpdatedDesc)[0]
+      : undefined) ||
+    null;
+  const nextPlannedTask =
+    (selectedAgent?.nextTaskId ? taskById.get(selectedAgent.nextTaskId) : undefined) ||
+    (activeDetailFeature
+      ? [...activeDetailFeature.tasks]
+          .filter((task) => task.status !== "done" && task.tqId !== activeDetailTask?.tqId)
+          .sort(sortMissionTasks)[0]
+      : undefined) ||
+    null;
+  const detailEvents = (
+    selectedAgent
+      ? agents.recentEvents.filter((event) => event.agentId === selectedAgent.id)
+      : selectedRoomEntry
+        ? agents.recentEvents.filter((event) => selectedAgentIds.has(event.agentId))
+        : []
+  ).slice(0, 3);
+
   const focusRoom = (roomId: string) => {
-    setSelectedRoomId(roomId);
+    setSelectedFocus({ kind: "room", roomId });
+  };
+
+  const focusAgent = (agentId: string, roomId: string) => {
+    setSelectedFocus({ kind: "agent", agentId, roomId });
+  };
+
+  const focusMissionTask = (task: MissionControlTaskSnapshot) => {
+    setSelectedFocus(buildFocusForTask(task, agentRoomById, agentById));
+  };
+
+  const focusPressureSignal = (signal: PressureSignal) => {
+    const task = signal.taskId ? taskById.get(signal.taskId) : null;
+    if (task) {
+      focusMissionTask(task);
+      return;
+    }
+
+    const agent = signal.agentId ? agentById.get(signal.agentId) : null;
+    if (agent) {
+      focusAgent(agent.id, agent.roomId);
+      return;
+    }
+
+    focusRoom(signal.roomId);
+  };
+
+  const getPressureAgeLabel = (ageHours?: number) =>
+    typeof ageHours === "number" && ageHours > 0
+      ? formatMessage(copy.pressureAgeHours, { value: String(Math.max(1, Math.round(ageHours))) })
+      : null;
+
+  const getPressureSignalSummary = (signal: PressureSignal) => {
+    if (signal.kind === "room-overload") {
+      return roomLabelById.get(signal.roomId) || common.na;
+    }
+
+    if (signal.taskTitle && signal.featureTitle) {
+      return `${signal.taskTitle} · ${signal.featureTitle}`;
+    }
+
+    return signal.taskTitle || signal.featureTitle || roomLabelById.get(signal.roomId) || common.na;
+  };
+
+  const getPressureSignalMeta = (signal: PressureSignal) => {
+    const meta: string[] = [];
+    const task = signal.taskId ? taskById.get(signal.taskId) : null;
+
+    meta.push(`${copy.missionOwnerRoom}: ${roomLabelById.get(signal.roomId) || common.na}`);
+
+    const ageLabel = getPressureAgeLabel(signal.ageHours);
+    if (ageLabel) {
+      meta.push(ageLabel);
+    }
+
+    if (signal.kind === "room-overload") {
+      if (typeof signal.queueCount === "number") {
+        meta.push(`${copy.roomQueue}: ${signal.queueCount}`);
+      }
+      if (typeof signal.signalCount === "number") {
+        meta.push(formatMessage(copy.pressureSignalCount, { value: String(signal.signalCount) }));
+      }
+      return meta;
+    }
+
+    if (signal.waitingOn) {
+      meta.push(formatMessage(copy.pressureWaitingOnHint, { value: humanizeStateLabel(signal.waitingOn) || signal.waitingOn }));
+    } else if (task?.blockedReason) {
+      meta.push(`${copy.detailBlockedReason}: ${task.blockedReason}`);
+    }
+
+    if (signal.kind === "no-owner") {
+      meta.push(`${copy.missionOwnership}: ${copy.ownershipInferred}`);
+    } else if (signal.featureTitle) {
+      meta.push(`${copy.detailFeature}: ${signal.featureTitle}`);
+    }
+
+    return meta;
+  };
+
+  const pinFocusedTask = (task: MissionControlTaskSnapshot) => {
+    setSelectedFocus((current) => {
+      if (!current) {
+        return buildFocusForTask(task, agentRoomById, agentById);
+      }
+
+      if (current.kind === "agent") {
+        return {
+          ...current,
+          taskId: task.tqId,
+          featureId: task.featureId
+        };
+      }
+
+      return {
+        ...current,
+        taskId: task.tqId,
+        featureId: task.featureId
+      };
+    });
   };
 
   const toggleRoomFocus = (roomId: string | null) => {
-    setSelectedRoomId((current) => (current === roomId ? null : roomId));
+    if (!roomId) {
+      setSelectedFocus(null);
+      return;
+    }
+
+    if (resolvedFocus?.kind === "room" && resolvedFocus.roomId === roomId) {
+      setSelectedFocus(null);
+      return;
+    }
+
+    setSelectedFocus({ kind: "room", roomId });
+  };
+
+  const toggleAgentFocus = (agent: AgentSnapshot) => {
+    if (resolvedFocus?.kind === "agent" && resolvedFocus.agentId === agent.id) {
+      setSelectedFocus(null);
+      return;
+    }
+
+    setSelectedFocus({ kind: "agent", agentId: agent.id, roomId: agent.roomId });
   };
 
   const handleRoomSpriteKeyDown = (event: KeyboardEvent<SVGGElement>, roomId: string) => {
@@ -1164,7 +1591,7 @@ export function AgentsVirtualOfficePanel({
               {copy.latest}: {latestEventLabel}
             </span>
             <span className="metaChip">
-              {copy.floorStatus}: {blockedAgents.length > 0 ? copy.floorAttention : copy.floorHealthy}
+              {copy.floorStatus}: {totalAttentionCount > 0 ? copy.floorAttention : copy.floorHealthy}
             </span>
             <span className="metaChip">
               {copy.roomFocus}: {activeRoomLabel}
@@ -1176,7 +1603,7 @@ export function AgentsVirtualOfficePanel({
               <button
                 type="button"
                 className={`virtualOfficeFilter ${selectedRoomEntry ? "" : "virtualOfficeFilterActive"}`}
-                onClick={() => setSelectedRoomId(null)}
+                onClick={() => setSelectedFocus(null)}
               >
                 {copy.allRooms}
               </button>
@@ -1206,18 +1633,25 @@ export function AgentsVirtualOfficePanel({
 
         <div className="virtualOfficeLower">
           <div className="virtualRoomPulseGrid">
-            {roomEntries.map(({ room, roomLead, roomQueue, occupancy, roomStatus, missionCoverage }) => (
+            {roomPulseEntries.map(({ room, roomLead, roomQueue, occupancy, roomStatus, missionCoverage, roomPressureCount, roomPressureSeverity }) => (
               <button
                 key={room.id}
                 type="button"
                 className={`virtualRoomPulse virtualRoomPulseButton ${selectedRoomId === room.id ? "virtualRoomPulseActive" : ""} ${
                   selectedRoomEntry && selectedRoomId !== room.id ? "virtualRoomPulseMuted" : ""
-                }`}
+                } ${roomPressureSeverity ? `virtualRoomPulseSeverity${roomPressureSeverity}` : ""}`}
                 onClick={() => toggleRoomFocus(room.id)}
               >
                 <div className="virtualRoomPulseHead">
                   <strong>{room.label}</strong>
-                  <span className={`virtualRoomStatus virtualRoomStatus${roomStatus}`}>{getStatusLabel(roomStatus, copy)}</span>
+                  <div className="virtualRoomPulseHeadMeta">
+                    {roomPressureCount > 0 ? (
+                      <span className={`virtualPressureBadge virtualPressureBadge${roomPressureSeverity || "medium"}`}>
+                        {copy.roomPressure}: {roomPressureCount}
+                      </span>
+                    ) : null}
+                    <span className={`virtualRoomStatus virtualRoomStatus${roomStatus}`}>{getStatusLabel(roomStatus, copy)}</span>
+                  </div>
                 </div>
                 <p className="virtualRoomPulseCopy">
                   {copy.roomLead}: {roomLead}
@@ -1229,6 +1663,17 @@ export function AgentsVirtualOfficePanel({
                     </p>
                     <p className="virtualRoomPulseHint">
                       {copy.task}: {missionCoverage.primaryTaskTitle || common.na}
+                    </p>
+                    <p className="virtualRoomPulseHint">
+                      {copy.missionOwnership}:{" "}
+                      {missionCoverage.primaryOwnershipSource
+                        ? getOwnershipLabel(missionCoverage.primaryOwnershipSource, copy)
+                        : common.na}
+                      {missionCoverage.primaryOwnerAgentId
+                        ? ` · ${copy.missionOwnerAgent}: ${
+                            agentNameById.get(missionCoverage.primaryOwnerAgentId) || common.na
+                          }`
+                        : ""}
                     </p>
                   </>
                 ) : (
@@ -1244,6 +1689,11 @@ export function AgentsVirtualOfficePanel({
                   <span>
                     {copy.missionTasks}: {missionCoverage.taskCount}
                   </span>
+                  {roomPressureCount > 0 ? (
+                    <span>
+                      {copy.roomPressure}: {roomPressureCount}
+                    </span>
+                  ) : null}
                   <span>
                     {missionCoverage.blockedCount > 0 ? copy.missionBlocked : copy.missionReviews}:{" "}
                     {missionCoverage.blockedCount > 0 ? missionCoverage.blockedCount : missionCoverage.reviewCount}
@@ -1254,6 +1704,250 @@ export function AgentsVirtualOfficePanel({
           </div>
 
           <div className="virtualOfficeDigestGrid">
+            <article className="virtualOfficeRail virtualOfficeDrawer">
+              <div className="virtualOfficeRailHeader">
+                <div>
+                  <p className="eyebrow">{selectedAgent ? copy.missionOwnerAgent : selectedRoomEntry ? copy.roomFocus : copy.detailDrawerTitle}</p>
+                  <h3>{selectedAgent ? selectedAgent.name : selectedRoomEntry?.room.label || copy.detailDrawerTitle}</h3>
+                </div>
+                <div className="virtualOfficeDrawerHeaderMeta">
+                  {selectedAgent && selectedAgentStatusLabel ? (
+                    <span className={`virtualRoomStatus virtualRoomStatus${selectedAgent.status}`}>{selectedAgentStatusLabel}</span>
+                  ) : null}
+                  {!selectedAgent && selectedRoomEntry && activeRoomStatusLabel ? (
+                    <span className={`virtualRoomStatus virtualRoomStatus${selectedRoomEntry.roomStatus}`}>{activeRoomStatusLabel}</span>
+                  ) : null}
+                  {selectedFocus ? (
+                    <button type="button" className="virtualOfficeDrawerClear" onClick={() => setSelectedFocus(null)}>
+                      {copy.detailDrawerClear}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              <p className="virtualOfficeRailCopy">{copy.detailDrawerCopy}</p>
+
+              {selectedFocus ? (
+                <div className="virtualOfficeDrawerBody">
+                  <article className="virtualOfficeDrawerPanel">
+                    <p className="eyebrow">{selectedAgent ? copy.focus : copy.roomFocus}</p>
+                    <dl className="virtualOfficeDetailList">
+                      {selectedAgent ? (
+                        <>
+                          <div>
+                            <dt>{copy.missionOwnerRoom}</dt>
+                            <dd>{roomLabelById.get(selectedAgent.roomId) || common.na}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.task}</dt>
+                            <dd>{selectedAgentTaskLabel || common.unavailable}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.focus}</dt>
+                            <dd>{selectedAgent.focus || common.na}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.nextHandoff}</dt>
+                            <dd>{selectedAgent.nextHandoff || common.na}</dd>
+                          </div>
+                        </>
+                      ) : selectedRoomEntry ? (
+                        <>
+                          <div>
+                            <dt>{copy.roomLead}</dt>
+                            <dd>{selectedRoomEntry.roomLead}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.roomOccupancy}</dt>
+                            <dd>{selectedRoomEntry.occupancy}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.roomQueue}</dt>
+                            <dd>{selectedRoomEntry.roomQueue}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.roomMission}</dt>
+                            <dd>{selectedRoomMissionLabel}</dd>
+                          </div>
+                        </>
+                      ) : null}
+                    </dl>
+                  </article>
+
+                  <article className="virtualOfficeDrawerPanel">
+                    <p className="eyebrow">{copy.detailMissionTitle}</p>
+                    <dl className="virtualOfficeDetailList">
+                      {activeDetailTask ? (
+                        <>
+                          <div>
+                            <dt>{copy.detailFeature}</dt>
+                            <dd>{activeDetailFeature?.title || activeDetailTask.featureTitle || common.na}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.task}</dt>
+                            <dd>{activeDetailTask.title}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailTaskId}</dt>
+                            <dd>{activeDetailTask.tqId}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailStatus}</dt>
+                            <dd>{humanizeStateLabel(activeDetailTask.status) || common.na}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.missionOwnership}</dt>
+                            <dd>{activeDetailOwnership ? getOwnershipLabel(activeDetailOwnership.source, copy) : common.na}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.updated}</dt>
+                            <dd>{formatDateTimeLabel(parseTimestampMs(activeDetailTask.updatedAt), locale, common.na)}</dd>
+                          </div>
+                        </>
+                      ) : selectedAgent ? (
+                        <>
+                          <div>
+                            <dt>{copy.task}</dt>
+                            <dd>{selectedAgentTaskLabel || common.unavailable}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailTaskId}</dt>
+                            <dd>{selectedAgent.currentTaskId || common.na}</dd>
+                          </div>
+                        </>
+                      ) : selectedRoomEntry ? (
+                        <>
+                          <div>
+                            <dt>{copy.roomMission}</dt>
+                            <dd>{selectedRoomMissionLabel}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.missionTasks}</dt>
+                            <dd>{selectedRoomEntry.missionCoverage.taskCount}</dd>
+                          </div>
+                        </>
+                      ) : null}
+                    </dl>
+                    {activeDetailTask ? (
+                      <div className="virtualOfficeDrawerActions">
+                        <p className="eyebrow">{copy.detailActionsTitle}</p>
+                        <MissionTaskActions
+                          task={activeDetailTask}
+                          copy={actionCopy}
+                          mode={mutationMode}
+                          showDisabledActions
+                          onActionTriggered={({ task }) => pinFocusedTask(task)}
+                        />
+                      </div>
+                    ) : null}
+                  </article>
+
+                  <article className="virtualOfficeDrawerPanel">
+                    <p className="eyebrow">{copy.detailPathTitle}</p>
+                    <dl className="virtualOfficeDetailList">
+                      <div>
+                        <dt>{copy.detailLastCompleted}</dt>
+                        <dd>
+                          {lastCompletedTask
+                            ? `${lastCompletedTask.title} · ${formatDateTimeLabel(
+                                parseTimestampMs(lastCompletedTask.updatedAt),
+                                locale,
+                                common.na
+                              )}`
+                            : common.na}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{copy.detailNextStep}</dt>
+                        <dd>{activeDetailTask?.nextPlannedStep || nextPlannedTask?.summary || nextPlannedTask?.title || common.na}</dd>
+                      </div>
+                      <div>
+                        <dt>{copy.detailBlockedReason}</dt>
+                        <dd>{activeDetailTask?.blockedReason || common.na}</dd>
+                      </div>
+                      <div>
+                        <dt>{copy.detailWaitingOn}</dt>
+                        <dd>{activeDetailTask?.waitingOn || common.na}</dd>
+                      </div>
+                    </dl>
+                  </article>
+
+                  <article className="virtualOfficeDrawerPanel">
+                    <p className="eyebrow">{copy.detailHandoffTitle}</p>
+                    {detailEvents.length ? (
+                      <div className="virtualOfficeDrawerEventList">
+                        {detailEvents.map((event) => (
+                          <article key={event.id} className={`timelineItem ${event.tone === "warning" ? "timelineItemWarning" : ""}`}>
+                            <span className="timelineDot" />
+                            <div className="timelineBody">
+                              <div className="timelineHead">
+                                <strong>{agentNameById.get(event.agentId) || common.na}</strong>
+                                <span>{formatDateTimeLabel(parseTimestampMs(event.at), locale, common.na)}</span>
+                              </div>
+                              <p>{getEventSummary(event, copy)}</p>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="virtualOfficeEmpty">
+                        <p>{copy.detailHandoffEmpty}</p>
+                      </div>
+                    )}
+                  </article>
+
+                  <article className="virtualOfficeDrawerPanel">
+                    <p className="eyebrow">{copy.detailArtifactsTitle}</p>
+                    {activeDetailFeature ? (
+                      <dl className="virtualOfficeDetailList">
+                        <div>
+                          <dt>{copy.detailBranch}</dt>
+                          <dd>{activeDetailFeature.delivery.branch || common.na}</dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailPr}</dt>
+                          <dd>
+                            {activeDetailFeature.delivery.prUrl ? (
+                              <a className="virtualOfficeArtifactLink" href={activeDetailFeature.delivery.prUrl} target="_blank" rel="noreferrer">
+                                {activeDetailFeature.delivery.prUrl}
+                              </a>
+                            ) : (
+                              common.na
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailBrief}</dt>
+                          <dd>{activeDetailFeature.artifacts.brief || common.na}</dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailRfc}</dt>
+                          <dd>{activeDetailFeature.artifacts.rfc || common.na}</dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailQa}</dt>
+                          <dd>{activeDetailFeature.artifacts.qa || common.na}</dd>
+                        </div>
+                        <div>
+                          <dt>{copy.detailRelease}</dt>
+                          <dd>{activeDetailFeature.artifacts.release || common.na}</dd>
+                        </div>
+                      </dl>
+                    ) : (
+                      <div className="virtualOfficeEmpty">
+                        <p>{copy.detailArtifactsEmpty}</p>
+                      </div>
+                    )}
+                  </article>
+                </div>
+              ) : (
+                <div className="virtualOfficeEmpty virtualOfficeDrawerEmpty">
+                  <strong>{copy.detailDrawerIdleTitle}</strong>
+                  <p>{copy.detailDrawerIdleCopy}</p>
+                </div>
+              )}
+            </article>
+
             <div className="virtualOfficeRailStack">
               <article className="virtualOfficeRail">
                 <div className="virtualOfficeRailHeader">
@@ -1266,29 +1960,57 @@ export function AgentsVirtualOfficePanel({
 
                 <div className="virtualMissionList">
                   {missionFeedTasks.length ? (
-                    missionFeedTasks.map((task) => (
-                      <button
-                        key={task.tqId}
-                        type="button"
-                        className="virtualMissionCard virtualMissionCardButton"
-                        onClick={() => focusRoom(getMissionRoomId(task))}
-                      >
-                        <div className="virtualMissionCardHead">
-                          <strong>{task.featureTitle}</strong>
-                          <span>{task.tqId}</span>
-                        </div>
-                        <p>{task.title}</p>
-                        {task.summary ? <p className="virtualMissionCardSummary">{task.summary}</p> : null}
-                        <div className="virtualDeskCardMeta">
-                          <span>
-                            {copy.missionOwnerRoom}: {roomLabelById.get(getMissionRoomId(task)) || common.na}
-                          </span>
-                          <span>
-                            {copy.missionUpdated}: {formatDateTimeLabel(parseTimestampMs(task.updatedAt), locale, common.na)}
-                          </span>
-                        </div>
-                      </button>
-                    ))
+                    missionFeedTasks.map((task) => {
+                      const ownership = getMissionOwnership(task, agentRoomById);
+                      const taskSignalCount = pressureModel.taskSignalCountByTaskId[task.tqId] || 0;
+                      const taskPressureSeverity = pressureModel.taskTopSeverityByTaskId[task.tqId];
+
+                      return (
+                        <button
+                          key={task.tqId}
+                          type="button"
+                          className={`virtualMissionCard virtualMissionCardButton ${
+                            taskPressureSeverity ? `virtualMissionCardSeverity${taskPressureSeverity}` : ""
+                          }`}
+                          onClick={() => focusMissionTask(task)}
+                        >
+                          <div className="virtualMissionCardHead">
+                            <strong>{task.featureTitle}</strong>
+                            <div className="virtualMissionCardHeadMeta">
+                              {taskSignalCount > 0 ? (
+                                <span className={`virtualPressureBadge virtualPressureBadge${taskPressureSeverity || "medium"}`}>
+                                  {copy.missionSignals}: {taskSignalCount}
+                                </span>
+                              ) : null}
+                              <span>{task.tqId}</span>
+                            </div>
+                          </div>
+                          <p>{task.title}</p>
+                          {task.summary ? <p className="virtualMissionCardSummary">{task.summary}</p> : null}
+                          <div className="virtualDeskCardMeta">
+                            <span>
+                              {copy.missionOwnerRoom}: {roomLabelById.get(ownership.roomId) || common.na}
+                            </span>
+                            <span>
+                              {copy.missionOwnership}: {getOwnershipLabel(ownership.source, copy)}
+                            </span>
+                            {ownership.agentId ? (
+                              <span>
+                                {copy.missionOwnerAgent}: {agentNameById.get(ownership.agentId) || common.na}
+                              </span>
+                            ) : null}
+                            {taskSignalCount > 0 ? (
+                              <span>
+                                {copy.missionSignals}: {taskSignalCount}
+                              </span>
+                            ) : null}
+                            <span>
+                              {copy.missionUpdated}: {formatDateTimeLabel(parseTimestampMs(task.updatedAt), locale, common.na)}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })
                   ) : (
                     <div className="virtualOfficeEmpty">{copy.missionQueueEmpty}</div>
                   )}
@@ -1307,7 +2029,14 @@ export function AgentsVirtualOfficePanel({
                 <div className="virtualDeskList">
                   {deskFeedAgents.length ? (
                     deskFeedAgents.map((agent) => (
-                      <article key={agent.id} className={`virtualDeskCard virtualDeskCard${agent.status}`}>
+                      <button
+                        key={agent.id}
+                        type="button"
+                        className={`virtualDeskCard virtualDeskCardButton virtualDeskCard${agent.status} ${
+                          selectedAgent?.id === agent.id ? "virtualDeskCardSelected" : ""
+                        }`}
+                        onClick={() => toggleAgentFocus(agent)}
+                      >
                         <div className="virtualDeskCardHead">
                           <strong>{agent.name}</strong>
                           <span>{getStatusLabel(agent.status, copy)}</span>
@@ -1324,7 +2053,7 @@ export function AgentsVirtualOfficePanel({
                             {copy.lastEvent}: {formatDateTimeLabel(parseTimestampMs(agent.lastEventAt), locale, common.na)}
                           </span>
                         </div>
-                      </article>
+                      </button>
                     ))
                   ) : (
                     <div className="virtualOfficeEmpty">{copy.roomEmpty}</div>
@@ -1343,26 +2072,27 @@ export function AgentsVirtualOfficePanel({
               </div>
 
               <div className="virtualAlertList">
-                {attentionAgents.length ? (
-                  attentionAgents.map((agent) => (
-                    <article key={agent.id} className={`virtualAlertItem virtualAlertItem${agent.status}`}>
+                {attentionSignals.length ? (
+                  attentionSignals.map((signal) => (
+                    <button
+                      key={signal.id}
+                      type="button"
+                      className={`virtualAlertItem virtualAlertItemButton virtualPressureItem virtualPressureItem${signal.severity}`}
+                      onClick={() => focusPressureSignal(signal)}
+                    >
                       <div className="virtualAlertItemHead">
-                        <strong>{agent.name}</strong>
-                        <span>{getStatusLabel(agent.status, copy)}</span>
+                        <strong>{getPressureSignalLabel(signal, copy)}</strong>
+                        <span className={`virtualPressureBadge virtualPressureBadge${signal.severity}`}>
+                          {getPressureSeverityLabel(signal.severity, copy)}
+                        </span>
                       </div>
-                      <p>{getDeskTask(agent, copy, common.unavailable)}</p>
+                      <p>{getPressureSignalSummary(signal)}</p>
                       <div className="virtualDeskCardMeta">
-                        <span>
-                          {copy.queueCount}: {agent.queueCount || 0}
-                        </span>
-                        <span>
-                          {copy.utilization}: {agent.utilization || 0}%
-                        </span>
-                        <span>
-                          {copy.sessionCount}: {agent.sessionCount}
-                        </span>
+                        {getPressureSignalMeta(signal).map((item) => (
+                          <span key={`${signal.id}:${item}`}>{item}</span>
+                        ))}
                       </div>
-                    </article>
+                    </button>
                   ))
                 ) : (
                   <div className="virtualOfficeEmpty">{copy.floorHealthy}</div>

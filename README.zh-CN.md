@@ -26,9 +26,12 @@
 ## 功能特性
 
 - 顶部主菜单 + 左侧上下文导航 + 单面板渲染的 dashboard shell
-- 独立的 `Agents` 工作区，带按房间组织的二级导航和 Mission Control 联动
+- 独立的 `Agents` 工作区，带按房间组织的二级导航、显式任务归属和 Mission Control 联动
 - 用像素风 `Virtual Office` 直观展示 active / waiting / blocked / idle agents
 - 在办公室视图里直接展示房间级任务归属、内联 mission queue，以及点击任务卡后聚焦归属房间
+- 共享的房间 / agent 详情抽屉，可查看任务路径、交接记录和关联交付物
+- 可直接在办公室抽屉内执行 Mission Control 任务动作
+- 一条压力轨道，用来浮出老化评审、长期阻塞、等待人工、推断归属和房间过载
 - 顶级 `Mission Control` 工作区，用于任务 intake、队列推进、评审压力和发布就绪状态
 - `Office Floor`、`Queues & handoffs`、`Recent activity` 三个补充面板，用于快速理解 agent 运转状态
 - 最新 usage 报告摘要
@@ -47,10 +50,11 @@
 
 ## 工作方式
 
-应用支持两种数据模式：
+应用对两类实时数据分别读取：
 
-- 实时模式：从 `OPENCLAW_HOME` 或 `~/.openclaw` 读取
-- 演示模式：如果这两个路径都不存在，则回退到 `demo/openclaw-home`
+- agents + usage + scheduler：从 `OPENCLAW_HOME` 或 `~/.openclaw` 读取
+- mission control：从 `AGENT_LAUNCHPAD_HOME` 或 `~/.agent-launchpad` 读取
+- 演示模式：任一实时路径缺失时，对应页面会回退到内置 demo 数据
 - 本地前端绑定：`pnpm dev` / `pnpm start` 会从 `.env` 或 `.env.local` 读取 `DASHBOARD_URL`
 
 这样仓库可以直接公开发布，同时在已经安装 OpenClaw 的机器上仍然优先使用真实本地数据。
@@ -96,11 +100,13 @@ DASHBOARD_URL=http://localhost:3000
 
 然后直接运行 `pnpm dev` 或 `pnpm start`。脚本会把 Next.js 绑定到这个 host 和 port。你可以把 `.env.example` 保持在 `3000`，再把你自己的本地 `.env` 覆盖成 `3200` 或其他空闲端口。
 
-如果你想在截图、预览或 CI 中强制使用 demo 数据，可以把这行放进 `.env` / `.env.local`，或者直接内联运行：
+如果你想在截图、预览或 CI 中强制使用完整的内置 demo 数据，可以把这行放进 `.env` / `.env.local`，或者直接内联运行：
 
 ```bash
-OPENCLAW_HOME=demo/openclaw-home pnpm dev
+OPENCLAW_HOME=demo/openclaw-home AGENT_LAUNCHPAD_HOME=/tmp/openclaw-dashboard-demo pnpm dev
 ```
+
+上面的 `AGENT_LAUNCHPAD_HOME` 可以指向一个不存在的目录。只要这个目录下没有 Launchpad 状态文件，Mission Control 就会回退到仓库内置的 sample state，而不会读取你本机真实队列。
 
 ## 验证
 
@@ -120,7 +126,7 @@ pnpm check
 
 ## 当前页面
 
-- `Agents`：Virtual Office、房间级任务归属、内联 mission queue、Office Floor、Queues & handoffs、Recent activity
+- `Agents`：Virtual Office、房间级任务归属、详情抽屉、办公室动作、压力轨道、Office Floor、Queues & handoffs、Recent activity
 - `Mission Control`：Active missions、Execution queue、Review desk、Release lane、Mission intake
 - `Overview`：最新摘要卡片和高优先级运行状态
 - `History`：usage 历史趋势和图表视图
