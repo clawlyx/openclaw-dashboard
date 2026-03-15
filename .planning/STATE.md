@@ -11,9 +11,9 @@ See: `.planning/PROJECT.md` (updated 2026-03-14)
 
 Milestone: `v1.3.0 Operator Intelligence`
 Phase: 5 (Historical Signal Foundation)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-03-14 — Defined `v1.3.0 Operator Intelligence` requirements and roadmap
+Plan: 2 of 2 planned
+Status: Ready to execute
+Last activity: 2026-03-14 — Planned Phase 5 historical signal foundation
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -24,7 +24,7 @@ Progress: [░░░░░░░░░░] 0%
 
 ## Pending Todos
 
-- Start Phase 5 with `$gsd-plan-phase 5 --auto`
+- Execute Phase 5 with `$gsd-execute-phase 5 --auto`
 
 ## Blockers/Concerns
 
@@ -32,6 +32,6 @@ Progress: [░░░░░░░░░░] 0%
 
 ## Session Continuity
 
-Last session: 2026-03-14 20:20 EDT  
-Stopped at: `v1.3.0` requirements and roadmap defined; next step is planning Phase 5  
+Last session: 2026-03-14 20:34 EDT  
+Stopped at: Phase 5 plans created; next step is executing Phase 5  
 Resume file: None
