@@ -11,9 +11,9 @@ See: `.planning/PROJECT.md` (updated 2026-03-14)
 
 Milestone: `v1.3.0 Operator Intelligence`
 Phase: 6 (Intelligence Surfaces)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-03-14 — Completed Phase 5 historical signal foundation
+Plan: 2 of 2 planned
+Status: Ready to execute
+Last activity: 2026-03-14 — Planned Phase 6 intelligence surfaces
 
 Progress: [███░░░░░░░] 33%
 
@@ -24,7 +24,7 @@ Progress: [███░░░░░░░] 33%
 
 ## Pending Todos
 
-- Start Phase 6 with `$gsd-plan-phase 6 --auto`
+- Execute Phase 6 with `$gsd-execute-phase 6 --auto`
 
 ## Blockers/Concerns
 
@@ -32,6 +32,6 @@ Progress: [███░░░░░░░] 33%
 
 ## Session Continuity
 
-Last session: 2026-03-14 21:32 EDT  
-Stopped at: Phase 5 complete; next step is planning Phase 6  
+Last session: 2026-03-14 21:45 EDT  
+Stopped at: Phase 6 plans created; next step is executing Phase 6  
 Resume file: None
