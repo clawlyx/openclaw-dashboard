@@ -50,8 +50,8 @@ Current milestone: operator intelligence.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HIST-01 | Phase 5 | Pending |
-| HIST-02 | Phase 5 | Pending |
+| HIST-01 | Phase 5 | Complete |
+| HIST-02 | Phase 5 | Complete |
 | HIST-03 | Phase 7 | Pending |
 | ROOM-01 | Phase 6 | Pending |
 | ROOM-02 | Phase 6 | Pending |
