@@ -1,6 +1,6 @@
 {
   "officeName": "OpenClaw Studio",
-  "updatedAt": "2026-03-12T15:15:15.281Z",
+  "updatedAt": "2026-03-15T13:30:15.281Z",
   "rooms": [
     {
       "id": "dispatch",
@@ -41,7 +41,7 @@
       "sessionCount": 44,
       "utilization": 94,
       "nextHandoff": "Build Bay",
-      "lastEventAt": "2026-03-12T15:15:15.281Z",
+      "lastEventAt": "2026-03-15T13:30:15.281Z",
       "latestActivityKind": "tool",
       "latestToolName": "read"
     },
@@ -51,14 +51,14 @@
       "role": "Triage Lead",
       "roomId": "dispatch",
       "status": "waiting",
-      "currentTask": "Holding backlog context for the next incoming request.",
+      "currentTask": "Holding backlog context while the review and build rooms drift in different directions.",
       "focus": "New asks",
       "model": "openai/gpt-5-mini",
       "queueCount": 4,
       "sessionCount": 1,
       "utilization": 56,
       "nextHandoff": "Research Bay",
-      "lastEventAt": "2026-03-09T04:45:28.726Z",
+      "lastEventAt": "2026-03-15T11:15:28.726Z",
       "latestActivityKind": "assistant"
     },
     {
@@ -70,14 +70,14 @@
       "currentTaskId": "TQ-101",
       "lastTaskId": "TQ-091",
       "nextTaskId": "TQ-103",
-      "currentTask": "Sweeping visual references for office-style agent maps.",
-      "focus": "Reference sweep",
+      "currentTask": "Rebuilding concierge notes after a review loop cleared this morning.",
+      "focus": "Recovering research lane",
       "model": "openai/gpt-5-mini",
       "queueCount": 2,
       "sessionCount": 1,
       "utilization": 78,
       "nextHandoff": "Review Booth",
-      "lastEventAt": "2026-03-11T20:54:51.004Z",
+      "lastEventAt": "2026-03-15T10:45:51.004Z",
       "latestActivityKind": "assistant"
     },
     {
@@ -104,14 +104,14 @@
       "status": "active",
       "currentTaskId": "TQ-108",
       "lastTaskId": "TQ-092",
-      "currentTask": "Unifying the workflow ownership schema after the office join-up.",
-      "focus": "Ownership contract",
+      "currentTask": "Unifying the workflow ownership schema after a new contract block hit the build lane.",
+      "focus": "Slipping build lane",
       "model": "openai/gpt-5-codex",
       "queueCount": 5,
       "sessionCount": 1,
       "utilization": 87,
       "nextHandoff": "Review Booth",
-      "lastEventAt": "2026-03-09T04:57:09.442Z",
+      "lastEventAt": "2026-03-15T13:25:09.442Z",
       "latestActivityKind": "tool",
       "latestToolName": "exec"
     },
@@ -128,7 +128,7 @@
       "sessionCount": 1,
       "utilization": 32,
       "nextHandoff": "Dispatch Desk",
-      "lastEventAt": "2026-03-10T03:38:38.000Z",
+      "lastEventAt": "2026-03-15T09:38:38.000Z",
       "latestActivityKind": "assistant"
     },
     {
@@ -139,14 +139,14 @@
       "status": "waiting",
       "lastTaskId": "TQ-093",
       "nextTaskId": "TQ-097",
-      "currentTask": "Holding the release lane while the PR waits on a human decision.",
-      "focus": "Review desk",
+      "currentTask": "Holding the release lane while the PR stays in review for another cycle.",
+      "focus": "Sustained review pressure",
       "model": "openai/gpt-5-mini",
       "queueCount": 2,
       "sessionCount": 1,
       "utilization": 49,
       "nextHandoff": "Release Dock",
-      "lastEventAt": "2026-03-09T04:57:59.000Z",
+      "lastEventAt": "2026-03-15T12:57:59.000Z",
       "latestActivityKind": "assistant"
     },
     {
@@ -157,14 +157,14 @@
       "status": "blocked",
       "currentTaskId": "TQ-097",
       "lastTaskId": "TQ-093",
-      "currentTask": "Waiting on human merge confirmation for the workstation release candidate.",
-      "focus": "Human merge",
+      "currentTask": "Waiting on human merge confirmation after a full day of review follow-up.",
+      "focus": "Sustained release review",
       "model": "anthropic/claude-sonnet-4-5",
       "queueCount": 3,
       "sessionCount": 1,
       "utilization": 63,
       "nextHandoff": "Main Console",
-      "lastEventAt": "2026-03-09T05:00:31.000Z",
+      "lastEventAt": "2026-03-15T12:58:31.000Z",
       "latestActivityKind": "user"
     }
   ],
@@ -214,44 +214,44 @@
     {
       "id": "event-main-1",
       "agentId": "main",
-      "at": "2026-03-12T15:15:15.281Z",
+      "at": "2026-03-15T13:30:15.281Z",
       "kind": "tool",
       "toolName": "read",
-      "summary": "Main Console reopened the floor plan brief.",
-      "detail": "Queued the Agents page and routed the implementation lane to Coding Agent."
+      "summary": "Main Console reprioritized the lifecycle milestone summary.",
+      "detail": "The operator summary now calls out a slipping build lane, a recovering research lane, and sustained release review pressure."
     },
     {
       "id": "event-research-1",
       "agentId": "research-agent",
-      "at": "2026-03-11T20:54:51.004Z",
+      "at": "2026-03-15T10:45:51.004Z",
       "kind": "assistant",
-      "summary": "Research Agent wrapped the inspiration sweep.",
-      "detail": "Pinned virtual-office references and handed visual motifs to the review lane."
+      "summary": "Research Agent recovered from a review loop.",
+      "detail": "The concierge notes moved back to running after review feedback landed and fresh edits were made."
     },
     {
       "id": "event-coding-1",
       "agentId": "coding-agent",
-      "at": "2026-03-09T04:57:09.442Z",
+      "at": "2026-03-15T13:25:09.442Z",
       "kind": "tool",
       "toolName": "exec",
-      "summary": "Coding Agent is stalled on the shared workflow contract.",
-      "detail": "Build Bay is waiting for agent-workflow ownership fields before the next patch can land."
+      "summary": "Coding Agent slipped into a new contract block.",
+      "detail": "Build Bay escalated from running to blocked after the shared ownership contract changed underneath the patch."
     },
     {
       "id": "event-release-1",
       "agentId": "release-agent",
-      "at": "2026-03-09T05:00:31.000Z",
+      "at": "2026-03-15T12:58:31.000Z",
       "kind": "user",
-      "summary": "Release Agent is waiting on human merge confirmation.",
-      "detail": "The release lane is ready, but the PR still needs a human decision before ship."
+      "summary": "Release Agent is still waiting on human merge confirmation.",
+      "detail": "The release lane stayed in review through another screenshot check and still needs a human decision before ship."
     },
     {
       "id": "event-intake-1",
       "agentId": "intake-agent",
-      "at": "2026-03-09T04:45:28.726Z",
+      "at": "2026-03-15T11:15:28.726Z",
       "kind": "assistant",
-      "summary": "Intake Agent sorted the next batch of asks.",
-      "detail": "The dispatch queue is ready for a new research or build assignment."
+      "summary": "Intake Agent marked the next intervention order.",
+      "detail": "Dispatch is keeping new asks warm while the operator resolves the slipping build lane first."
     }
   ]
 }

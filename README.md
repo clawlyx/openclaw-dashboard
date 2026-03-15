@@ -4,6 +4,8 @@
 
 OpenClaw workstation with dedicated Agents, Mission Control, Overview, History, Usage, and Scheduler workspaces.
 
+Current milestone: `1.3.0 Operator Intelligence`.
+
 <p align="center">
   <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard agents virtual office desktop preview" width="78%" />
   <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard agents virtual office mobile preview" width="19%" />
@@ -32,6 +34,8 @@ OpenClaw workstation with dedicated Agents, Mission Control, Overview, History, 
 - shared room or agent detail drawer with task path, handoffs, and linked artifacts
 - inline office actions for advancing, blocking, or resetting the focused Mission Control task
 - a pressure rail that surfaces stale review, blocked-too-long, waiting-on-human, inferred ownership, and overloaded rooms
+- lifecycle-aware operator summary that distinguishes new, sustained, slipping, and recovering pressure without hiding the live snapshot
+- room and mission detail evidence that explains lifecycle judgments with recent wait/age context and safe fallback copy
 - top-level `Mission Control` workspace for mission intake, queue progress, review pressure, and release readiness
 - `Office Floor`, `Queues & handoffs`, and `Recent activity` panels for simplified agent operations visibility
 - latest usage report summary
@@ -68,8 +72,9 @@ live install is present, the app serves bundled demo data instead.
 
 This keeps the app centered on your own OpenClaw setup and avoids needing a custom backend yet.
 The JSON snapshot is also exposed at `/api/snapshot`, including normalized `agents` data for the
-office views, `usage.history` data for charts, `usage.providerLimits` for active rolling windows,
-and `usage.providerProfiles` for saved provider profiles such as OpenAI Codex and OpenRouter.
+office views, shared `pressure` lifecycle data for operator surfaces and verification, `usage.history`
+data for charts, `usage.providerLimits` for active rolling windows, and `usage.providerProfiles`
+for saved provider profiles such as OpenAI Codex and OpenRouter.
 
 ## Quick Start
 
@@ -115,6 +120,19 @@ The `AGENT_LAUNCHPAD_HOME` path above can point to a missing directory. When no 
 
 ## Validation
 
+Lifecycle demo run:
+
+```bash
+OPENCLAW_HOME=demo/openclaw-home AGENT_LAUNCHPAD_HOME=/tmp/openclaw-dashboard-demo pnpm start
+```
+
+What to confirm before release:
+
+- `Agents` shows a slipping build case, a sustained review case, and a recovering research case from bundled demo data
+- `/api/snapshot` exposes the same lifecycle states under `pressure.taskMetricsByTaskId` and `pressure.roomMetricsByRoomId`
+- README and preview screenshots in `.github/assets/` are captured only from the bundled demo dataset
+- `package.json`, README milestone copy, and the changelog all agree on `1.3.0`
+
 ```bash
 pnpm lint
 pnpm typecheck
@@ -133,7 +151,7 @@ request.
 
 ## Current Surfaces
 
-- `Agents`: virtual office, room mission ownership, owner detail drawer, inline office actions, pressure rail, office floor, queues and handoffs, recent activity
+- `Agents`: virtual office, room mission ownership, lifecycle-aware operator summary, owner detail drawer, inline office actions, pressure rail, office floor, queues and handoffs, recent activity
 - `Mission Control`: active missions, execution queue, review desk, release lane, and mission intake
 - `Overview`: latest summary cards and high-signal operational state
 - `History`: usage history trends and chart views
@@ -168,7 +186,7 @@ Do not commit:
 - real `~/.openclaw` snapshots unless you explicitly want them public
 
 The demo dataset under `demo/openclaw-home` is synthetic and safe to publish.
-The public screenshots in `.github/assets/readme-demo.png`, `.github/assets/readme-mobile.png`, `.github/assets/preview-mission-control.png`, and `.github/assets/social-preview.png` should always be generated from the bundled demo dataset.
+The public screenshots in `.github/assets/readme-demo.png`, `.github/assets/readme-mobile.png`, `.github/assets/preview-mission-control.png`, `.github/assets/preview-overview.png`, `.github/assets/preview-history.png`, `.github/assets/preview-usage.png`, `.github/assets/preview-scheduler.png`, and `.github/assets/social-preview.png` should always be generated from the bundled demo dataset.
 
 ## Project Docs
 

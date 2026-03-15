@@ -4,6 +4,8 @@
 
 一个面向 OpenClaw 的工作站应用，提供 Agents、Mission Control、概览、历史、用量和调度等独立工作区。
 
+当前里程碑：`1.3.0 Operator Intelligence`。
+
 <p align="center">
   <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard Agents 虚拟办公室桌面端预览" width="78%" />
   <img src="./.github/assets/readme-mobile.png" alt="OpenClaw Dashboard Agents 虚拟办公室移动端预览" width="19%" />
@@ -32,6 +34,8 @@
 - 共享的房间 / agent 详情抽屉，可查看任务路径、交接记录和关联交付物
 - 可直接在办公室抽屉内执行 Mission Control 任务动作
 - 一条压力轨道，用来浮出老化评审、长期阻塞、等待人工、推断归属和房间过载
+- 带生命周期判断的 operator summary，可区分新出现、持续中、正在滑落和正在恢复的压力，同时保留当前快照事实
+- 房间与任务详情里的生命周期证据说明，会结合最近等待/老化信息，并在历史不完整时给出安全的回退文案
 - 顶级 `Mission Control` 工作区，用于任务 intake、队列推进、评审压力和发布就绪状态
 - `Office Floor`、`Queues & handoffs`、`Recent activity` 三个补充面板，用于快速理解 agent 运转状态
 - 最新 usage 报告摘要
@@ -64,7 +68,7 @@
 - usage 报告：`workspace/memory/usage/*.md`
 - cron 任务：`cron/jobs.json`
 
-这意味着它仍然围绕你自己的 OpenClaw 本地数据运行，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供 Agents 办公室视图使用的归一化 `agents` 数据、供图表使用的 `usage.history` 数据、用于 active 滚动窗口的 `usage.providerLimits`，以及用于已保存 provider profile 的 `usage.providerProfiles`。
+这意味着它仍然围绕你自己的 OpenClaw 本地数据运行，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供 Agents 办公室视图使用的归一化 `agents` 数据、供 operator surface 与验证共用的 `pressure` 生命周期数据、供图表使用的 `usage.history` 数据、用于 active 滚动窗口的 `usage.providerLimits`，以及用于已保存 provider profile 的 `usage.providerProfiles`。
 
 ## 快速开始
 
@@ -110,6 +114,19 @@ OPENCLAW_HOME=demo/openclaw-home AGENT_LAUNCHPAD_HOME=/tmp/openclaw-dashboard-de
 
 ## 验证
 
+生命周期演示验证命令：
+
+```bash
+OPENCLAW_HOME=demo/openclaw-home AGENT_LAUNCHPAD_HOME=/tmp/openclaw-dashboard-demo pnpm start
+```
+
+发布前需要确认：
+
+- `Agents` 页面能从内置 demo 数据中看出一个滑落中的 build case、一个持续中的 review case，以及一个恢复中的 research case
+- `/api/snapshot` 在 `pressure.taskMetricsByTaskId` 和 `pressure.roomMetricsByRoomId` 下暴露出同一组生命周期状态
+- `.github/assets/` 中的 README 与预览截图全部来自内置 demo 数据，而不是本机真实数据
+- `package.json`、README 里的里程碑描述和 changelog 对 `1.3.0` 版本保持一致
+
 ```bash
 pnpm lint
 pnpm typecheck
@@ -126,7 +143,7 @@ pnpm check
 
 ## 当前页面
 
-- `Agents`：Virtual Office、房间级任务归属、详情抽屉、办公室动作、压力轨道、Office Floor、Queues & handoffs、Recent activity
+- `Agents`：Virtual Office、房间级任务归属、生命周期 operator summary、详情抽屉、办公室动作、压力轨道、Office Floor、Queues & handoffs、Recent activity
 - `Mission Control`：Active missions、Execution queue、Review desk、Release lane、Mission intake
 - `Overview`：最新摘要卡片和高优先级运行状态
 - `History`：usage 历史趋势和图表视图
@@ -161,7 +178,7 @@ pnpm check
 - 真实的 `~/.openclaw` 快照，除非你明确要公开
 
 `demo/openclaw-home` 下的 demo 数据是合成的，可以安全发布。  
-`.github/assets/readme-demo.png`、`.github/assets/readme-mobile.png`、`.github/assets/preview-mission-control.png` 和 `.github/assets/social-preview.png` 里的公开截图都应始终基于内置 demo 数据生成。
+`.github/assets/readme-demo.png`、`.github/assets/readme-mobile.png`、`.github/assets/preview-mission-control.png`、`.github/assets/preview-overview.png`、`.github/assets/preview-history.png`、`.github/assets/preview-usage.png`、`.github/assets/preview-scheduler.png` 和 `.github/assets/social-preview.png` 里的公开截图都应始终基于内置 demo 数据生成。
 
 ## 项目文档
 

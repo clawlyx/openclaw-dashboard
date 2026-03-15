@@ -275,15 +275,15 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           title: "Open release PR",
           lane: "release",
           status: "review",
-          startedAt: "2026-03-10T09:10:00.000Z",
-          lastWorkedAt: "2026-03-10T10:44:00.000Z",
-          updatedAt: "2026-03-10T10:44:00.000Z",
+          startedAt: "2026-03-14T08:10:00.000Z",
+          lastWorkedAt: "2026-03-14T16:20:00.000Z",
+          updatedAt: "2026-03-14T16:20:00.000Z",
           summary: "PR is open and waiting for a merge decision.",
           nextPlannedStep: "Merge the release PR and publish the release note once screenshots are approved.",
           waitingOn: "human-merge",
           history: [
             {
-              at: "2026-03-10T09:10:00.000Z",
+              at: "2026-03-14T08:10:00.000Z",
               action: "start",
               detail: "TQ-097 started from Mission Control.",
               taskId: "TQ-097",
@@ -291,9 +291,17 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
               status: "running"
             },
             {
-              at: "2026-03-10T09:58:00.000Z",
+              at: "2026-03-14T09:00:00.000Z",
               action: "review",
               detail: "TQ-097 moved to review.",
+              taskId: "TQ-097",
+              lane: "release",
+              status: "review"
+            },
+            {
+              at: "2026-03-14T16:20:00.000Z",
+              action: "review-followup",
+              detail: "Release screenshots were rechecked while the PR stayed in review.",
               taskId: "TQ-097",
               lane: "release",
               status: "review"
@@ -302,9 +310,9 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
         }
       ],
       history: [
-        { at: "2026-03-10T09:10:00.000Z", action: "task", detail: "TQ-097 started from Mission Control." },
-        { at: "2026-03-10T09:58:00.000Z", action: "task", detail: "TQ-097 moved to review." },
-        { at: "2026-03-10T10:44:00.000Z", action: "review", detail: "Release PR is open and waiting for merge confirmation." }
+        { at: "2026-03-14T08:10:00.000Z", action: "task", detail: "TQ-097 started from Mission Control." },
+        { at: "2026-03-14T09:00:00.000Z", action: "task", detail: "TQ-097 moved to review." },
+        { at: "2026-03-14T16:20:00.000Z", action: "review", detail: "Release PR remained in review after screenshot follow-up." }
       ]
     },
     {
@@ -337,16 +345,16 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           title: "Research concierge experience",
           lane: "research",
           status: "running",
-          startedAt: "2026-03-10T09:48:00.000Z",
-          lastWorkedAt: "2026-03-10T10:12:00.000Z",
-          updatedAt: "2026-03-10T10:12:00.000Z",
+          startedAt: "2026-03-14T18:20:00.000Z",
+          lastWorkedAt: "2026-03-15T10:45:00.000Z",
+          updatedAt: "2026-03-15T10:45:00.000Z",
           summary: "Gathering first-release interaction patterns and concierge flows.",
           nextPlannedStep: "Package the research notes into a short product brief for review.",
           ownerAgentId: "research-agent",
           ownerRoomId: "research",
           history: [
             {
-              at: "2026-03-10T09:48:00.000Z",
+              at: "2026-03-14T18:20:00.000Z",
               action: "start",
               detail: "TQ-101 started in the research lane.",
               taskId: "TQ-101",
@@ -354,7 +362,23 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
               status: "running"
             },
             {
-              at: "2026-03-10T10:12:00.000Z",
+              at: "2026-03-15T08:15:00.000Z",
+              action: "review",
+              detail: "TQ-101 paused in review while the concierge outline was checked.",
+              taskId: "TQ-101",
+              lane: "research",
+              status: "review"
+            },
+            {
+              at: "2026-03-15T10:10:00.000Z",
+              action: "resume",
+              detail: "TQ-101 moved back to running after review feedback landed.",
+              taskId: "TQ-101",
+              lane: "research",
+              status: "running"
+            },
+            {
+              at: "2026-03-15T10:45:00.000Z",
               action: "worked",
               detail: "Research notes were updated for TQ-101.",
               taskId: "TQ-101",
@@ -365,8 +389,9 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
         }
       ],
       history: [
-        { at: "2026-03-10T09:48:00.000Z", action: "task", detail: "TQ-101 started from Mission Control." },
-        { at: "2026-03-10T10:12:00.000Z", action: "task", detail: "TQ-101 research notes were refreshed." }
+        { at: "2026-03-14T18:20:00.000Z", action: "task", detail: "TQ-101 started from Mission Control." },
+        { at: "2026-03-15T08:15:00.000Z", action: "task", detail: "TQ-101 paused for review." },
+        { at: "2026-03-15T10:45:00.000Z", action: "task", detail: "TQ-101 resumed and refreshed the concierge notes." }
       ]
     },
     {
@@ -399,9 +424,9 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           title: "Unify workflow ownership schema",
           lane: "build",
           status: "blocked",
-          startedAt: "2026-03-09T14:05:00.000Z",
-          lastWorkedAt: "2026-03-09T16:25:00.000Z",
-          updatedAt: "2026-03-09T16:25:00.000Z",
+          startedAt: "2026-03-15T11:05:00.000Z",
+          lastWorkedAt: "2026-03-15T13:25:00.000Z",
+          updatedAt: "2026-03-15T13:25:00.000Z",
           summary: "Waiting for a final contract that keeps workstation ownership and workflow specs aligned.",
           nextPlannedStep: "Resume implementation once the shared ownership fields are approved.",
           blockedReason: "Waiting for the shared ownership contract to land in agent-workflow.",
@@ -409,7 +434,7 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           ownerRoomId: "build",
           history: [
             {
-              at: "2026-03-09T14:05:00.000Z",
+              at: "2026-03-15T11:05:00.000Z",
               action: "start",
               detail: "TQ-108 started from Mission Control.",
               taskId: "TQ-108",
@@ -417,7 +442,7 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
               status: "running"
             },
             {
-              at: "2026-03-09T16:25:00.000Z",
+              at: "2026-03-15T13:25:00.000Z",
               action: "block",
               detail: "TQ-108 was blocked.",
               taskId: "TQ-108",
@@ -428,8 +453,8 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
         }
       ],
       history: [
-        { at: "2026-03-09T14:05:00.000Z", action: "task", detail: "TQ-108 started from Mission Control." },
-        { at: "2026-03-09T16:25:00.000Z", action: "task", detail: "TQ-108 was blocked." }
+        { at: "2026-03-15T11:05:00.000Z", action: "task", detail: "TQ-108 started from Mission Control." },
+        { at: "2026-03-15T13:25:00.000Z", action: "task", detail: "TQ-108 was blocked." }
       ]
     }
   ]

@@ -1,30 +1,46 @@
+---
+gsd_state_version: 1.0
+milestone: none
+milestone_name: none
+status: milestone_completed
+stopped_at: v1.3.0 archived and tagged
+last_updated: "2026-03-15T16:00:00.000Z"
+last_activity: 2026-03-15 — Archived and tagged the v1.3.0 operator-intelligence milestone
+progress:
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+---
+
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-03-14)
+See: `.planning/PROJECT.md` (updated 2026-03-15)
 
 **Core value:** One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.  
-**Current focus:** Phase 7: Pressure Lifecycle
+**Current focus:** No active milestone. Ready for next milestone definition.
 
 ## Current Position
 
 Milestone: `v1.3.0 Operator Intelligence`
-Phase: 7 (Pressure Lifecycle)
-Plan: 0 of 2 complete
-Status: Ready to plan
-Last activity: 2026-03-14 — Completed Phase 6 operator summary and bottleneck surfaces
+Phase: Archived
+Plan: Archived
+Status: Complete and archived
+Last activity: 2026-03-15 — Archived and tagged the v1.3.0 operator-intelligence milestone
 
-Progress: [████████░░] 78%
+Progress: [----------] 0%
 
 ## Milestone Stats
 
-- Previous milestone archive: `v1.2.0`
-- Next milestone target: predictive operator intelligence for the workstation
+- Previous milestone archive: `v1.3.0`
+- Next milestone target: not defined yet; start with `$gsd-new-milestone`
 
 ## Pending Todos
 
-- Plan Phase 7 with pressure lifecycle states, improving-versus-worsening cues, and milestone-safe demo refresh
+- Define the next milestone with `$gsd-new-milestone`
 
 ## Blockers/Concerns
 
@@ -32,6 +48,6 @@ Progress: [████████░░] 78%
 
 ## Session Continuity
 
-Last session: 2026-03-14 22:48 EDT  
-Stopped at: Phase `6` complete; next step is planning Phase `7`  
-Resume file: None
+Last session: 2026-03-15T16:00:00.000Z
+Stopped at: v1.3.0 archived and tagged
+Resume file: .planning/PROJECT.md

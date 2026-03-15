@@ -3,6 +3,7 @@ import type {
   MissionControlHistoryEntry,
   MissionControlHistorySource,
   MissionControlSnapshot,
+  MissionControlTaskStatus,
   MissionControlTaskSnapshot
 } from "@/lib/mission-control";
 
@@ -14,6 +15,26 @@ export type PressureSignalKind =
   | "room-overload";
 
 export type PressureSignalSeverity = "critical" | "high" | "medium" | "low";
+
+export type PressureLifecycleState = "new" | "sustained" | "slipping" | "recovering";
+export type PressureLifecycleTrend = "worsening" | "improving" | "steady" | "unknown";
+export type PressureLifecycleReasonKey =
+  | "entered-pressure"
+  | "pressure-worsened"
+  | "pressure-held"
+  | "left-pressure"
+  | "recent-progress"
+  | "partial-history"
+  | "current-only";
+
+export type PressureLifecycle = {
+  state: PressureLifecycleState;
+  trend: PressureLifecycleTrend;
+  reasonKey: PressureLifecycleReasonKey;
+  reasonText: string;
+  previousStatus?: MissionControlTaskStatus;
+  changedAt?: string;
+};
 
 export type PressureSignal = {
   id: string;
@@ -44,6 +65,7 @@ export type TaskHistoricalSignalMetrics = {
   startedAt?: string;
   statusEnteredAt?: string;
   lastActivityAt?: string;
+  lifecycle: PressureLifecycle;
 };
 
 export type RoomHistoricalSignalMetrics = {
@@ -54,6 +76,10 @@ export type RoomHistoricalSignalMetrics = {
   longestReviewWaitHours: number;
   longestBlockedDurationHours: number;
   longestActivityGapHours: number;
+  lifecycle?: PressureLifecycle;
+  lifecycleTaskCounts: Record<PressureLifecycleState, number>;
+  lifecyclePrimaryTaskId?: string;
+  lifecyclePrimaryTaskTitle?: string;
 };
 
 export type PressureSignalsModel = {
@@ -72,6 +98,21 @@ const severityWeight: Record<PressureSignalSeverity, number> = {
   high: 300,
   medium: 200,
   low: 100
+};
+
+const lifecycleWeight: Record<PressureLifecycleState, number> = {
+  slipping: 400,
+  sustained: 300,
+  new: 200,
+  recovering: 100
+};
+
+const taskStatusWeight: Record<MissionControlTaskStatus, number> = {
+  ready: 0,
+  running: 1,
+  review: 2,
+  blocked: 3,
+  done: -1
 };
 
 const asHours = (valueMs: number | undefined) => {
@@ -112,9 +153,160 @@ const latestMatchingHistoryAt = ({
 };
 
 const pickHistorySource = (sources: MissionControlHistorySource[]): MissionControlHistorySource => {
+  if (!sources.length) return "current-only";
   if (sources.includes("current-only")) return "current-only";
   if (sources.includes("partial-history")) return "partial-history";
   return "full-history";
+};
+
+const getPreviousDistinctStatus = (
+  sortedHistory: MissionControlHistoryEntry[],
+  currentStatus: MissionControlTaskStatus
+): MissionControlTaskStatus | undefined => {
+  const trail = sortedHistory
+    .map((entry) => entry.status)
+    .filter((status): status is MissionControlTaskStatus => Boolean(status));
+
+  for (let index = trail.length - 1; index >= 0; index -= 1) {
+    const status = trail[index];
+    if (status !== currentStatus) return status;
+  }
+
+  return undefined;
+};
+
+const isPressureStatus = (status?: MissionControlTaskStatus) => status === "review" || status === "blocked";
+
+const getLifecycleTrend = ({
+  currentStatus,
+  previousStatus
+}: {
+  currentStatus: MissionControlTaskStatus;
+  previousStatus?: MissionControlTaskStatus;
+}): PressureLifecycleTrend => {
+  if (!previousStatus) return "unknown";
+
+  const currentWeight = taskStatusWeight[currentStatus];
+  const previousWeight = taskStatusWeight[previousStatus];
+
+  if (currentWeight > previousWeight) return "worsening";
+  if (currentWeight < previousWeight) return "improving";
+  return "steady";
+};
+
+const formatLifecycleHours = (value?: number) => `${Math.max(1, Math.round(value || 0))}h`;
+const getStatusLabel = (status: MissionControlTaskStatus) =>
+  ({
+    ready: "ready",
+    running: "running",
+    review: "review",
+    blocked: "blocked",
+    done: "done"
+  })[status];
+
+const buildTaskLifecycle = ({
+  task,
+  metrics,
+  previousStatus
+}: {
+  task: MissionControlTaskSnapshot;
+  metrics: Pick<
+    TaskHistoricalSignalMetrics,
+    "source" | "currentWaitHours" | "activityGapHours" | "historyEntryCount" | "statusEnteredAt"
+  >;
+  previousStatus?: MissionControlTaskStatus;
+}): PressureLifecycle => {
+  const trend = getLifecycleTrend({ currentStatus: task.status, previousStatus });
+  const currentPressure = isPressureStatus(task.status) || isWaitingOnHuman(task.waitingOn);
+  const hadPressureBefore = isPressureStatus(previousStatus);
+  const recentWaitLabel = formatLifecycleHours(currentPressure ? metrics.currentWaitHours : metrics.activityGapHours);
+  const changedAt = metrics.statusEnteredAt;
+
+  if (task.status !== "done" && trend === "improving" && hadPressureBefore) {
+    return {
+      state: "recovering",
+      trend,
+      reasonKey: "left-pressure",
+      reasonText: `Back to ${getStatusLabel(task.status)} after ${getStatusLabel(previousStatus)} with fresh activity in the last ${recentWaitLabel}.`,
+      previousStatus,
+      changedAt
+    };
+  }
+
+  if (currentPressure) {
+    if (metrics.currentWaitHours > 6) {
+      return {
+        state: "sustained",
+        trend,
+        reasonKey: "pressure-held",
+        reasonText: `${getStatusLabel(task.status)} has held for ${formatLifecycleHours(metrics.currentWaitHours)} without clearing.`,
+        previousStatus,
+        changedAt
+      };
+    }
+
+    if (trend === "worsening") {
+      return {
+        state: "slipping",
+        trend,
+        reasonKey: "pressure-worsened",
+        reasonText: `${getStatusLabel(task.status)} followed ${getStatusLabel(previousStatus || task.status)} and is trending worse over the last ${recentWaitLabel}.`,
+        previousStatus,
+        changedAt
+      };
+    }
+
+    if (metrics.currentWaitHours <= 6) {
+      return {
+        state: "new",
+        trend,
+        reasonKey: "entered-pressure",
+        reasonText: `${getStatusLabel(task.status)} is fresh and entered within the last ${formatLifecycleHours(metrics.currentWaitHours)}.`,
+        previousStatus,
+        changedAt
+      };
+    }
+
+    return {
+      state: "new",
+      trend,
+      reasonKey: "entered-pressure",
+      reasonText: `${getStatusLabel(task.status)} is fresh and entered within the last ${formatLifecycleHours(metrics.currentWaitHours)}.`,
+      previousStatus,
+      changedAt
+    };
+  }
+
+  if (metrics.source === "current-only") {
+    return {
+      state: "new",
+      trend,
+      reasonKey: "current-only",
+      reasonText: `Current-state-only history shows ${getStatusLabel(task.status)} with no deeper timeline yet.`,
+      previousStatus,
+      changedAt
+    };
+  }
+
+  if (metrics.source === "partial-history" && metrics.historyEntryCount <= 2) {
+    return {
+      state: "recovering",
+      trend,
+      reasonKey: "partial-history",
+      reasonText: `Partial history suggests ${getStatusLabel(task.status)} is stabilizing, but older transitions are missing.`,
+      previousStatus,
+      changedAt
+    };
+  }
+
+  return {
+    state: "recovering",
+    trend,
+    reasonKey: "recent-progress",
+    reasonText: `Recent work shows ${getStatusLabel(task.status)} holding with no active pressure signal.`,
+    previousStatus,
+    changedAt
+  };
 };
 
 export const buildTaskHistoricalSignalMetrics = ({
@@ -149,6 +341,18 @@ export const buildTaskHistoricalSignalMetrics = ({
   const activeAgeHours = asHours(nowMs - startedAtMs);
   const activityGapHours = asHours(nowMs - lastActivityMs);
   const currentWaitHours = asHours(nowMs - statusEnteredAtMs);
+  const previousStatus = getPreviousDistinctStatus(sortedHistory, task.status);
+  const lifecycle = buildTaskLifecycle({
+    task,
+    metrics: {
+      source: task.historySource,
+      currentWaitHours,
+      activityGapHours,
+      historyEntryCount: sortedHistory.length,
+      statusEnteredAt
+    },
+    previousStatus
+  });
 
   return {
     taskId: task.tqId,
@@ -163,24 +367,65 @@ export const buildTaskHistoricalSignalMetrics = ({
     ...(startedAt ? { startedAt } : {}),
     ...(statusEnteredAt ? { statusEnteredAt } : {}),
     ...(lastActivityAt ? { lastActivityAt } : {})
+    ,
+    lifecycle
   };
 };
 
 const buildRoomHistoricalSignalMetrics = ({
   roomId,
-  metrics
+  metrics,
+  taskMetricsByTaskId,
+  tasksByTaskId
 }: {
   roomId: string;
   metrics: TaskHistoricalSignalMetrics[];
-}): RoomHistoricalSignalMetrics => ({
-  roomId,
-  source: pickHistorySource(metrics.map((metric) => metric.source)),
-  taskCount: metrics.length,
-  longestActiveAgeHours: Math.max(0, ...metrics.map((metric) => metric.activeAgeHours || 0)),
-  longestReviewWaitHours: Math.max(0, ...metrics.map((metric) => metric.reviewWaitHours || 0)),
-  longestBlockedDurationHours: Math.max(0, ...metrics.map((metric) => metric.blockedDurationHours || 0)),
-  longestActivityGapHours: Math.max(0, ...metrics.map((metric) => metric.activityGapHours || 0))
-});
+  taskMetricsByTaskId: Record<string, TaskHistoricalSignalMetrics>;
+  tasksByTaskId: Record<string, MissionControlTaskSnapshot>;
+}): RoomHistoricalSignalMetrics => {
+  const lifecycleTaskCounts = metrics.reduce<Record<PressureLifecycleState, number>>(
+    (accumulator, metric) => ({
+      ...accumulator,
+      [metric.lifecycle.state]: accumulator[metric.lifecycle.state] + 1
+    }),
+    { new: 0, sustained: 0, slipping: 0, recovering: 0 }
+  );
+
+  const primaryMetric =
+    [...metrics].sort((left, right) => {
+      const stateDelta = lifecycleWeight[right.lifecycle.state] - lifecycleWeight[left.lifecycle.state];
+      if (stateDelta !== 0) return stateDelta;
+
+      const waitDelta = (right.blockedDurationHours || right.reviewWaitHours || right.currentWaitHours || 0) -
+        (left.blockedDurationHours || left.reviewWaitHours || left.currentWaitHours || 0);
+      if (waitDelta !== 0) return waitDelta;
+
+      return (right.activeAgeHours || 0) - (left.activeAgeHours || 0);
+    })[0] || null;
+
+  const primaryTask = primaryMetric ? tasksByTaskId[primaryMetric.taskId] : undefined;
+
+  return {
+    roomId,
+    source: pickHistorySource(metrics.map((metric) => metric.source)),
+    taskCount: metrics.length,
+    longestActiveAgeHours: Math.max(0, ...metrics.map((metric) => metric.activeAgeHours || 0)),
+    longestReviewWaitHours: Math.max(0, ...metrics.map((metric) => metric.reviewWaitHours || 0)),
+    longestBlockedDurationHours: Math.max(0, ...metrics.map((metric) => metric.blockedDurationHours || 0)),
+    longestActivityGapHours: Math.max(0, ...metrics.map((metric) => metric.activityGapHours || 0)),
+    lifecycle: primaryMetric
+      ? {
+          ...taskMetricsByTaskId[primaryMetric.taskId].lifecycle,
+          reasonText: primaryTask
+            ? `${primaryTask.title}: ${taskMetricsByTaskId[primaryMetric.taskId].lifecycle.reasonText}`
+            : taskMetricsByTaskId[primaryMetric.taskId].lifecycle.reasonText
+        }
+      : undefined,
+    lifecycleTaskCounts,
+    lifecyclePrimaryTaskId: primaryTask?.tqId,
+    lifecyclePrimaryTaskTitle: primaryTask?.title
+  };
+};
 
 const scoreSignal = (signal: PressureSignal) => severityWeight[signal.severity] + Math.round(signal.ageHours || 0);
 
@@ -227,6 +472,10 @@ export const buildPressureSignalsModel = ({
     ...missionControl.queue.runningTasks,
     ...missionControl.queue.readyTasks
   ];
+  const tasksByTaskId = openTasks.reduce<Record<string, MissionControlTaskSnapshot>>((accumulator, task) => {
+    accumulator[task.tqId] = task;
+    return accumulator;
+  }, {});
 
   openTasks.forEach((task) => {
     const roomId = resolveTaskRoomId(task, agentRoomById);
@@ -290,7 +539,12 @@ export const buildPressureSignalsModel = ({
   });
   const roomMetricsByRoomId = agents.rooms.reduce<Record<string, RoomHistoricalSignalMetrics>>((accumulator, room) => {
     const roomMetrics = Object.values(taskMetricsByTaskId).filter((metric) => metric.roomId === room.id);
-    accumulator[room.id] = buildRoomHistoricalSignalMetrics({ roomId: room.id, metrics: roomMetrics });
+    accumulator[room.id] = buildRoomHistoricalSignalMetrics({
+      roomId: room.id,
+      metrics: roomMetrics,
+      taskMetricsByTaskId,
+      tasksByTaskId
+    });
     return accumulator;
   }, {});
 

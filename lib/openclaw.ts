@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 
 import { readAgentsSnapshot, type AgentsSnapshot } from "@/lib/agents";
 import { readMissionControlSnapshot, type MissionControlSnapshot } from "@/lib/mission-control";
+import { buildPressureSignalsModel, type PressureSignalsModel } from "@/lib/pressure-signals";
 
 type TableRow = Record<string, string>;
 
@@ -159,6 +160,7 @@ export type DashboardSnapshot = {
   cron: CronSnapshot;
   agents: AgentsSnapshot;
   missionControl: MissionControlSnapshot;
+  pressure: PressureSignalsModel;
 };
 
 type ResolvedOpenClawHome = {
@@ -1472,15 +1474,23 @@ const readCronJobs = async (openclawHome: ResolvedOpenClawHome): Promise<CronSna
 
 export const getDashboardSnapshot = async (): Promise<DashboardSnapshot> => {
   const openclawHome = await resolveOpenClawHome();
+  const generatedAt = new Date().toISOString();
+  const agents = await readAgentsSnapshot(openclawHome);
+  const missionControl = await readMissionControlSnapshot();
 
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     openclawHome: formatDisplayPath(openclawHome.home),
     openclawSourceKind: openclawHome.sourceKind,
     openclawSourceLabel: openclawHome.sourceLabel,
     usage: await readUsageReports(openclawHome),
     cron: await readCronJobs(openclawHome),
-    agents: await readAgentsSnapshot(openclawHome),
-    missionControl: await readMissionControlSnapshot()
+    agents,
+    missionControl,
+    pressure: buildPressureSignalsModel({
+      agents,
+      missionControl,
+      generatedAt
+    })
   };
 };

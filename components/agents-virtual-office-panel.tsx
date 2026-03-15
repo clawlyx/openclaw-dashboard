@@ -15,7 +15,13 @@ import type {
 } from "@/lib/agents";
 import type { MissionControlSnapshot, MissionControlTaskSnapshot, MissionControlTaskStatus } from "@/lib/mission-control";
 import type { MissionTaskMutationMode } from "@/lib/mission-control-actions";
-import { buildPressureSignalsModel, type PressureSignal, type PressureSignalSeverity } from "@/lib/pressure-signals";
+import type {
+  PressureLifecycle,
+  PressureLifecycleState,
+  PressureSignal,
+  PressureSignalSeverity,
+  PressureSignalsModel
+} from "@/lib/pressure-signals";
 
 type AgentsVirtualOfficeMessages = {
   section: string;
@@ -72,6 +78,7 @@ type AgentsVirtualOfficeMessages = {
   operatorSummaryReasonOverload: string;
   operatorSummaryReasonWaiting: string;
   operatorSummaryReasonThroughput: string;
+  operatorSummaryReasonLifecycle: string;
   operatorSummaryStatus: string;
   statusActive: string;
   statusBlocked: string;
@@ -133,6 +140,8 @@ type AgentsVirtualOfficeMessages = {
   detailBlockedReason: string;
   detailWaitingOn: string;
   detailHistorySource: string;
+  detailLifecycle: string;
+  detailLifecycleReason: string;
   detailActiveAge: string;
   detailReviewWait: string;
   detailBlockedDuration: string;
@@ -168,6 +177,17 @@ type AgentsVirtualOfficeMessages = {
   historySourcePartial: string;
   historySourceCurrent: string;
   roomTrendSummary: string;
+  lifecycleStateNew: string;
+  lifecycleStateSustained: string;
+  lifecycleStateSlipping: string;
+  lifecycleStateRecovering: string;
+  lifecycleSummaryNew: string;
+  lifecycleSummarySustained: string;
+  lifecycleSummarySlipping: string;
+  lifecycleSummaryRecovering: string;
+  lifecycleSummaryFallback: string;
+  lifecycleSourcePartial: string;
+  lifecycleSourceCurrent: string;
   roomOccupancy: string;
   timelineTitle: string;
   timelineCopy: string;
@@ -681,6 +701,78 @@ const getPressureSignalLabel = (signal: PressureSignal, copy: AgentsVirtualOffic
   }
 };
 
+const getLifecycleStateLabel = (state: PressureLifecycleState | undefined, copy: AgentsVirtualOfficeMessages) => {
+  switch (state) {
+    case "new":
+      return copy.lifecycleStateNew;
+    case "sustained":
+      return copy.lifecycleStateSustained;
+    case "slipping":
+      return copy.lifecycleStateSlipping;
+    case "recovering":
+    default:
+      return copy.lifecycleStateRecovering;
+  }
+};
+
+const getLifecycleSummary = ({
+  lifecycle,
+  status,
+  currentWaitHours,
+  activityGapHours,
+  source,
+  copy,
+  common,
+  formatHistoryHours
+}: {
+  lifecycle?: PressureLifecycle;
+  status?: MissionControlTaskStatus;
+  currentWaitHours?: number;
+  activityGapHours?: number;
+  source?: "full-history" | "partial-history" | "current-only";
+  copy: AgentsVirtualOfficeMessages;
+  common: { na: string };
+  formatHistoryHours: (value?: number) => string;
+}) => {
+  if (!lifecycle || !status) return copy.lifecycleSummaryFallback;
+
+  const statusLabel = humanizeStateLabel(status) || common.na;
+  const previousStatusLabel = lifecycle.previousStatus ? humanizeStateLabel(lifecycle.previousStatus) || common.na : null;
+  const durationLabel = formatHistoryHours(currentWaitHours || activityGapHours);
+  const sourceHint =
+    source === "partial-history"
+      ? ` · ${copy.lifecycleSourcePartial}`
+      : source === "current-only"
+        ? ` · ${copy.lifecycleSourceCurrent}`
+        : "";
+
+  switch (lifecycle.state) {
+    case "new":
+      return formatMessage(copy.lifecycleSummaryNew, {
+        status: statusLabel,
+        duration: durationLabel
+      }) + sourceHint;
+    case "sustained":
+      return formatMessage(copy.lifecycleSummarySustained, {
+        status: statusLabel,
+        duration: durationLabel
+      }) + sourceHint;
+    case "slipping":
+      return formatMessage(copy.lifecycleSummarySlipping, {
+        status: statusLabel,
+        previousStatus: previousStatusLabel || statusLabel,
+        duration: durationLabel
+      }) + sourceHint;
+    case "recovering":
+    default:
+      return formatMessage(copy.lifecycleSummaryRecovering, {
+        status: statusLabel,
+        previousStatus: previousStatusLabel || statusLabel,
+        duration: durationLabel
+      }) + sourceHint;
+  }
+};
+
 const summarizeThroughput = (roomQueue: number, taskCount: number) => {
   if (taskCount <= 0) return 0;
   return Math.max(0, taskCount * 10 - roomQueue * 3);
@@ -1082,7 +1174,7 @@ export function AgentsVirtualOfficePanel({
   id,
   agents,
   missionControl,
-  generatedAt,
+  pressure,
   locale,
   copy,
   common,
@@ -1092,7 +1184,7 @@ export function AgentsVirtualOfficePanel({
   id?: string;
   agents: AgentsSnapshot;
   missionControl: MissionControlSnapshot;
-  generatedAt: string;
+  pressure: PressureSignalsModel;
   locale: Locale;
   copy: AgentsVirtualOfficeMessages;
   common: { na: string; unavailable: string };
@@ -1124,15 +1216,7 @@ export function AgentsVirtualOfficePanel({
     () => new Set(liveMissionTasks.map((task) => task.featureId)).size,
     [liveMissionTasks]
   );
-  const pressureModel = useMemo(
-    () =>
-      buildPressureSignalsModel({
-        agents,
-        missionControl,
-        generatedAt
-      }),
-    [agents, generatedAt, missionControl]
-  );
+  const pressureModel = pressure;
   const totalAttentionCount = pressureModel.signals.length;
   const roomMissionCoverage = useMemo(() => {
     const coverageByRoom = new Map<string, RoomMissionCoverage & { tasks: MissionControlTaskSnapshot[]; features: Set<string> }>(
@@ -1397,21 +1481,12 @@ export function AgentsVirtualOfficePanel({
           longestReviewWaitHours: number;
           longestBlockedDurationHours: number;
           longestActivityGapHours: number;
+          lifecycle?: PressureLifecycle;
         }
       | undefined
   ) => {
     if (!metrics) return getHistorySourceLabel("current-only", copy);
-
-    const facts = [
-      metrics.longestReviewWaitHours > 0 ? `${copy.detailReviewWait}: ${formatHistoryHours(metrics.longestReviewWaitHours)}` : null,
-      metrics.longestBlockedDurationHours > 0
-        ? `${copy.detailBlockedDuration}: ${formatHistoryHours(metrics.longestBlockedDurationHours)}`
-        : null,
-      metrics.longestActiveAgeHours > 0 ? `${copy.detailActiveAge}: ${formatHistoryHours(metrics.longestActiveAgeHours)}` : null,
-      metrics.longestActivityGapHours > 0 ? `${copy.detailActivityGap}: ${formatHistoryHours(metrics.longestActivityGapHours)}` : null
-    ].filter((entry): entry is string => Boolean(entry));
-
-    return `${facts[0] || `${copy.detailActiveAge}: ${common.na}`} · ${getHistorySourceLabel(metrics.source, copy)}`;
+    return `${getLifecycleStateLabel(metrics.lifecycle?.state, copy)} · ${getHistorySourceLabel(metrics.source, copy)}`;
   };
   const getRoomExplanation = (
     metrics:
@@ -1421,11 +1496,13 @@ export function AgentsVirtualOfficePanel({
           longestReviewWaitHours: number;
           longestBlockedDurationHours: number;
           longestActivityGapHours: number;
+          lifecycle?: PressureLifecycle;
         }
       | undefined,
     roomPressureCount: number
   ) => {
     const facts = [
+      metrics?.lifecycle ? `${copy.operatorSummaryReasonLifecycle}: ${getLifecycleStateLabel(metrics.lifecycle.state, copy)}` : null,
       metrics?.longestBlockedDurationHours
         ? `${copy.intelligenceBlocked}: ${formatHistoryHours(metrics.longestBlockedDurationHours)}`
         : null,
@@ -1525,6 +1602,7 @@ export function AgentsVirtualOfficePanel({
     const roomId = getMissionOwnership(task, agentRoomById).roomId;
     const roomEntry = roomEntries.find((entry) => entry.room.id === roomId);
     const reasons = [
+      metrics?.lifecycle ? `${copy.operatorSummaryReasonLifecycle}: ${getLifecycleStateLabel(metrics.lifecycle.state, copy)}` : null,
       metrics?.blockedDurationHours
         ? `${copy.operatorSummaryReasonBlocked}: ${formatHistoryHours(metrics.blockedDurationHours)}`
         : null,
@@ -1947,9 +2025,16 @@ export function AgentsVirtualOfficePanel({
                 </strong>
                 <p className="virtualOperatorSummaryMeta">
                   {hottestMissionTask
-                    ? `${hottestMissionTask.title} · ${copy.operatorSummarySignals}: ${
-                        pressureModel.taskSignalCountByTaskId[hottestMissionTask.tqId] || 0
-                      }`
+                    ? getLifecycleSummary({
+                        lifecycle: pressureModel.taskMetricsByTaskId[hottestMissionTask.tqId]?.lifecycle,
+                        status: hottestMissionTask.status,
+                        currentWaitHours: pressureModel.taskMetricsByTaskId[hottestMissionTask.tqId]?.currentWaitHours,
+                        activityGapHours: pressureModel.taskMetricsByTaskId[hottestMissionTask.tqId]?.activityGapHours,
+                        source: pressureModel.taskMetricsByTaskId[hottestMissionTask.tqId]?.source,
+                        copy,
+                        common,
+                        formatHistoryHours
+                      })
                     : copy.operatorSummaryHealthy}
                 </p>
               </button>
@@ -1965,9 +2050,10 @@ export function AgentsVirtualOfficePanel({
                 </strong>
                 <p className="virtualOperatorSummaryMeta">
                   {topRoomIntelligence
-                    ? `${getRoomExplanation(topRoomIntelligence.roomHistoryMetrics, topRoomIntelligence.roomPressureCount)} · ${
-                        copy.operatorSummaryReasonThroughput
-                      }: ${topRoomIntelligence.throughputScore}`
+                    ? `${getLifecycleStateLabel(topRoomIntelligence.roomHistoryMetrics?.lifecycle?.state, copy)} · ${getRoomExplanation(
+                        topRoomIntelligence.roomHistoryMetrics,
+                        topRoomIntelligence.roomPressureCount
+                      )}`
                     : copy.operatorSummaryHealthy}
                 </p>
               </button>
@@ -2028,6 +2114,9 @@ export function AgentsVirtualOfficePanel({
                         {entry.task.featureTitle} · {roomLabelById.get(entry.ownership.roomId) || common.na}
                       </p>
                       <div className="virtualDeskCardMeta">
+                        <span>
+                          {copy.operatorSummaryReasonLifecycle}: {getLifecycleStateLabel(entry.metrics?.lifecycle?.state, copy)}
+                        </span>
                         <span>
                           {copy.operatorSummarySignals}: {entry.signalCount}
                         </span>
@@ -2175,7 +2264,7 @@ export function AgentsVirtualOfficePanel({
                   <p className="virtualRoomPulseHint">{copy.roomMissionIdle}</p>
                 )}
                 <p className="virtualRoomPulseHint">
-                  {copy.roomTrendSummary}: {getRoomTrendSummary(roomHistoryMetrics)}
+                  {copy.roomTrendSummary}: {getRoomExplanation(roomHistoryMetrics, roomPressureCount)}
                 </p>
                 <div className="virtualRoomPulseMeta">
                   <span>
@@ -2310,6 +2399,25 @@ export function AgentsVirtualOfficePanel({
                             <dd>{getHistorySourceLabel(activeDetailMetrics?.source || activeDetailTask.historySource, copy)}</dd>
                           </div>
                           <div>
+                            <dt>{copy.detailLifecycle}</dt>
+                            <dd>{getLifecycleStateLabel(activeDetailMetrics?.lifecycle?.state, copy)}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailLifecycleReason}</dt>
+                            <dd>
+                              {getLifecycleSummary({
+                                lifecycle: activeDetailMetrics?.lifecycle,
+                                status: activeDetailTask.status,
+                                currentWaitHours: activeDetailMetrics?.currentWaitHours,
+                                activityGapHours: activeDetailMetrics?.activityGapHours,
+                                source: activeDetailMetrics?.source || activeDetailTask.historySource,
+                                copy,
+                                common,
+                                formatHistoryHours
+                              })}
+                            </dd>
+                          </div>
+                          <div>
                             <dt>{copy.detailActiveAge}</dt>
                             <dd>{formatHistoryHours(activeDetailMetrics?.activeAgeHours)}</dd>
                           </div>
@@ -2349,7 +2457,7 @@ export function AgentsVirtualOfficePanel({
                           </div>
                           <div>
                             <dt>{copy.roomTrendSummary}</dt>
-                            <dd>{getRoomTrendSummary(selectedRoomEntry.roomHistoryMetrics)}</dd>
+                            <dd>{getRoomExplanation(selectedRoomEntry.roomHistoryMetrics, selectedRoomEntry.roomPressureCount)}</dd>
                           </div>
                         </>
                       ) : null}
@@ -2513,6 +2621,18 @@ export function AgentsVirtualOfficePanel({
                           </div>
                           <p>{task.title}</p>
                           {task.summary ? <p className="virtualMissionCardSummary">{task.summary}</p> : null}
+                          <p className="virtualMissionCardSummary">
+                            {getLifecycleSummary({
+                              lifecycle: pressureModel.taskMetricsByTaskId[task.tqId]?.lifecycle,
+                              status: task.status,
+                              currentWaitHours: pressureModel.taskMetricsByTaskId[task.tqId]?.currentWaitHours,
+                              activityGapHours: pressureModel.taskMetricsByTaskId[task.tqId]?.activityGapHours,
+                              source: pressureModel.taskMetricsByTaskId[task.tqId]?.source,
+                              copy,
+                              common,
+                              formatHistoryHours
+                            })}
+                          </p>
                           <div className="virtualDeskCardMeta">
                             <span>
                               {copy.missionOwnerRoom}: {roomLabelById.get(ownership.roomId) || common.na}
@@ -2612,7 +2732,20 @@ export function AgentsVirtualOfficePanel({
                           {getPressureSeverityLabel(signal.severity, copy)}
                         </span>
                       </div>
-                      <p>{getPressureSignalSummary(signal)}</p>
+                      <p>
+                        {signal.taskId && taskById.get(signal.taskId)
+                          ? getLifecycleSummary({
+                              lifecycle: pressureModel.taskMetricsByTaskId[signal.taskId]?.lifecycle,
+                              status: taskById.get(signal.taskId)?.status,
+                              currentWaitHours: pressureModel.taskMetricsByTaskId[signal.taskId]?.currentWaitHours,
+                              activityGapHours: pressureModel.taskMetricsByTaskId[signal.taskId]?.activityGapHours,
+                              source: pressureModel.taskMetricsByTaskId[signal.taskId]?.source,
+                              copy,
+                              common,
+                              formatHistoryHours
+                            })
+                          : getPressureSignalSummary(signal)}
+                      </p>
                       <div className="virtualDeskCardMeta">
                         {getPressureSignalMeta(signal).map((item) => (
                           <span key={`${signal.id}:${item}`}>{item}</span>

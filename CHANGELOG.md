@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-03-15
+
+### Added
+
+- Pressure lifecycle states in the workstation snapshot so open tasks and rooms expose `new`, `sustained`, `slipping`, and `recovering` cues through `/api/snapshot`.
+- Summary-first lifecycle copy in the `Agents` workspace, including operator summary cards, bottleneck ranking, room trend callouts, and lifecycle evidence in the shared detail drawer.
+- A refreshed bundled demo package and screenshot set that shows slipping build pressure, sustained release review pressure, and recovering research work from public-safe fixtures.
+
+### Changed
+
+- Promoted the `1.3.0` operator-intelligence milestone into the public docs, release notes, and validation flow.
+- Updated the bundled Mission Control sample timeline so demo mode exercises lifecycle reasoning instead of only static pressure severity.
+- Refreshed README, Chinese README, and GitHub preview assets to match the lifecycle milestone and its repeatable demo validation path.
+
+### Fixed
+
+- Kept lifecycle classification explainable under partial or current-only history sources instead of introducing a separate opaque score.
+- Aligned API, UI, and demo fixtures so lifecycle state and reason text come from the same shared pressure model.
+
 ## [1.2.0] - 2026-03-14
 
 ### Added
