@@ -27,7 +27,7 @@ This milestone turns the workstation into an operator-intelligence surface. The 
 **Plans:** 2 plans
 
 Plans:
-- [ ] 05-01: Add historical signal derivation and timeline-safe snapshot shaping
+- [x] 05-01: Add historical signal derivation and timeline-safe snapshot shaping
 - [ ] 05-02: Thread trend metrics into mission and room data models with fallback handling
 
 ### Phase 6: Intelligence Surfaces
@@ -65,6 +65,6 @@ Phases execute in numeric order: 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Historical Signal Foundation | 0/2 | Not started | - |
+| 5. Historical Signal Foundation | 1/2 | In progress | 05-01 |
 | 6. Intelligence Surfaces | 0/2 | Not started | - |
 | 7. Pressure Lifecycle | 0/2 | Not started | - |
