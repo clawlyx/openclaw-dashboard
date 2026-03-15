@@ -2839,6 +2839,76 @@ html[data-theme="dark"] .officeRoomMeta span {
   gap: 14px;
 }
 
+.virtualOperatorSummaryRail {
+  gap: 18px;
+}
+
+.virtualOperatorSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.virtualOperatorSummaryCard,
+.virtualBottleneckCard {
+  appearance: none;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(23, 21, 19, 0.08);
+  background: color-mix(in srgb, var(--surface-card) 86%, white);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.virtualOperatorSummaryCard:hover,
+.virtualOperatorSummaryCard:focus-visible,
+.virtualBottleneckCard:hover,
+.virtualBottleneckCard:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
+.virtualOperatorSummaryCard:disabled {
+  cursor: default;
+  opacity: 0.72;
+  transform: none;
+  box-shadow: none;
+}
+
+.virtualOperatorSummaryValue {
+  color: var(--ink);
+  font-size: clamp(1rem, 1.3vw, 1.2rem);
+  letter-spacing: -0.04em;
+}
+
+.virtualOperatorSummaryMeta {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.virtualOperatorSummaryFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.virtualBottleneckRail {
+  display: grid;
+  gap: 14px;
+}
+
+.virtualBottleneckList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .virtualIntelligenceScopeBar {
   display: flex;
   flex-wrap: wrap;
@@ -3847,6 +3917,11 @@ html[data-theme="dark"] .historyGridLine {
   }
 
   .virtualOfficeDigestGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .virtualOperatorSummaryGrid,
+  .virtualBottleneckList {
     grid-template-columns: 1fr;
   }
 

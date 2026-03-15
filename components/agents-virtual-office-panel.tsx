@@ -47,6 +47,32 @@ type AgentsVirtualOfficeMessages = {
   intelligenceCompareEmpty: string;
   roomExplanationTitle: string;
   roomExplanationHealthy: string;
+  operatorSummaryTitle: string;
+  operatorSummaryCopy: string;
+  operatorScopeAll: string;
+  operatorScopeRoom: string;
+  operatorScopeMission: string;
+  operatorScopeNoMission: string;
+  operatorSummaryHottestMission: string;
+  operatorSummaryCriticalRoom: string;
+  operatorSummaryIntervention: string;
+  operatorSummaryHealthy: string;
+  operatorSummaryNeedsFocus: string;
+  operatorSummaryNoMission: string;
+  operatorSummaryNoIntervention: string;
+  operatorSummarySignals: string;
+  operatorSummaryBottlenecksTitle: string;
+  operatorSummaryBottlenecksCopy: string;
+  operatorSummaryBottlenecksEmpty: string;
+  operatorSummaryReasonBlocked: string;
+  operatorSummaryReasonReview: string;
+  operatorSummaryReasonAge: string;
+  operatorSummaryReasonGap: string;
+  operatorSummaryReasonSignals: string;
+  operatorSummaryReasonOverload: string;
+  operatorSummaryReasonWaiting: string;
+  operatorSummaryReasonThroughput: string;
+  operatorSummaryStatus: string;
   statusActive: string;
   statusBlocked: string;
   statusWaiting: string;
@@ -1424,6 +1450,20 @@ export function AgentsVirtualOfficePanel({
             return room.id === missionRoomId || missionCoverage.primaryTaskId === scopeMissionTask.tqId;
           })
         : roomPulseEntries;
+  const scopedMissionTasks =
+    intelligenceScope === "room" && selectedRoomId
+      ? liveMissionTasks.filter((task) => getMissionOwnership(task, agentRoomById).roomId === selectedRoomId)
+      : intelligenceScope === "mission" && scopeMissionTask
+        ? liveMissionTasks.filter((task) => task.featureId === scopeMissionTask.featureId)
+        : liveMissionTasks;
+  const scopedPressureSignals =
+    intelligenceScope === "room" && selectedRoomId
+      ? pressureModel.signals.filter((signal) => signal.roomId === selectedRoomId)
+      : intelligenceScope === "mission" && scopeMissionTask
+        ? pressureModel.signals.filter(
+            (signal) => signal.featureId === scopeMissionTask.featureId || signal.taskId === scopeMissionTask.tqId
+          )
+        : pressureModel.signals;
   const rankedRoomIntelligence = scopedRoomEntries.map((entry, index) => {
     const roomMetrics = entry.roomHistoryMetrics;
     const queueAgeHours = Math.max(roomMetrics?.longestActiveAgeHours || 0, roomMetrics?.longestActivityGapHours || 0);
@@ -1452,6 +1492,78 @@ export function AgentsVirtualOfficePanel({
       reasons
     };
   });
+  const scopedPressureSignalCount = scopedPressureSignals.length;
+  const scopedQueueTotal = scopedMissionTasks.length;
+  const topRoomIntelligence = rankedRoomIntelligence[0] || null;
+  const scopedScopeLabel =
+    intelligenceScope === "room"
+      ? selectedRoomEntry?.room.label || copy.operatorScopeRoom
+      : intelligenceScope === "mission"
+        ? scopeMissionTask?.featureTitle || copy.operatorScopeNoMission
+        : copy.operatorScopeAll;
+  const rankMissionTask = (task: MissionControlTaskSnapshot) => {
+    const metrics = pressureModel.taskMetricsByTaskId[task.tqId];
+    const severity = pressureModel.taskTopSeverityByTaskId[task.tqId];
+    const signalCount = pressureModel.taskSignalCountByTaskId[task.tqId] || 0;
+
+    return (severity ? PRESSURE_SEVERITY_WEIGHT[severity] : 0) +
+      signalCount * 28 +
+      Math.round(metrics?.blockedDurationHours || 0) * 6 +
+      Math.round(metrics?.reviewWaitHours || 0) * 5 +
+      Math.round(metrics?.activeAgeHours || 0) * 2 +
+      Math.round(metrics?.activityGapHours || 0);
+  };
+  const hottestMissionTask =
+    [...scopedMissionTasks].sort((left, right) => {
+      const scoreDelta = rankMissionTask(right) - rankMissionTask(left);
+      if (scoreDelta !== 0) return scoreDelta;
+      return sortMissionTasks(left, right);
+    })[0] || null;
+  const getBottleneckReasons = (task: MissionControlTaskSnapshot) => {
+    const metrics = pressureModel.taskMetricsByTaskId[task.tqId];
+    const signalCount = pressureModel.taskSignalCountByTaskId[task.tqId] || 0;
+    const roomId = getMissionOwnership(task, agentRoomById).roomId;
+    const roomEntry = roomEntries.find((entry) => entry.room.id === roomId);
+    const reasons = [
+      metrics?.blockedDurationHours
+        ? `${copy.operatorSummaryReasonBlocked}: ${formatHistoryHours(metrics.blockedDurationHours)}`
+        : null,
+      metrics?.reviewWaitHours ? `${copy.operatorSummaryReasonReview}: ${formatHistoryHours(metrics.reviewWaitHours)}` : null,
+      metrics?.activeAgeHours ? `${copy.operatorSummaryReasonAge}: ${formatHistoryHours(metrics.activeAgeHours)}` : null,
+      metrics?.activityGapHours ? `${copy.operatorSummaryReasonGap}: ${formatHistoryHours(metrics.activityGapHours)}` : null,
+      signalCount > 0 ? `${copy.operatorSummaryReasonSignals}: ${signalCount}` : null,
+      task.waitingOn ? `${copy.operatorSummaryReasonWaiting}: ${humanizeStateLabel(task.waitingOn) || task.waitingOn}` : null,
+      roomEntry?.roomPressureCount ? `${copy.operatorSummaryReasonOverload}: ${roomEntry.roomPressureCount}` : null,
+      roomEntry ? `${copy.operatorSummaryReasonThroughput}: ${summarizeThroughput(roomEntry.roomQueue, roomEntry.missionCoverage.taskCount)}` : null
+    ].filter((value): value is string => Boolean(value));
+
+    return reasons.slice(0, 4);
+  };
+  const bottleneckEntries = [...scopedMissionTasks]
+    .map((task) => {
+      const ownership = getMissionOwnership(task, agentRoomById);
+      const metrics = pressureModel.taskMetricsByTaskId[task.tqId];
+      const severity = pressureModel.taskTopSeverityByTaskId[task.tqId];
+      const signalCount = pressureModel.taskSignalCountByTaskId[task.tqId] || 0;
+      const reasons = getBottleneckReasons(task);
+      return {
+        task,
+        ownership,
+        metrics,
+        severity,
+        signalCount,
+        reasons,
+        score: rankMissionTask(task)
+      };
+    })
+    .sort((left, right) => {
+      const scoreDelta = right.score - left.score;
+      if (scoreDelta !== 0) return scoreDelta;
+      return sortMissionTasks(left.task, right.task);
+    })
+    .slice(0, 4);
+  const topBottleneck = bottleneckEntries[0] || null;
+  const interventionTask = topBottleneck?.task || hottestMissionTask;
 
   const focusRoom = (roomId: string) => {
     setSelectedFocus({ kind: "room", roomId });
@@ -1789,6 +1901,155 @@ export function AgentsVirtualOfficePanel({
         </article>
 
         <div className="virtualOfficeLower">
+          <article className="virtualOfficeRail virtualOperatorSummaryRail">
+            <div className="virtualOfficeRailHeader">
+              <div>
+                <p className="eyebrow">{scopedScopeLabel}</p>
+                <h3>{copy.operatorSummaryTitle}</h3>
+              </div>
+              <p className="virtualOfficeRailCopy">{copy.operatorSummaryCopy}</p>
+            </div>
+            <div className="virtualIntelligenceScopeBar" aria-label={copy.operatorSummaryTitle}>
+              <button
+                type="button"
+                className={`virtualOfficeFilter ${intelligenceScope === "all" ? "virtualOfficeFilterActive" : ""}`}
+                onClick={() => setIntelligenceScope("all")}
+              >
+                {copy.operatorScopeAll}
+              </button>
+              <button
+                type="button"
+                className={`virtualOfficeFilter ${intelligenceScope === "room" ? "virtualOfficeFilterActive" : ""}`}
+                onClick={() => setIntelligenceScope("room")}
+                disabled={!selectedRoomId}
+              >
+                {copy.operatorScopeRoom}
+              </button>
+              <button
+                type="button"
+                className={`virtualOfficeFilter ${intelligenceScope === "mission" ? "virtualOfficeFilterActive" : ""}`}
+                onClick={() => setIntelligenceScope("mission")}
+                disabled={!scopeMissionTask}
+              >
+                {scopeMissionTask ? copy.operatorScopeMission : copy.operatorScopeNoMission}
+              </button>
+            </div>
+            <div className="virtualOperatorSummaryGrid">
+              <button
+                type="button"
+                className="virtualOperatorSummaryCard"
+                onClick={() => (hottestMissionTask ? focusMissionTask(hottestMissionTask) : undefined)}
+                disabled={!hottestMissionTask}
+              >
+                <span className="miniSummaryLabel">{copy.operatorSummaryHottestMission}</span>
+                <strong className="virtualOperatorSummaryValue">
+                  {hottestMissionTask ? hottestMissionTask.featureTitle : copy.operatorSummaryNoMission}
+                </strong>
+                <p className="virtualOperatorSummaryMeta">
+                  {hottestMissionTask
+                    ? `${hottestMissionTask.title} · ${copy.operatorSummarySignals}: ${
+                        pressureModel.taskSignalCountByTaskId[hottestMissionTask.tqId] || 0
+                      }`
+                    : copy.operatorSummaryHealthy}
+                </p>
+              </button>
+              <button
+                type="button"
+                className="virtualOperatorSummaryCard"
+                onClick={() => (topRoomIntelligence ? focusRoom(topRoomIntelligence.room.id) : undefined)}
+                disabled={!topRoomIntelligence}
+              >
+                <span className="miniSummaryLabel">{copy.operatorSummaryCriticalRoom}</span>
+                <strong className="virtualOperatorSummaryValue">
+                  {topRoomIntelligence ? topRoomIntelligence.room.label : copy.operatorSummaryHealthy}
+                </strong>
+                <p className="virtualOperatorSummaryMeta">
+                  {topRoomIntelligence
+                    ? `${getRoomExplanation(topRoomIntelligence.roomHistoryMetrics, topRoomIntelligence.roomPressureCount)} · ${
+                        copy.operatorSummaryReasonThroughput
+                      }: ${topRoomIntelligence.throughputScore}`
+                    : copy.operatorSummaryHealthy}
+                </p>
+              </button>
+              <button
+                type="button"
+                className="virtualOperatorSummaryCard"
+                onClick={() => (interventionTask ? focusMissionTask(interventionTask) : undefined)}
+                disabled={!interventionTask}
+              >
+                <span className="miniSummaryLabel">{copy.operatorSummaryIntervention}</span>
+                <strong className="virtualOperatorSummaryValue">
+                  {interventionTask ? interventionTask.title : copy.operatorSummaryNoIntervention}
+                </strong>
+                <p className="virtualOperatorSummaryMeta">
+                  {interventionTask
+                    ? getBottleneckReasons(interventionTask).join(" · ") || copy.operatorSummaryNeedsFocus
+                    : copy.operatorSummaryHealthy}
+                </p>
+              </button>
+            </div>
+            <div className="virtualOperatorSummaryFooter">
+              <span className="metaChip">
+                {copy.operatorSummarySignals}: {scopedPressureSignalCount}
+              </span>
+              <span className="metaChip">
+                {copy.missionTasks}: {scopedQueueTotal}
+              </span>
+              <span className="metaChip">
+                {copy.summaryRooms}: {rankedRoomIntelligence.length}
+              </span>
+            </div>
+            <div className="virtualBottleneckRail">
+              <div className="virtualOfficeRailHeader">
+                <div>
+                  <p className="eyebrow">{scopedScopeLabel}</p>
+                  <h3>{copy.operatorSummaryBottlenecksTitle}</h3>
+                </div>
+                <p className="virtualOfficeRailCopy">{copy.operatorSummaryBottlenecksCopy}</p>
+              </div>
+              <div className="virtualBottleneckList">
+                {bottleneckEntries.length ? (
+                  bottleneckEntries.map((entry, index) => (
+                    <button
+                      key={`bottleneck:${entry.task.tqId}`}
+                      type="button"
+                      className="virtualBottleneckCard"
+                      onClick={() => focusMissionTask(entry.task)}
+                    >
+                      <div className="virtualIntelligenceHead">
+                        <strong>
+                          {index + 1}. {entry.task.title}
+                        </strong>
+                        <span className={`virtualPressureBadge virtualPressureBadge${entry.severity || "low"}`}>
+                          {copy.operatorSummaryStatus}: {humanizeStateLabel(entry.task.status) || common.na}
+                        </span>
+                      </div>
+                      <p className="virtualIntelligenceCopy">
+                        {entry.task.featureTitle} · {roomLabelById.get(entry.ownership.roomId) || common.na}
+                      </p>
+                      <div className="virtualDeskCardMeta">
+                        <span>
+                          {copy.operatorSummarySignals}: {entry.signalCount}
+                        </span>
+                        <span>
+                          {copy.intelligenceReviewWait}: {formatHistoryHours(entry.metrics?.reviewWaitHours)}
+                        </span>
+                        <span>
+                          {copy.intelligenceBlocked}: {formatHistoryHours(entry.metrics?.blockedDurationHours)}
+                        </span>
+                        <span>
+                          {copy.intelligenceQueueAge}: {formatHistoryHours(entry.metrics?.activeAgeHours)}
+                        </span>
+                      </div>
+                      <p className="virtualIntelligenceReasons">{entry.reasons.join(" · ") || copy.operatorSummaryBottlenecksEmpty}</p>
+                    </button>
+                  ))
+                ) : (
+                  <div className="virtualOfficeEmpty">{copy.operatorSummaryBottlenecksEmpty}</div>
+                )}
+              </div>
+            </div>
+          </article>
           <article className="virtualOfficeRail virtualIntelligenceRail">
             <div className="virtualOfficeRailHeader">
               <div>
