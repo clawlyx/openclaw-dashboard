@@ -10,8 +10,8 @@ This milestone turns the workstation into an operator-intelligence surface. The 
 
 ## Phases
 
-- [ ] **Phase 5: Historical Signal Foundation** - Capture and derive time-aware mission history so the workstation can reason about aging and wait durations
-- [ ] **Phase 6: Intelligence Surfaces** - Add room and operator summary surfaces that expose hot spots, throughput, and bottlenecks
+- [x] **Phase 5: Historical Signal Foundation** - Capture and derive time-aware mission history so the workstation can reason about aging and wait durations
+- [x] **Phase 6: Intelligence Surfaces** - Add room and operator summary surfaces that expose hot spots, throughput, and bottlenecks
 - [ ] **Phase 7: Pressure Lifecycle** - Explain whether pressure is new, ongoing, or improving, then package the milestone safely
 
 ## Phase Details
@@ -41,8 +41,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 06-01: Build room intelligence comparison views and scoped detail surfaces
-- [ ] 06-02: Add operator summary panels for hottest work and bottleneck ranking
+- [x] 06-01: Build room intelligence comparison views and scoped detail surfaces
+- [x] 06-02: Add operator summary panels for hottest work and bottleneck ranking
 
 ### Phase 7: Pressure Lifecycle
 **Goal:** Show whether pressure is worsening or improving and finish the milestone with safe demo assets and validation.
@@ -66,5 +66,5 @@ Phases execute in numeric order: 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 5. Historical Signal Foundation | 2/2 | Complete | 05-01, 05-02 |
-| 6. Intelligence Surfaces | 0/2 | Not started | - |
+| 6. Intelligence Surfaces | 2/2 | Complete | 06-01, 06-02 |
 | 7. Pressure Lifecycle | 0/2 | Not started | - |

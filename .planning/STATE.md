@@ -5,17 +5,17 @@
 See: `.planning/PROJECT.md` (updated 2026-03-14)
 
 **Core value:** One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.  
-**Current focus:** Phase 6: Intelligence Surfaces
+**Current focus:** Phase 7: Pressure Lifecycle
 
 ## Current Position
 
 Milestone: `v1.3.0 Operator Intelligence`
-Phase: 6 (Intelligence Surfaces)
-Plan: 2 of 2 planned
-Status: Ready to execute
-Last activity: 2026-03-14 — Planned Phase 6 intelligence surfaces
+Phase: 7 (Pressure Lifecycle)
+Plan: 0 of 2 complete
+Status: Ready to plan
+Last activity: 2026-03-14 — Completed Phase 6 operator summary and bottleneck surfaces
 
-Progress: [███░░░░░░░] 33%
+Progress: [████████░░] 78%
 
 ## Milestone Stats
 
@@ -24,7 +24,7 @@ Progress: [███░░░░░░░] 33%
 
 ## Pending Todos
 
-- Execute Phase 6 with `$gsd-execute-phase 6 --auto`
+- Plan Phase 7 with pressure lifecycle states, improving-versus-worsening cues, and milestone-safe demo refresh
 
 ## Blockers/Concerns
 
@@ -32,6 +32,6 @@ Progress: [███░░░░░░░] 33%
 
 ## Session Continuity
 
-Last session: 2026-03-14 21:45 EDT  
-Stopped at: Phase 6 plans created; next step is executing Phase 6  
+Last session: 2026-03-14 22:48 EDT  
+Stopped at: Phase `6` complete; next step is planning Phase `7`  
 Resume file: None

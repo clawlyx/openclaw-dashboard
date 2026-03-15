@@ -9,20 +9,20 @@ Current milestone: operator intelligence.
 
 ### Historical Signals
 
-- [ ] **HIST-01**: Operator can see task aging history for active missions instead of only the current pressure snapshot
-- [ ] **HIST-02**: Operator can see review wait time and blocked duration trends for the current mission or room
+- [x] **HIST-01**: Operator can see task aging history for active missions instead of only the current pressure snapshot
+- [x] **HIST-02**: Operator can see review wait time and blocked duration trends for the current mission or room
 - [ ] **HIST-03**: Demo and live fallback modes both keep historical metrics readable when some timeline fields are missing
 
 ### Room Intelligence
 
-- [ ] **ROOM-01**: Operator can compare rooms by queue age, overload frequency, and throughput in one view
-- [ ] **ROOM-02**: Operator can open a room detail view that explains why the room is considered hot, stale, or recovering
+- [x] **ROOM-01**: Operator can compare rooms by queue age, overload frequency, and throughput in one view
+- [x] **ROOM-02**: Operator can open a room detail view that explains why the room is considered hot, stale, or recovering
 - [ ] **ROOM-03**: Operator can tell which room is slipping versus improving across recent snapshots
 
 ### Operator Summary
 
-- [ ] **OPER-01**: Operator can see a concise summary of the hottest missions, reviews, and bottlenecks on first load
-- [ ] **OPER-02**: Operator can filter intelligence surfaces to the current room, mission, or all work
+- [x] **OPER-01**: Operator can see a concise summary of the hottest missions, reviews, and bottlenecks on first load
+- [x] **OPER-02**: Operator can filter intelligence surfaces to the current room, mission, or all work
 - [ ] **OPER-03**: Operator can distinguish new pressure from long-running pressure without reading every task card
 
 ## v2 Requirements
@@ -53,11 +53,11 @@ Current milestone: operator intelligence.
 | HIST-01 | Phase 5 | Complete |
 | HIST-02 | Phase 5 | Complete |
 | HIST-03 | Phase 7 | Pending |
-| ROOM-01 | Phase 6 | Pending |
-| ROOM-02 | Phase 6 | Pending |
+| ROOM-01 | Phase 6 | Complete |
+| ROOM-02 | Phase 6 | Complete |
 | ROOM-03 | Phase 7 | Pending |
-| OPER-01 | Phase 6 | Pending |
-| OPER-02 | Phase 6 | Pending |
+| OPER-01 | Phase 6 | Complete |
+| OPER-02 | Phase 6 | Complete |
 | OPER-03 | Phase 7 | Pending |
 
 **Coverage:**
@@ -67,4 +67,4 @@ Current milestone: operator intelligence.
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-14 after initial milestone definition*
+*Last updated: 2026-03-14 after completing Phase 6 intelligence surfaces*
