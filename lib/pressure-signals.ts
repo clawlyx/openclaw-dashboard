@@ -1,5 +1,10 @@
 import type { AgentsSnapshot } from "@/lib/agents";
-import type { MissionControlSnapshot, MissionControlTaskSnapshot } from "@/lib/mission-control";
+import type {
+  MissionControlHistoryEntry,
+  MissionControlHistorySource,
+  MissionControlSnapshot,
+  MissionControlTaskSnapshot
+} from "@/lib/mission-control";
 
 export type PressureSignalKind =
   | "stale-review"
@@ -26,6 +31,31 @@ export type PressureSignal = {
   waitingOn?: string;
 };
 
+export type TaskHistoricalSignalMetrics = {
+  taskId: string;
+  roomId: string;
+  source: MissionControlHistorySource;
+  historyEntryCount: number;
+  activeAgeHours: number;
+  activityGapHours: number;
+  currentWaitHours: number;
+  reviewWaitHours?: number;
+  blockedDurationHours?: number;
+  startedAt?: string;
+  statusEnteredAt?: string;
+  lastActivityAt?: string;
+};
+
+export type RoomHistoricalSignalMetrics = {
+  roomId: string;
+  source: MissionControlHistorySource;
+  taskCount: number;
+  longestActiveAgeHours: number;
+  longestReviewWaitHours: number;
+  longestBlockedDurationHours: number;
+  longestActivityGapHours: number;
+};
+
 export type PressureSignalsModel = {
   signals: PressureSignal[];
   roomSignalCountByRoomId: Record<string, number>;
@@ -33,6 +63,8 @@ export type PressureSignalsModel = {
   roomTopSeverityByRoomId: Record<string, PressureSignalSeverity | undefined>;
   taskSignalCountByTaskId: Record<string, number>;
   taskTopSeverityByTaskId: Record<string, PressureSignalSeverity | undefined>;
+  taskMetricsByTaskId: Record<string, TaskHistoricalSignalMetrics>;
+  roomMetricsByRoomId: Record<string, RoomHistoricalSignalMetrics>;
 };
 
 const severityWeight: Record<PressureSignalSeverity, number> = {
@@ -65,6 +97,90 @@ const resolveTaskRoomId = (task: MissionControlTaskSnapshot, agentRoomById: Map<
   task.ownerRoomId || (task.ownerAgentId ? agentRoomById.get(task.ownerAgentId) : undefined) || inferMissionRoomId(task);
 
 const isWaitingOnHuman = (value?: string) => Boolean(value && /(human|merge|approval|review)/i.test(value));
+const sortHistoryEntries = (entries: MissionControlHistoryEntry[]) =>
+  [...entries].sort((left, right) => (parseTimestampMs(left.at) || 0) - (parseTimestampMs(right.at) || 0));
+
+const latestMatchingHistoryAt = ({
+  task,
+  match
+}: {
+  task: MissionControlTaskSnapshot;
+  match: (entry: MissionControlHistoryEntry) => boolean;
+}) => {
+  const entries = sortHistoryEntries(task.history).filter(match);
+  return entries.at(-1)?.at;
+};
+
+const pickHistorySource = (sources: MissionControlHistorySource[]): MissionControlHistorySource => {
+  if (sources.includes("current-only")) return "current-only";
+  if (sources.includes("partial-history")) return "partial-history";
+  return "full-history";
+};
+
+export const buildTaskHistoricalSignalMetrics = ({
+  task,
+  roomId,
+  nowMs
+}: {
+  task: MissionControlTaskSnapshot;
+  roomId: string;
+  nowMs: number;
+}): TaskHistoricalSignalMetrics => {
+  const sortedHistory = sortHistoryEntries(task.history);
+  const firstHistoryAt = sortedHistory[0]?.at;
+  const startedAt = task.startedAt || latestMatchingHistoryAt({ task, match: (entry) => entry.action === "started" || entry.status === "running" }) || firstHistoryAt;
+  const lastActivityAt = task.lastWorkedAt || sortedHistory.at(-1)?.at || task.updatedAt;
+  const statusEnteredAt =
+    latestMatchingHistoryAt({
+      task,
+      match: (entry) => entry.status === task.status
+    }) ||
+    (task.status === "review"
+      ? latestMatchingHistoryAt({ task, match: (entry) => entry.action.includes("review") })
+      : task.status === "blocked"
+        ? latestMatchingHistoryAt({ task, match: (entry) => entry.action.includes("block") || entry.status === "blocked" })
+        : undefined) ||
+    task.lastWorkedAt ||
+    task.updatedAt;
+
+  const startedAtMs = parseTimestampMs(startedAt) || parseTimestampMs(firstHistoryAt) || parseTimestampMs(task.updatedAt) || nowMs;
+  const lastActivityMs = parseTimestampMs(lastActivityAt) || parseTimestampMs(task.updatedAt) || nowMs;
+  const statusEnteredAtMs = parseTimestampMs(statusEnteredAt) || lastActivityMs;
+  const activeAgeHours = asHours(nowMs - startedAtMs);
+  const activityGapHours = asHours(nowMs - lastActivityMs);
+  const currentWaitHours = asHours(nowMs - statusEnteredAtMs);
+
+  return {
+    taskId: task.tqId,
+    roomId,
+    source: task.historySource,
+    historyEntryCount: sortedHistory.length,
+    activeAgeHours,
+    activityGapHours,
+    currentWaitHours,
+    ...(task.status === "review" ? { reviewWaitHours: currentWaitHours } : {}),
+    ...(task.status === "blocked" ? { blockedDurationHours: currentWaitHours } : {}),
+    ...(startedAt ? { startedAt } : {}),
+    ...(statusEnteredAt ? { statusEnteredAt } : {}),
+    ...(lastActivityAt ? { lastActivityAt } : {})
+  };
+};
+
+const buildRoomHistoricalSignalMetrics = ({
+  roomId,
+  metrics
+}: {
+  roomId: string;
+  metrics: TaskHistoricalSignalMetrics[];
+}): RoomHistoricalSignalMetrics => ({
+  roomId,
+  source: pickHistorySource(metrics.map((metric) => metric.source)),
+  taskCount: metrics.length,
+  longestActiveAgeHours: Math.max(0, ...metrics.map((metric) => metric.activeAgeHours || 0)),
+  longestReviewWaitHours: Math.max(0, ...metrics.map((metric) => metric.reviewWaitHours || 0)),
+  longestBlockedDurationHours: Math.max(0, ...metrics.map((metric) => metric.blockedDurationHours || 0)),
+  longestActivityGapHours: Math.max(0, ...metrics.map((metric) => metric.activityGapHours || 0))
+});
 
 const scoreSignal = (signal: PressureSignal) => severityWeight[signal.severity] + Math.round(signal.ageHours || 0);
 
@@ -103,6 +219,7 @@ export const buildPressureSignalsModel = ({
     parseTimestampMs(generatedAt) || parseTimestampMs(agents.updatedAt) || parseTimestampMs(missionControl.updatedAt) || Date.now();
   const agentRoomById = new Map(agents.agents.map((agent) => [agent.id, agent.roomId]));
   const signals: PressureSignal[] = [];
+  const taskMetricsByTaskId: Record<string, TaskHistoricalSignalMetrics> = {};
 
   const openTasks = [
     ...missionControl.queue.blockedTasks,
@@ -113,7 +230,9 @@ export const buildPressureSignalsModel = ({
 
   openTasks.forEach((task) => {
     const roomId = resolveTaskRoomId(task, agentRoomById);
-    const ageHours = asHours(nowMs - (parseTimestampMs(task.lastWorkedAt) || parseTimestampMs(task.updatedAt) || nowMs));
+    const metrics = buildTaskHistoricalSignalMetrics({ task, roomId, nowMs });
+    taskMetricsByTaskId[task.tqId] = metrics;
+    const ageHours = metrics.activityGapHours;
     const base = {
       roomId,
       agentId: task.ownerAgentId,
@@ -124,29 +243,31 @@ export const buildPressureSignalsModel = ({
       ageHours
     };
 
-    if (task.status === "review" && ageHours >= 12) {
+    if (task.status === "review" && (metrics.reviewWaitHours || 0) >= 12) {
       signals.push({
         id: `${task.tqId}:stale-review`,
         kind: "stale-review",
-        severity: ageHours >= 48 ? "critical" : ageHours >= 24 ? "high" : "medium",
+        severity:
+          (metrics.reviewWaitHours || 0) >= 48 ? "critical" : (metrics.reviewWaitHours || 0) >= 24 ? "high" : "medium",
         ...base
       });
     }
 
-    if (task.status === "blocked" && ageHours >= 6) {
+    if (task.status === "blocked" && (metrics.blockedDurationHours || 0) >= 6) {
       signals.push({
         id: `${task.tqId}:blocked-too-long`,
         kind: "blocked-too-long",
-        severity: ageHours >= 24 ? "critical" : ageHours >= 12 ? "high" : "medium",
+        severity:
+          (metrics.blockedDurationHours || 0) >= 24 ? "critical" : (metrics.blockedDurationHours || 0) >= 12 ? "high" : "medium",
         ...base
       });
     }
 
-    if (isWaitingOnHuman(task.waitingOn) && ageHours >= 3) {
+    if (isWaitingOnHuman(task.waitingOn) && metrics.currentWaitHours >= 3) {
       signals.push({
         id: `${task.tqId}:waiting-human`,
         kind: "waiting-human",
-        severity: ageHours >= 24 ? "high" : "medium",
+        severity: metrics.currentWaitHours >= 24 ? "high" : "medium",
         waitingOn: task.waitingOn,
         ...base
       });
@@ -167,6 +288,11 @@ export const buildPressureSignalsModel = ({
     const current = roomSignalsMap.get(signal.roomId) || [];
     roomSignalsMap.set(signal.roomId, [...current, signal]);
   });
+  const roomMetricsByRoomId = agents.rooms.reduce<Record<string, RoomHistoricalSignalMetrics>>((accumulator, room) => {
+    const roomMetrics = Object.values(taskMetricsByTaskId).filter((metric) => metric.roomId === room.id);
+    accumulator[room.id] = buildRoomHistoricalSignalMetrics({ roomId: room.id, metrics: roomMetrics });
+    return accumulator;
+  }, {});
 
   agents.rooms.forEach((room) => {
     const roomAgents = agents.agents.filter((agent) => agent.roomId === room.id);
@@ -244,6 +370,8 @@ export const buildPressureSignalsModel = ({
     roomPriorityByRoomId,
     roomTopSeverityByRoomId,
     taskSignalCountByTaskId,
-    taskTopSeverityByTaskId
+    taskTopSeverityByTaskId,
+    taskMetricsByTaskId,
+    roomMetricsByRoomId
   };
 };

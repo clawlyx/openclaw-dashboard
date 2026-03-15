@@ -20,12 +20,24 @@ export type MissionControlFeatureStatus =
   | "blocked";
 export type MissionControlTaskStatus = "ready" | "running" | "review" | "done" | "blocked";
 export type MissionControlTaskLane = "research" | "build" | "qa" | "release";
+export type MissionControlHistorySource = "full-history" | "partial-history" | "current-only";
 export type MissionControlDeliveryMode =
   | "advisory-only"
   | "local-only"
   | "commit-required"
   | "push-required"
   | "pr-required";
+
+export type MissionControlHistoryEntry = {
+  at: string;
+  action: string;
+  detail?: string;
+  taskId?: string;
+  taskTitle?: string;
+  lane?: MissionControlTaskLane;
+  status?: MissionControlTaskStatus;
+  source: "feature-history" | "task-history" | "derived-timestamp";
+};
 
 export type MissionControlIdeaSnapshot = {
   ideaId: string;
@@ -60,6 +72,8 @@ export type MissionControlTaskSnapshot = {
   workspace: string;
   repo: string;
   deliveryMode: MissionControlDeliveryMode;
+  history: MissionControlHistoryEntry[];
+  historySource: MissionControlHistorySource;
 };
 
 export type MissionControlFeatureSnapshot = {
@@ -87,6 +101,8 @@ export type MissionControlFeatureSnapshot = {
     repoRoot: string;
   };
   tasks: MissionControlTaskSnapshot[];
+  history: MissionControlHistoryEntry[];
+  historySource: MissionControlHistorySource;
   updatedAt: string;
 };
 
@@ -419,6 +435,186 @@ const parseTimestampMs = (value?: string) => {
   return Number.isFinite(timestampMs) ? timestampMs : undefined;
 };
 
+const normalizeHistorySource = (value: unknown): MissionControlHistorySource | undefined => {
+  switch (value) {
+    case "full-history":
+    case "partial-history":
+    case "current-only":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const extractTaskId = (value?: string) => {
+  if (!value) return undefined;
+  const match = value.match(/\bTQ-\d+\b/);
+  return match ? match[0] : undefined;
+};
+
+const extractLane = (value?: string): MissionControlTaskLane | undefined => {
+  if (!value) return undefined;
+  if (/\bresearch\b/i.test(value)) return "research";
+  if (/\bbuild\b/i.test(value)) return "build";
+  if (/\bqa\b/i.test(value)) return "qa";
+  if (/\brelease\b/i.test(value)) return "release";
+  return undefined;
+};
+
+const inferHistoryStatus = (action?: string, detail?: string): MissionControlTaskStatus | undefined => {
+  const combined = `${action || ""} ${detail || ""}`.trim();
+  if (!combined) return undefined;
+  if (/\bblocked\b/i.test(combined)) return "blocked";
+  if (/\breturned to ready\b/i.test(combined) || /\bqueued\b/i.test(combined) || /\bentered\b/i.test(combined)) return "ready";
+  if (/\bstarted\b/i.test(combined) || /\brunning\b/i.test(combined)) return "running";
+  if (/\breview\b/i.test(combined)) return "review";
+  if (/\bcompleted\b/i.test(combined) || /\breleased\b/i.test(combined) || /\bdone\b/i.test(combined)) return "done";
+  return undefined;
+};
+
+const sortHistoryEntries = <T extends { at: string }>(entries: T[]) =>
+  [...entries].sort((left, right) => (parseTimestampMs(left.at) || 0) - (parseTimestampMs(right.at) || 0));
+
+const dedupeHistoryEntries = (entries: MissionControlHistoryEntry[]) => {
+  const seen = new Set<string>();
+  return sortHistoryEntries(entries).filter((entry) => {
+    const key = [
+      entry.at,
+      entry.action,
+      entry.detail || "",
+      entry.taskId || "",
+      entry.lane || "",
+      entry.status || "",
+      entry.source
+    ].join("::");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const normalizeHistoryEntries = ({
+  value,
+  source,
+  taskId,
+  taskTitle,
+  defaultLane,
+  defaultStatus
+}: {
+  value: unknown;
+  source: MissionControlHistoryEntry["source"];
+  taskId?: string;
+  taskTitle?: string;
+  defaultLane?: MissionControlTaskLane;
+  defaultStatus?: MissionControlTaskStatus;
+}) => {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => {
+      const entry = asObject(item);
+      const at = asString(entry?.at);
+      if (!at) return null;
+
+      const action = asString(entry?.action) || (source === "derived-timestamp" ? "timestamp" : "update");
+      const detail = asString(entry?.detail);
+      const status =
+        normalizeTaskStatus(entry?.status) ||
+        inferHistoryStatus(action, detail) ||
+        defaultStatus;
+      const lane = normalizeLane(entry?.lane) || extractLane(detail) || defaultLane;
+      const resolvedTaskId = asString(entry?.taskId) || extractTaskId(detail) || taskId;
+
+      return {
+        at,
+        action,
+        ...(detail ? { detail } : {}),
+        ...(resolvedTaskId ? { taskId: resolvedTaskId } : {}),
+        ...(taskTitle ? { taskTitle } : {}),
+        ...(lane ? { lane } : {}),
+        ...(status ? { status } : {}),
+        source
+      } satisfies MissionControlHistoryEntry;
+    })
+    .filter((entry): entry is MissionControlHistoryEntry => Boolean(entry));
+};
+
+const createDerivedTaskHistory = ({
+  startedAt,
+  lastWorkedAt,
+  updatedAt,
+  taskId,
+  taskTitle,
+  lane,
+  status
+}: {
+  startedAt?: string;
+  lastWorkedAt?: string;
+  updatedAt: string;
+  taskId: string;
+  taskTitle: string;
+  lane: MissionControlTaskLane;
+  status: MissionControlTaskStatus;
+}) => {
+  const entries: MissionControlHistoryEntry[] = [];
+
+  if (startedAt) {
+    entries.push({
+      at: startedAt,
+      action: "started",
+      detail: "Derived from task startedAt timestamp.",
+      taskId,
+      taskTitle,
+      lane,
+      status: "running",
+      source: "derived-timestamp"
+    });
+  }
+
+  if (lastWorkedAt && lastWorkedAt !== startedAt) {
+    entries.push({
+      at: lastWorkedAt,
+      action: "worked",
+      detail: "Derived from task lastWorkedAt timestamp.",
+      taskId,
+      taskTitle,
+      lane,
+      status,
+      source: "derived-timestamp"
+    });
+  }
+
+  if (updatedAt && updatedAt !== lastWorkedAt && updatedAt !== startedAt) {
+    entries.push({
+      at: updatedAt,
+      action: "updated",
+      detail: "Derived from task updatedAt timestamp.",
+      taskId,
+      taskTitle,
+      lane,
+      status,
+      source: "derived-timestamp"
+    });
+  }
+
+  return entries;
+};
+
+const resolveHistorySource = ({
+  explicitCount,
+  derivedCount,
+  declared
+}: {
+  explicitCount: number;
+  derivedCount: number;
+  declared?: MissionControlHistorySource;
+}) => {
+  if (declared) return declared;
+  if (explicitCount > 0) return "full-history";
+  if (derivedCount > 1) return "partial-history";
+  return "current-only";
+};
+
 const sortNewest = <T extends { updatedAt?: string }>(items: T[]) =>
   [...items].sort((left, right) => {
     const leftAt = parseTimestampMs(left.updatedAt) || 0;
@@ -528,7 +724,10 @@ const normalizeFeature = (value: unknown): MissionControlFeatureSnapshot | null 
   const artifactRoot = asString(entry?.artifactRoot) || "";
   const artifacts = asObject(entry?.artifacts);
   const delivery = asObject(entry?.delivery);
-  const history = Array.isArray(entry?.history) ? entry?.history : [];
+  const featureHistory = normalizeHistoryEntries({
+    value: entry?.history,
+    source: "feature-history"
+  });
   const rawTasks = Array.isArray(entry?.tasks) ? entry?.tasks : [];
 
   const tasks = rawTasks
@@ -546,6 +745,34 @@ const normalizeFeature = (value: unknown): MissionControlFeatureSnapshot | null 
       const waitingOn = asString(task?.waitingOn);
       const ownerAgentId = asString(task?.ownerAgentId);
       const ownerRoomId = asString(task?.ownerRoomId);
+      const explicitTaskHistory = normalizeHistoryEntries({
+        value: task?.history,
+        source: "task-history",
+        taskId: tqId,
+        taskTitle,
+        defaultLane: normalizeLane(task?.lane),
+        defaultStatus: normalizeTaskStatus(task?.status)
+      });
+      const linkedFeatureHistory = featureHistory.filter((entry) => entry.taskId === tqId);
+      const derivedTaskHistory = createDerivedTaskHistory({
+        startedAt,
+        lastWorkedAt,
+        updatedAt,
+        taskId: tqId,
+        taskTitle,
+        lane: normalizeLane(task?.lane),
+        status: normalizeTaskStatus(task?.status)
+      });
+      const combinedHistory = dedupeHistoryEntries([
+        ...explicitTaskHistory,
+        ...linkedFeatureHistory,
+        ...derivedTaskHistory
+      ]);
+      const historySource = resolveHistorySource({
+        explicitCount: explicitTaskHistory.length + linkedFeatureHistory.length,
+        derivedCount: derivedTaskHistory.length,
+        declared: normalizeHistorySource(task?.historySource)
+      });
 
       return {
         tqId,
@@ -562,6 +789,8 @@ const normalizeFeature = (value: unknown): MissionControlFeatureSnapshot | null 
         workspace,
         repo,
         deliveryMode,
+        history: combinedHistory,
+        historySource,
         ...(startedAt ? { startedAt } : {}),
         ...(lastWorkedAt ? { lastWorkedAt } : {}),
         ...(nextPlannedStep ? { nextPlannedStep } : {}),
@@ -574,10 +803,13 @@ const normalizeFeature = (value: unknown): MissionControlFeatureSnapshot | null 
     .filter((task): task is MissionControlTaskSnapshot => Boolean(task));
 
   const latestTaskAt = sortNewest(tasks)[0]?.updatedAt;
-  const latestHistoryAt = history
-    .map((item) => asString(asObject(item)?.at))
-    .filter((item): item is string => Boolean(item))
-    .sort((left, right) => (parseTimestampMs(right) || 0) - (parseTimestampMs(left) || 0))[0];
+  const latestHistoryAt = [...featureHistory]
+    .sort((left, right) => (parseTimestampMs(right.at) || 0) - (parseTimestampMs(left.at) || 0))[0]?.at;
+  const featureHistorySource = resolveHistorySource({
+    explicitCount: featureHistory.length,
+    derivedCount: tasks.reduce((count, task) => count + task.history.filter((entry) => entry.source === "derived-timestamp").length, 0),
+    declared: normalizeHistorySource(entry?.historySource)
+  });
 
   return {
     featureId,
@@ -604,6 +836,8 @@ const normalizeFeature = (value: unknown): MissionControlFeatureSnapshot | null 
       repoRoot: asString(delivery?.repoRoot) || ""
     },
     tasks: sortNewest(tasks),
+    history: featureHistory,
+    historySource: featureHistorySource,
     updatedAt: latestTaskAt || latestHistoryAt || new Date().toISOString()
   };
 };
