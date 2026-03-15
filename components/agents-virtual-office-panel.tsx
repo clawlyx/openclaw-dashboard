@@ -31,6 +31,22 @@ type AgentsVirtualOfficeMessages = {
   summaryRooms: string;
   summaryMissions: string;
   summaryReviews: string;
+  intelligenceTitle: string;
+  intelligenceCopy: string;
+  intelligenceScopeAll: string;
+  intelligenceScopeRoom: string;
+  intelligenceScopeMission: string;
+  intelligenceScopeNoMission: string;
+  intelligenceRank: string;
+  intelligenceReasons: string;
+  intelligenceQueueAge: string;
+  intelligenceReviewWait: string;
+  intelligenceBlocked: string;
+  intelligenceThroughput: string;
+  intelligenceSignals: string;
+  intelligenceCompareEmpty: string;
+  roomExplanationTitle: string;
+  roomExplanationHealthy: string;
   statusActive: string;
   statusBlocked: string;
   statusWaiting: string;
@@ -204,6 +220,8 @@ type DetailFocus =
       featureId?: string;
     }
   | null;
+
+type IntelligenceScope = "all" | "room" | "mission";
 
 const createEmptyRoomMissionCoverage = (roomId: string): RoomMissionCoverage => ({
   roomId,
@@ -637,6 +655,11 @@ const getPressureSignalLabel = (signal: PressureSignal, copy: AgentsVirtualOffic
   }
 };
 
+const summarizeThroughput = (roomQueue: number, taskCount: number) => {
+  if (taskCount <= 0) return 0;
+  return Math.max(0, taskCount * 10 - roomQueue * 3);
+};
+
 const sortMissionTasks = (left: MissionControlTaskSnapshot, right: MissionControlTaskSnapshot) => {
   const statusDelta = MISSION_STATUS_PRIORITY[right.status] - MISSION_STATUS_PRIORITY[left.status];
   if (statusDelta !== 0) return statusDelta;
@@ -1051,6 +1074,7 @@ export function AgentsVirtualOfficePanel({
   mutationMode: MissionTaskMutationMode;
 }) {
   const [selectedFocus, setSelectedFocus] = useState<DetailFocus>(null);
+  const [intelligenceScope, setIntelligenceScope] = useState<IntelligenceScope>("all");
   const officeName = agents.officeName || copy.fallbackOffice;
   const onlineAgents = agents.agents.filter((agent) => agent.status !== "offline");
   const queueTotal = agents.agents.reduce((sum, agent) => sum + (agent.queueCount || 0), 0);
@@ -1310,6 +1334,7 @@ export function AgentsVirtualOfficePanel({
     replacementPinnedTask ||
     focusedMissionTasks[0] ||
     (selectedAgent?.currentTaskId ? taskById.get(selectedAgent.currentTaskId) || null : null);
+  const scopeMissionTask = selectedFocus?.taskId ? taskById.get(selectedFocus.taskId) || null : activeDetailTask;
   const activeDetailFeature = activeDetailTask ? featureById.get(activeDetailTask.featureId) || null : null;
   const activeDetailOwnership = activeDetailTask ? getMissionOwnership(activeDetailTask, agentRoomById) : null;
   const activeDetailMetrics = activeDetailTask ? pressureModel.taskMetricsByTaskId[activeDetailTask.tqId] || null : null;
@@ -1362,6 +1387,71 @@ export function AgentsVirtualOfficePanel({
 
     return `${facts[0] || `${copy.detailActiveAge}: ${common.na}`} · ${getHistorySourceLabel(metrics.source, copy)}`;
   };
+  const getRoomExplanation = (
+    metrics:
+      | {
+          source: "full-history" | "partial-history" | "current-only";
+          longestActiveAgeHours: number;
+          longestReviewWaitHours: number;
+          longestBlockedDurationHours: number;
+          longestActivityGapHours: number;
+        }
+      | undefined,
+    roomPressureCount: number
+  ) => {
+    const facts = [
+      metrics?.longestBlockedDurationHours
+        ? `${copy.intelligenceBlocked}: ${formatHistoryHours(metrics.longestBlockedDurationHours)}`
+        : null,
+      metrics?.longestReviewWaitHours
+        ? `${copy.intelligenceReviewWait}: ${formatHistoryHours(metrics.longestReviewWaitHours)}`
+        : null,
+      metrics?.longestActiveAgeHours
+        ? `${copy.intelligenceQueueAge}: ${formatHistoryHours(metrics.longestActiveAgeHours)}`
+        : null,
+      roomPressureCount > 0 ? `${copy.intelligenceSignals}: ${roomPressureCount}` : null
+    ].filter((value): value is string => Boolean(value));
+
+    if (!facts.length) return copy.roomExplanationHealthy;
+    return facts.join(" · ");
+  };
+  const scopedRoomEntries =
+    intelligenceScope === "room" && selectedRoomId
+      ? roomPulseEntries.filter(({ room }) => room.id === selectedRoomId)
+      : intelligenceScope === "mission" && scopeMissionTask
+        ? roomPulseEntries.filter(({ room, missionCoverage }) => {
+            const missionRoomId = getMissionOwnership(scopeMissionTask, agentRoomById).roomId;
+            return room.id === missionRoomId || missionCoverage.primaryTaskId === scopeMissionTask.tqId;
+          })
+        : roomPulseEntries;
+  const rankedRoomIntelligence = scopedRoomEntries.map((entry, index) => {
+    const roomMetrics = entry.roomHistoryMetrics;
+    const queueAgeHours = Math.max(roomMetrics?.longestActiveAgeHours || 0, roomMetrics?.longestActivityGapHours || 0);
+    const reviewWaitHours = roomMetrics?.longestReviewWaitHours || 0;
+    const blockedHours = roomMetrics?.longestBlockedDurationHours || 0;
+    const throughputScore = summarizeThroughput(entry.roomQueue, entry.missionCoverage.taskCount);
+    const reasons = [
+      blockedHours > 0 ? `${copy.intelligenceBlocked}: ${formatMessage(copy.historyHoursValue, { value: String(Math.max(1, Math.round(blockedHours))) })}` : null,
+      reviewWaitHours > 0
+        ? `${copy.intelligenceReviewWait}: ${formatMessage(copy.historyHoursValue, { value: String(Math.max(1, Math.round(reviewWaitHours))) })}`
+        : null,
+      queueAgeHours > 0
+        ? `${copy.intelligenceQueueAge}: ${formatMessage(copy.historyHoursValue, { value: String(Math.max(1, Math.round(queueAgeHours))) })}`
+        : null,
+      entry.roomPressureCount > 0 ? `${copy.intelligenceSignals}: ${entry.roomPressureCount}` : null,
+      `${copy.intelligenceThroughput}: ${String(throughputScore)}`
+    ].filter((value): value is string => Boolean(value));
+
+    return {
+      ...entry,
+      rank: index + 1,
+      queueAgeHours,
+      reviewWaitHours,
+      blockedHours,
+      throughputScore,
+      reasons
+    };
+  });
 
   const focusRoom = (roomId: string) => {
     setSelectedFocus({ kind: "room", roomId });
@@ -1699,6 +1789,82 @@ export function AgentsVirtualOfficePanel({
         </article>
 
         <div className="virtualOfficeLower">
+          <article className="virtualOfficeRail virtualIntelligenceRail">
+            <div className="virtualOfficeRailHeader">
+              <div>
+                <p className="eyebrow">{activeRoomLabel}</p>
+                <h3>{copy.intelligenceTitle}</h3>
+              </div>
+              <p className="virtualOfficeRailCopy">{copy.intelligenceCopy}</p>
+            </div>
+            <div className="virtualIntelligenceScopeBar" aria-label={copy.intelligenceTitle}>
+              <button
+                type="button"
+                className={`virtualOfficeFilter ${intelligenceScope === "all" ? "virtualOfficeFilterActive" : ""}`}
+                onClick={() => setIntelligenceScope("all")}
+              >
+                {copy.intelligenceScopeAll}
+              </button>
+              <button
+                type="button"
+                className={`virtualOfficeFilter ${intelligenceScope === "room" ? "virtualOfficeFilterActive" : ""}`}
+                onClick={() => setIntelligenceScope("room")}
+                disabled={!selectedRoomId}
+              >
+                {copy.intelligenceScopeRoom}
+              </button>
+              <button
+                type="button"
+                className={`virtualOfficeFilter ${intelligenceScope === "mission" ? "virtualOfficeFilterActive" : ""}`}
+                onClick={() => setIntelligenceScope("mission")}
+                disabled={!scopeMissionTask}
+              >
+                {scopeMissionTask ? copy.intelligenceScopeMission : copy.intelligenceScopeNoMission}
+              </button>
+            </div>
+            <div className="virtualIntelligenceList">
+              {rankedRoomIntelligence.length ? (
+                rankedRoomIntelligence.map((entry) => (
+                  <button
+                    key={`intel:${entry.room.id}`}
+                    type="button"
+                    className={`virtualIntelligenceCard ${selectedRoomId === entry.room.id ? "virtualIntelligenceCardActive" : ""}`}
+                    onClick={() => {
+                      setIntelligenceScope("room");
+                      focusRoom(entry.room.id);
+                    }}
+                  >
+                    <div className="virtualIntelligenceHead">
+                      <strong>{entry.room.label}</strong>
+                      <span className={`virtualPressureBadge virtualPressureBadge${entry.roomPressureSeverity || "low"}`}>
+                        {copy.intelligenceRank} {entry.rank}
+                      </span>
+                    </div>
+                    <p className="virtualIntelligenceCopy">{getRoomExplanation(entry.roomHistoryMetrics, entry.roomPressureCount)}</p>
+                    <div className="virtualDeskCardMeta">
+                      <span>
+                        {copy.intelligenceQueueAge}: {formatHistoryHours(entry.queueAgeHours)}
+                      </span>
+                      <span>
+                        {copy.intelligenceReviewWait}: {formatHistoryHours(entry.reviewWaitHours)}
+                      </span>
+                      <span>
+                        {copy.intelligenceBlocked}: {formatHistoryHours(entry.blockedHours)}
+                      </span>
+                      <span>
+                        {copy.intelligenceThroughput}: {entry.throughputScore}
+                      </span>
+                    </div>
+                    <p className="virtualIntelligenceReasons">
+                      {copy.intelligenceReasons}: {entry.reasons.join(" · ")}
+                    </p>
+                  </button>
+                ))
+              ) : (
+                <div className="virtualOfficeEmpty">{copy.intelligenceCompareEmpty}</div>
+              )}
+            </div>
+          </article>
           <div className="virtualRoomPulseGrid">
             {roomPulseEntries.map(
               ({ room, roomLead, roomQueue, occupancy, roomStatus, missionCoverage, roomHistoryMetrics, roomPressureCount, roomPressureSeverity }) => (
@@ -1839,6 +2005,10 @@ export function AgentsVirtualOfficePanel({
                           <div>
                             <dt>{copy.roomMission}</dt>
                             <dd>{selectedRoomMissionLabel}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.roomExplanationTitle}</dt>
+                            <dd>{getRoomExplanation(selectedRoomEntry.roomHistoryMetrics, selectedRoomEntry.roomPressureCount)}</dd>
                           </div>
                         </>
                       ) : null}
