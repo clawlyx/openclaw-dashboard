@@ -2,63 +2,39 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-14)
+See: `.planning/PROJECT.md` (updated 2026-03-14)
 
-**Core value:** One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.
-**Current focus:** Milestone complete: explicit ownership workstation
+**Core value:** One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.  
+**Current focus:** No active milestone
 
 ## Current Position
 
-Phase: 4 of 4 complete
-Plan: 2 of 2 in current phase
-Status: Ready for milestone completion
-Last activity: 2026-03-14 — Completed Phase 4 with verified pressure signals, bundled demo assets, and `1.2.0` release packaging
+Milestone: `v1.2.0` archived  
+Status: Ready for `$gsd-new-milestone`  
+Last activity: 2026-03-14 — Archived the explicit ownership workstation milestone and prepared local tag `v1.2.0`
 
 Progress: [██████████] 100%
 
-## Performance Metrics
+## Milestone Stats
 
-**Velocity:**
-- Total plans completed: 8
-- Average duration: 1 session
-- Total execution time: 6 sessions
+- **Phases:** 4
+- **Plans:** 8
+- **Tasks:** 23
+- **Git range:** `a884fda` → `c6fc533`
+- **Commit count:** 25
+- **Diff:** 50 files changed, 4897 insertions, 119 deletions
+- **Timeline:** 2026-03-14 14:06 EDT → 2026-03-14 19:46 EDT
 
-**By Phase:**
+## Pending Todos
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1 | 2 | 2 sessions | 1 session |
-| 2 | 2 | 2 sessions | 1 session |
-| 3 | 2 | 1 session | 30 min |
-| 4 | 2 | 1 session | 30 min |
+- Start the next milestone with `$gsd-new-milestone`
 
-**Recent Trend:**
-- Last 8 plans: 6 sessions
-- Trend: Stable
+## Blockers/Concerns
 
-## Accumulated Context
-
-### Decisions
-
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- Phase 1: Explicit ownership is the next milestone, not a cosmetic UI pass
-- Phase 1: Labeled fallback inference must remain readable for installs that do not emit new ownership fields yet
-- Phase 1: Execute the snapshot contract before touching higher-level office drawers or actions
-- Phase 1: Optional snapshot fields must be omitted, not emitted as `undefined`, to satisfy exact optional-property checks
-- Phase 1: Owner-agent detail appears only for explicit ownership; inferred fallback stays room-scoped
-
-### Pending Todos
-
-None yet.
-
-### Blockers/Concerns
-
-- None blocking. The next step is milestone completion and archival.
+- None
 
 ## Session Continuity
 
-Last session: 2026-03-14 19:50 EDT
-Stopped at: Phase 4 complete; next step is milestone completion and archival
+Last session: 2026-03-14 20:00 EDT  
+Stopped at: milestone archived; next step is defining the next milestone  
 Resume file: None
