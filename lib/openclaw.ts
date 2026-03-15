@@ -187,11 +187,25 @@ type LiveQuotaSnapshot = {
   observedAt?: string;
 };
 
+type LiveUsageStats = {
+  requests: number;
+  input: number;
+  output: number;
+};
+
+type LiveUsageBreakdown = {
+  date: string;
+  observedAt?: string;
+  topModel?: string;
+  topModelSources: UsageSourceShare[];
+  models: UsageModelRow[];
+};
+
 const DEFAULT_OPENCLAW_HOME = path.join(os.homedir(), ".openclaw");
 const DEMO_OPENCLAW_HOME = path.join(process.cwd(), "demo", "openclaw-home");
 const NUMBER_FORMATTER = new Intl.NumberFormat("en-US");
 const execFileAsync = promisify(execFile);
-const OPENCLAW_MODELS_TIMEOUT_MS = 2_000;
+const OPENCLAW_MODELS_TIMEOUT_MS = 8_000;
 const MAX_SESSION_LOG_FILES = 24;
 const PRIMARY_PROVIDER_ID = "openai-codex";
 const PROVIDER_LABELS: Record<string, string> = {
@@ -205,6 +219,21 @@ const LIVE_STATUS_USAGE_PATTERN =
 const MODELS_PROFILE_PATTERN = /-\s*([^ ]+)\s+([a-z]+)(?:\s+expires in\s+(.+))?$/i;
 
 const clean = (value: string) => value.trim().replace(/\*\*/g, "");
+const asString = (value: unknown) => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+const asNumber = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : undefined;
+  }
+  return undefined;
+};
+
 const expandHomeShortcut = (target: string) => {
   if (target === "~") return os.homedir();
   if (target.startsWith("~/")) return path.join(os.homedir(), target.slice(2));
@@ -351,6 +380,22 @@ const parseNumber = (value?: string) => {
 };
 
 const formatNumber = (value: number) => NUMBER_FORMATTER.format(Math.round(value));
+const getUsageTotals = (value: unknown) => {
+  const usage = asObject(value);
+  return {
+    input:
+      asNumber(usage?.input) ||
+      asNumber(usage?.input_tokens) ||
+      asNumber(usage?.prompt_tokens) ||
+      0,
+    output:
+      asNumber(usage?.output) ||
+      asNumber(usage?.output_tokens) ||
+      asNumber(usage?.completion_tokens) ||
+      0
+  };
+};
+
 const parseTimestampMs = (value?: string) => {
   if (!value) return undefined;
 
@@ -520,44 +565,59 @@ const parseLiveQuotaLine = (line: string, source: LiveQuotaSnapshot["source"]) =
   };
 };
 
+const getOpenClawCliHomes = (home: string) => {
+  const candidates = [home];
+  if (path.basename(home) === ".openclaw") {
+    candidates.push(path.dirname(home));
+  }
+
+  return [...new Set(candidates)];
+};
+
 const parseLiveQuotaFromModels = async (
   openclawHome: ResolvedOpenClawHome
 ): Promise<LiveQuotaSnapshot | null> => {
-  try {
-    const { stdout } = await execFileAsync("openclaw", ["models"], {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        OPENCLAW_HOME: openclawHome.home
-      },
-      timeout: OPENCLAW_MODELS_TIMEOUT_MS,
-      maxBuffer: 1024 * 1024
-    });
-    const lines = stdout.split(/\r?\n/);
-    const usageLine = lines.find((line) => line.includes("openai-codex usage:"));
-    const profileLine = lines.find((line) => /^\s*-\s*openai-codex:/.test(line));
-    const quota = usageLine ? parseLiveQuotaLine(usageLine, "models") : null;
+  for (const cliHome of getOpenClawCliHomes(openclawHome.home)) {
+    try {
+      const { stdout } = await execFileAsync("openclaw", ["models"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          OPENCLAW_HOME: cliHome
+        },
+        timeout: OPENCLAW_MODELS_TIMEOUT_MS,
+        maxBuffer: 1024 * 1024
+      });
+      const lines = stdout.split(/\r?\n/);
+      const usageLine = lines.find((line) => line.includes("openai-codex usage:"));
+      const profileLine = lines.find((line) => /^\s*-\s*openai-codex:/.test(line));
+      const quota = usageLine ? parseLiveQuotaLine(usageLine, "models") : null;
 
-    if (!quota) return null;
+      if (!quota) continue;
 
-    const profileMatch = profileLine?.match(MODELS_PROFILE_PATTERN);
-    const rawProfileLabel = profileMatch?.[1]?.trim();
-    const profileLabel = rawProfileLabel?.includes(":") ? rawProfileLabel.split(":").slice(1).join(":") : rawProfileLabel;
-    const profileStatus = profileMatch?.[2]?.trim().toLowerCase();
-    const profileExpiresIn = profileMatch?.[3]?.trim();
+      const profileMatch = profileLine?.match(MODELS_PROFILE_PATTERN);
+      const rawProfileLabel = profileMatch?.[1]?.trim();
+      const profileLabel = rawProfileLabel?.includes(":")
+        ? rawProfileLabel.split(":").slice(1).join(":")
+        : rawProfileLabel;
+      const profileStatus = profileMatch?.[2]?.trim().toLowerCase();
+      const profileExpiresIn = profileMatch?.[3]?.trim();
 
-    return {
-      ...quota,
-      oauthStatus: profileStatus,
-      profileLabel,
-      profileStatus,
-      profileExpiresIn,
-      source: "models",
-      observedAt: new Date().toISOString()
-    };
-  } catch {
-    return null;
+      return {
+        ...quota,
+        oauthStatus: profileStatus,
+        profileLabel,
+        profileStatus,
+        profileExpiresIn,
+        source: "models",
+        observedAt: new Date().toISOString()
+      };
+    } catch {
+      continue;
+    }
   }
+
+  return null;
 };
 
 const getSessionStatusText = (record: unknown) => {
@@ -884,6 +944,269 @@ const buildUsageHistory = ({
   };
 };
 
+const sourceOfSessionKey = (sessionKey = "", agentId = "") => {
+  const key = String(sessionKey || "");
+  if (key.includes(":feishu:")) return "feishu";
+  if (key.includes(":telegram:")) return "telegram";
+  if (key.includes(":discord:")) return "discord";
+  if (key.includes(":cron:")) return "cron";
+  if (key === "agent:main:main") return "codex-desktop";
+  if (agentId === "main" && !key) return "main-unmapped-history";
+  if (agentId === "main" && key) return "main-mapped-other";
+  if (agentId === "family-agent") return "feishu";
+  return `${agentId || "unknown-agent"}-other`;
+};
+
+const inferMainUnmappedSubSource = (raw = "") => {
+  const txt = String(raw || "");
+  if (!txt) return "main-unmapped-unknown";
+
+  const has = (value: string) => txt.includes(value);
+
+  if (has("agent:main:telegram:")) return "main-unmapped-telegram";
+  if (has("agent:main:discord:")) return "main-unmapped-discord";
+  if (has("agent:main:feishu:")) return "main-unmapped-feishu";
+  if (has("agent:main:cron:")) return "main-unmapped-cron";
+  if (has("agent:main:main")) return "main-unmapped-main";
+
+  if (
+    has('"chat_id":"telegram:') ||
+    has('"provider":"telegram"') ||
+    has('"surface":"telegram"') ||
+    has('"channel":"telegram"')
+  ) {
+    return "main-unmapped-telegram";
+  }
+  if (has('"provider":"discord"') || has('"surface":"discord"') || has('"channel":"discord"')) {
+    return "main-unmapped-discord";
+  }
+  if (has('"provider":"feishu"') || has('"surface":"feishu"') || has('"channel":"feishu"')) {
+    return "main-unmapped-feishu";
+  }
+
+  if (has('"label":"cron"') || has("Heartbeat prompt") || has("HEARTBEAT_OK") || has("/cron ") || has("openclaw cron ")) {
+    return "main-unmapped-cron";
+  }
+  if (has("Runtime: agent=main") || has("Workspace Files (injected)") || has("SOUL.md") || has("AGENTS.md")) {
+    return "main-unmapped-main";
+  }
+
+  return "main-unmapped-unknown";
+};
+
+const classifyUnmappedFileLabel = (raw = "") => {
+  const txt = String(raw || "").toLowerCase();
+  const mapping: Array<[string, string]> = [
+    ["usage-tracker", "usage-reporting"],
+    ["daily brief", "daily-brief"],
+    ["morning brief", "morning-brief"],
+    ["stock market", "stock-report"],
+    ["crypto market", "crypto-report"],
+    ["heartbeat", "heartbeat-check"],
+    ["task-center", "task-center-dev"],
+    ["coingecko", "market-query"],
+    ["python3 -v", "runtime-check"],
+    ["session_status", "status-check"]
+  ];
+
+  for (const [pattern, label] of mapping) {
+    if (txt.includes(pattern)) return label;
+  }
+
+  return "misc-chat";
+};
+
+const prettySource = (source = "") => {
+  const raw = String(source || "");
+  const labels: Record<string, string> = {
+    "codex-desktop": "Codex Desktop",
+    telegram: "Telegram",
+    discord: "Discord",
+    feishu: "Feishu",
+    cron: "Cron",
+    "main-unmapped-unknown": "主会话",
+    "main-unmapped-cron": "主会话 / Cron",
+    "main-unmapped-discord": "主会话 / Discord",
+    "main-unmapped-telegram": "主会话 / Telegram",
+    "main-unmapped-feishu": "主会话 / Feishu",
+    "main-unmapped-main": "主会话 / Local"
+  };
+
+  if (labels[raw]) return labels[raw];
+  if (raw.startsWith("main-unmapped-")) {
+    return `Main / ${raw.replace(/^main-unmapped-/, "").replace(/-/g, " ")}`;
+  }
+  if (raw.endsWith("-other")) {
+    return `${raw.replace(/-other$/, "").replace(/-/g, " ")} / Other`;
+  }
+
+  return raw.replace(/-/g, " ");
+};
+
+const getLiveUsageBreakdown = async (
+  openclawHome: ResolvedOpenClawHome
+): Promise<LiveUsageBreakdown | null> => {
+  const agentsRoot = path.join(openclawHome.home, "agents");
+  const targetDate = new Date().toISOString().slice(0, 10);
+
+  try {
+    const agentDirectories = await fs.readdir(agentsRoot, { withFileTypes: true });
+    const sessionFileToMeta: Record<string, { sessionKey?: string; agentId: string }> = {};
+    const allSessionFiles: Array<{ filePath: string; agentId: string }> = [];
+
+    for (const entry of agentDirectories) {
+      if (!entry.isDirectory()) continue;
+
+      const agentId = entry.name;
+      const sessionsDirectory = path.join(agentsRoot, agentId, "sessions");
+      try {
+        const sessionIndexPath = path.join(sessionsDirectory, "sessions.json");
+        try {
+          const indexRaw = JSON.parse(await fs.readFile(sessionIndexPath, "utf8")) as unknown;
+          const index = asObject(indexRaw);
+          if (index) {
+            for (const [sessionKey, meta] of Object.entries(index)) {
+              const sessionFile = asString(asObject(meta)?.sessionFile);
+              if (!sessionFile) continue;
+
+              sessionFileToMeta[path.basename(sessionFile)] = {
+                sessionKey,
+                agentId
+              };
+            }
+          }
+        } catch {
+          // Best effort only.
+        }
+
+        const sessionEntries = await fs.readdir(sessionsDirectory, { withFileTypes: true });
+        for (const sessionEntry of sessionEntries) {
+          if (!sessionEntry.isFile() || !sessionEntry.name.endsWith(".jsonl")) continue;
+          allSessionFiles.push({
+            filePath: path.join(sessionsDirectory, sessionEntry.name),
+            agentId
+          });
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    const byModel = new Map<string, LiveUsageStats>();
+    const byModelSource = new Map<string, Map<string, LiveUsageStats>>();
+    let latestObservedAt: string | undefined;
+
+    for (const sessionFile of allSessionFiles) {
+      const basename = path.basename(sessionFile.filePath);
+      const meta = sessionFileToMeta[basename] || {
+        sessionKey: "",
+        agentId: sessionFile.agentId
+      };
+      let content: string;
+
+      try {
+        content = await fs.readFile(sessionFile.filePath, "utf8");
+      } catch {
+        continue;
+      }
+
+      const fallbackUnmappedSource = inferMainUnmappedSubSource(content);
+      const lines = content.split(/\r?\n/).filter(Boolean);
+
+      for (const line of lines) {
+        try {
+          const event = JSON.parse(line) as unknown;
+          const record = asObject(event);
+          const message = asObject(record?.message);
+          if (record?.type !== "message" || !message?.usage) continue;
+
+          const timestamp = asString(record?.timestamp);
+          if (!timestamp || timestamp.slice(0, 10) !== targetDate) continue;
+
+          const model = asString(message?.model);
+          if (!model || model === "delivery-mirror" || model.startsWith("system/")) continue;
+
+          const usage = getUsageTotals(message.usage);
+          const totalTokens = usage.input + usage.output;
+          if (totalTokens <= 0) continue;
+
+          const messageDetails = asObject(message?.details);
+          const sessionKey =
+            asString(record?.sessionKey) ||
+            asString(message?.sessionKey) ||
+            asString(messageDetails?.sessionKey) ||
+            meta.sessionKey ||
+            "";
+
+          let source = sourceOfSessionKey(sessionKey, meta.agentId);
+          if (source === "main-unmapped-history") {
+            source = fallbackUnmappedSource;
+          }
+
+          latestObservedAt = !latestObservedAt || timestamp > latestObservedAt ? timestamp : latestObservedAt;
+
+          const currentModelStats = byModel.get(model) || { requests: 0, input: 0, output: 0 };
+          currentModelStats.requests += 1;
+          currentModelStats.input += usage.input;
+          currentModelStats.output += usage.output;
+          byModel.set(model, currentModelStats);
+
+          const sourceMap = byModelSource.get(model) || new Map<string, LiveUsageStats>();
+          const currentSourceStats = sourceMap.get(source) || { requests: 0, input: 0, output: 0 };
+          currentSourceStats.requests += 1;
+          currentSourceStats.input += usage.input;
+          currentSourceStats.output += usage.output;
+          sourceMap.set(source, currentSourceStats);
+          byModelSource.set(model, sourceMap);
+
+          if (source === "main-unmapped-unknown") {
+            const _label = classifyUnmappedFileLabel(content);
+            void _label;
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    const sortedModels = [...byModel.entries()]
+      .map(([model, stats]) => ({
+        model,
+        requests: stats.requests,
+        totalTokens: stats.input + stats.output
+      }))
+      .sort((left, right) => right.totalTokens - left.totalTokens);
+
+    if (!sortedModels.length) return null;
+
+    const topModelEntry = sortedModels[0];
+    const topModelSourceEntries = [...(byModelSource.get(topModelEntry.model)?.entries() || [])]
+      .map(([source, stats]) => ({
+        source: prettySource(source),
+        totalTokens: stats.input + stats.output
+      }))
+      .sort((left, right) => right.totalTokens - left.totalTokens)
+      .slice(0, 5);
+
+    return {
+      date: targetDate,
+      observedAt: latestObservedAt,
+      topModel: topModelEntry.model,
+      topModelSources: topModelSourceEntries.map((entry) => ({
+        source: entry.source,
+        share: `${((entry.totalTokens / topModelEntry.totalTokens) * 100).toFixed(1)}%`
+      })),
+      models: sortedModels.slice(0, 8).map((entry) => ({
+        model: entry.model,
+        requests: formatNumber(entry.requests),
+        totalTokens: formatNumber(entry.totalTokens)
+      }))
+    };
+  } catch {
+    return null;
+  }
+};
+
 const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<UsageSnapshot> => {
   const usageDirectory = resolveUsageDirectory(openclawHome.home);
   const usageDirectoryDisplay = formatDisplayPath(usageDirectory);
@@ -951,8 +1274,9 @@ const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<Usa
       };
     }
 
-    const [liveQuota, providerProfiles] = await Promise.all([
+    const [liveQuota, liveUsageBreakdown, providerProfiles] = await Promise.all([
       resolveLiveQuota(openclawHome),
+      getLiveUsageBreakdown(openclawHome),
       readProviderProfiles(openclawHome)
     ]);
     const useLiveQuota = shouldUseLiveQuota({
@@ -978,6 +1302,15 @@ const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<Usa
     const quota7d = resolvedQuota?.quota7d || latest.quota7d;
     const quotaSource = resolvedQuota?.source || "report";
     const quotaObservedAt = resolvedQuota?.observedAt || latest.generatedAt;
+    const shouldUseLiveUsageBreakdown =
+      Boolean(liveUsageBreakdown) &&
+      ((liveUsageBreakdown?.date || "") >= latest.date ||
+        !latest.generatedAt ||
+        !liveUsageBreakdown?.observedAt ||
+        (parseTimestampMs(liveUsageBreakdown.observedAt) || 0) >= (parseTimestampMs(latest.generatedAt) || 0));
+    const resolvedTopModel = shouldUseLiveUsageBreakdown ? liveUsageBreakdown?.topModel : latest.topModel;
+    const resolvedTopModelSources = shouldUseLiveUsageBreakdown ? liveUsageBreakdown?.topModelSources : latest.topModelSources;
+    const resolvedModels = shouldUseLiveUsageBreakdown ? liveUsageBreakdown?.models : latest.models;
 
     return {
       available: true,
@@ -988,7 +1321,7 @@ const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<Usa
       totalTokens: latest.totalTokens,
       inputTokens: latest.inputTokens,
       outputTokens: latest.outputTokens,
-      topModel: latest.topModel,
+      topModel: resolvedTopModel,
       oauthStatus: authStatus,
       quota5h,
       quota7d,
@@ -1008,8 +1341,8 @@ const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<Usa
       }),
       providerProfiles: hydratedProviderProfiles,
       quickSummary: latest.quickSummary,
-      topModelSources: latest.topModelSources,
-      models: latest.models,
+      topModelSources: resolvedTopModelSources,
+      models: resolvedModels,
       history,
       notes: [
         ...(openclawHome.sourceKind === "demo"
@@ -1021,6 +1354,7 @@ const readUsageReports = async (openclawHome: ResolvedOpenClawHome): Promise<Usa
           : resolvedQuota?.source === "session-status"
             ? "Quota values are refreshed from the latest `session_status` log when `openclaw models` is unavailable."
             : "Quota values currently come from the latest usage report snapshot.",
+        ...(shouldUseLiveUsageBreakdown ? ["Top model breakdown is refreshed from live session JSONL data."] : []),
         "The parser accepts both the newer account-status format and older quota-only report formats."
       ]
     };

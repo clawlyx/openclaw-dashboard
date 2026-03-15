@@ -84,6 +84,8 @@ export const translateDashboardText = (text: string | undefined, messages: Messa
       return messages.data.quotaLiveSessionNote;
     case "Quota values currently come from the latest usage report snapshot.":
       return messages.data.quotaSnapshotNote;
+    case "Top model breakdown is refreshed from live session JSONL data.":
+      return messages.data.liveModelBreakdownNote;
     case "The parser accepts both the newer account-status format and older quota-only report formats.":
       return messages.data.parserCompatibilityNote;
     case "Unable to read usage reports.":

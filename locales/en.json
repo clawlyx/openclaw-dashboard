@@ -446,6 +446,7 @@
     "quotaLiveModelsNote": "Quota values are refreshed from live `openclaw models` output.",
     "quotaLiveSessionNote": "Quota values are refreshed from the latest `session_status` log when `openclaw models` is unavailable.",
     "quotaSnapshotNote": "Quota values currently come from the latest usage report snapshot.",
+    "liveModelBreakdownNote": "Top model breakdown is refreshed from live session JSONL data.",
     "parserCompatibilityNote": "The parser accepts both the newer account-status format and older quota-only report formats.",
     "unableToReadUsageReports": "Unable to read usage reports.",
     "unableToReadCronJobs": "Unable to read cron jobs.",

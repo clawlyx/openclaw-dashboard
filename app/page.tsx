@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 import { AgentsOfficePanel } from "@/components/agents-office-panel";
 import { AgentsVirtualOfficePanel } from "@/components/agents-virtual-office-panel";
+import { LiveRefresh } from "@/components/live-refresh";
 import { MissionControlPanel } from "@/components/mission-control-panel";
 import { SectionShell } from "@/components/section-shell";
 import { ProviderLimitWindows } from "@/components/provider-limit-windows";
@@ -1061,6 +1062,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <main className="pageShell" lang={localeTag(locale)}>
+      <LiveRefresh enabled={openclawSourceKind !== "demo"} />
       <div className="pageGlow pageGlowLeft" />
       <div className="pageGlow pageGlowRight" />
 

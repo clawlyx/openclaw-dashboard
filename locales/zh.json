@@ -446,6 +446,7 @@
     "quotaLiveModelsNote": "额度值会优先刷新为实时的 openclaw models 输出。",
     "quotaLiveSessionNote": "当 openclaw models 不可用时，额度值会退回到最近的 session_status 日志。",
     "quotaSnapshotNote": "当前额度值来自最新 usage 报告快照。",
+    "liveModelBreakdownNote": "Top model breakdown 会优先刷新为实时 session JSONL 数据。",
     "parserCompatibilityNote": "解析器同时兼容较新的账户状态格式和旧版 quota-only 报告格式。",
     "unableToReadUsageReports": "无法读取 usage 报告。",
     "unableToReadCronJobs": "无法读取 cron 任务。",
