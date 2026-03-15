@@ -280,10 +280,32 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           updatedAt: "2026-03-10T10:44:00.000Z",
           summary: "PR is open and waiting for a merge decision.",
           nextPlannedStep: "Merge the release PR and publish the release note once screenshots are approved.",
-          waitingOn: "human-merge"
+          waitingOn: "human-merge",
+          history: [
+            {
+              at: "2026-03-10T09:10:00.000Z",
+              action: "start",
+              detail: "TQ-097 started from Mission Control.",
+              taskId: "TQ-097",
+              lane: "release",
+              status: "running"
+            },
+            {
+              at: "2026-03-10T09:58:00.000Z",
+              action: "review",
+              detail: "TQ-097 moved to review.",
+              taskId: "TQ-097",
+              lane: "release",
+              status: "review"
+            }
+          ]
         }
       ],
-      history: [{ at: "2026-03-10T10:44:00.000Z" }]
+      history: [
+        { at: "2026-03-10T09:10:00.000Z", action: "task", detail: "TQ-097 started from Mission Control." },
+        { at: "2026-03-10T09:58:00.000Z", action: "task", detail: "TQ-097 moved to review." },
+        { at: "2026-03-10T10:44:00.000Z", action: "review", detail: "Release PR is open and waiting for merge confirmation." }
+      ]
     },
     {
       featureId: "F-0002-family-claw-concierge",
@@ -321,10 +343,31 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           summary: "Gathering first-release interaction patterns and concierge flows.",
           nextPlannedStep: "Package the research notes into a short product brief for review.",
           ownerAgentId: "research-agent",
-          ownerRoomId: "research"
+          ownerRoomId: "research",
+          history: [
+            {
+              at: "2026-03-10T09:48:00.000Z",
+              action: "start",
+              detail: "TQ-101 started in the research lane.",
+              taskId: "TQ-101",
+              lane: "research",
+              status: "running"
+            },
+            {
+              at: "2026-03-10T10:12:00.000Z",
+              action: "worked",
+              detail: "Research notes were updated for TQ-101.",
+              taskId: "TQ-101",
+              lane: "research",
+              status: "running"
+            }
+          ]
         }
       ],
-      history: [{ at: "2026-03-10T10:12:00.000Z" }]
+      history: [
+        { at: "2026-03-10T09:48:00.000Z", action: "task", detail: "TQ-101 started from Mission Control." },
+        { at: "2026-03-10T10:12:00.000Z", action: "task", detail: "TQ-101 research notes were refreshed." }
+      ]
     },
     {
       featureId: "F-0003-agent-workflow-schema",
@@ -363,10 +406,31 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
           nextPlannedStep: "Resume implementation once the shared ownership fields are approved.",
           blockedReason: "Waiting for the shared ownership contract to land in agent-workflow.",
           ownerAgentId: "coding-agent",
-          ownerRoomId: "build"
+          ownerRoomId: "build",
+          history: [
+            {
+              at: "2026-03-09T14:05:00.000Z",
+              action: "start",
+              detail: "TQ-108 started from Mission Control.",
+              taskId: "TQ-108",
+              lane: "build",
+              status: "running"
+            },
+            {
+              at: "2026-03-09T16:25:00.000Z",
+              action: "block",
+              detail: "TQ-108 was blocked.",
+              taskId: "TQ-108",
+              lane: "build",
+              status: "blocked"
+            }
+          ]
         }
       ],
-      history: [{ at: "2026-03-09T16:25:00.000Z" }]
+      history: [
+        { at: "2026-03-09T14:05:00.000Z", action: "task", detail: "TQ-108 started from Mission Control." },
+        { at: "2026-03-09T16:25:00.000Z", action: "task", detail: "TQ-108 was blocked." }
+      ]
     }
   ]
 };

@@ -90,6 +90,11 @@ type AgentsVirtualOfficeMessages = {
   detailNextStep: string;
   detailBlockedReason: string;
   detailWaitingOn: string;
+  detailHistorySource: string;
+  detailActiveAge: string;
+  detailReviewWait: string;
+  detailBlockedDuration: string;
+  detailActivityGap: string;
   detailHandoffTitle: string;
   detailHandoffEmpty: string;
   detailArtifactsTitle: string;
@@ -114,8 +119,13 @@ type AgentsVirtualOfficeMessages = {
   pressureSeverityMedium: string;
   pressureSeverityLow: string;
   pressureAgeHours: string;
+  historyHoursValue: string;
   pressureWaitingOnHint: string;
   pressureSignalCount: string;
+  historySourceFull: string;
+  historySourcePartial: string;
+  historySourceCurrent: string;
+  roomTrendSummary: string;
   roomOccupancy: string;
   timelineTitle: string;
   timelineCopy: string;
@@ -172,6 +182,7 @@ type RoomMissionCoverage = {
   featureCount: number;
   reviewCount: number;
   blockedCount: number;
+  primaryTaskId?: string;
   primaryFeatureTitle?: string;
   primaryTaskTitle?: string;
   primaryOwnerAgentId?: string;
@@ -582,6 +593,21 @@ const getMissionOwnership = (
 
 const getOwnershipLabel = (source: MissionOwnershipSource, copy: AgentsVirtualOfficeMessages) =>
   source === "explicit" ? copy.ownershipExplicit : copy.ownershipInferred;
+
+const getHistorySourceLabel = (
+  source: "full-history" | "partial-history" | "current-only" | undefined,
+  copy: AgentsVirtualOfficeMessages
+) => {
+  switch (source) {
+    case "full-history":
+      return copy.historySourceFull;
+    case "partial-history":
+      return copy.historySourcePartial;
+    case "current-only":
+    default:
+      return copy.historySourceCurrent;
+  }
+};
 
 const getPressureSeverityLabel = (severity: PressureSignalSeverity, copy: AgentsVirtualOfficeMessages) => {
   switch (severity) {
@@ -1102,6 +1128,7 @@ export function AgentsVirtualOfficePanel({
             featureCount: entry.features.size,
             reviewCount: entry.reviewCount,
             blockedCount: entry.blockedCount,
+            primaryTaskId: primaryTask?.tqId,
             primaryFeatureTitle: primaryTask?.featureTitle,
             primaryTaskTitle: primaryTask?.title,
             primaryOwnerAgentId: primaryTask ? getMissionOwnership(primaryTask, agentRoomById).agentId : undefined,
@@ -1140,6 +1167,7 @@ export function AgentsVirtualOfficePanel({
         const roomStatus = getRoomStatus(roomAgents);
         const area = SCENE_AREAS[room.id];
         const missionCoverage = roomMissionCoverage.get(room.id) || createEmptyRoomMissionCoverage(room.id);
+        const roomHistoryMetrics = pressureModel.roomMetricsByRoomId[room.id];
 
         return {
           room,
@@ -1149,6 +1177,7 @@ export function AgentsVirtualOfficePanel({
           roomLead,
           roomStatus,
           missionCoverage,
+          roomHistoryMetrics,
           area,
           roomPressureCount: pressureModel.roomSignalCountByRoomId[room.id] || 0,
           roomPressureSeverity: pressureModel.roomTopSeverityByRoomId[room.id],
@@ -1156,7 +1185,16 @@ export function AgentsVirtualOfficePanel({
           occupancy: `${roomAgents.length}/${roomCapacity}`
         };
       }),
-    [agents.agents, agents.rooms, common.na, pressureModel.roomPriorityByRoomId, pressureModel.roomSignalCountByRoomId, pressureModel.roomTopSeverityByRoomId, roomMissionCoverage]
+    [
+      agents.agents,
+      agents.rooms,
+      common.na,
+      pressureModel.roomMetricsByRoomId,
+      pressureModel.roomPriorityByRoomId,
+      pressureModel.roomSignalCountByRoomId,
+      pressureModel.roomTopSeverityByRoomId,
+      roomMissionCoverage
+    ]
   );
 
   const pinnedTask = selectedFocus?.taskId ? taskById.get(selectedFocus.taskId) || null : null;
@@ -1274,6 +1312,7 @@ export function AgentsVirtualOfficePanel({
     (selectedAgent?.currentTaskId ? taskById.get(selectedAgent.currentTaskId) || null : null);
   const activeDetailFeature = activeDetailTask ? featureById.get(activeDetailTask.featureId) || null : null;
   const activeDetailOwnership = activeDetailTask ? getMissionOwnership(activeDetailTask, agentRoomById) : null;
+  const activeDetailMetrics = activeDetailTask ? pressureModel.taskMetricsByTaskId[activeDetailTask.tqId] || null : null;
   const lastCompletedTask =
     (selectedAgent?.lastTaskId ? taskById.get(selectedAgent.lastTaskId) : undefined) ||
     (activeDetailFeature
@@ -1295,6 +1334,34 @@ export function AgentsVirtualOfficePanel({
         ? agents.recentEvents.filter((event) => selectedAgentIds.has(event.agentId))
         : []
   ).slice(0, 3);
+  const formatHistoryHours = (value?: number) =>
+    typeof value === "number" && value > 0
+      ? formatMessage(copy.historyHoursValue, { value: String(Math.max(1, Math.round(value))) })
+      : common.na;
+  const getRoomTrendSummary = (
+    metrics:
+      | {
+          source: "full-history" | "partial-history" | "current-only";
+          longestActiveAgeHours: number;
+          longestReviewWaitHours: number;
+          longestBlockedDurationHours: number;
+          longestActivityGapHours: number;
+        }
+      | undefined
+  ) => {
+    if (!metrics) return getHistorySourceLabel("current-only", copy);
+
+    const facts = [
+      metrics.longestReviewWaitHours > 0 ? `${copy.detailReviewWait}: ${formatHistoryHours(metrics.longestReviewWaitHours)}` : null,
+      metrics.longestBlockedDurationHours > 0
+        ? `${copy.detailBlockedDuration}: ${formatHistoryHours(metrics.longestBlockedDurationHours)}`
+        : null,
+      metrics.longestActiveAgeHours > 0 ? `${copy.detailActiveAge}: ${formatHistoryHours(metrics.longestActiveAgeHours)}` : null,
+      metrics.longestActivityGapHours > 0 ? `${copy.detailActivityGap}: ${formatHistoryHours(metrics.longestActivityGapHours)}` : null
+    ].filter((entry): entry is string => Boolean(entry));
+
+    return `${facts[0] || `${copy.detailActiveAge}: ${common.na}`} · ${getHistorySourceLabel(metrics.source, copy)}`;
+  };
 
   const focusRoom = (roomId: string) => {
     setSelectedFocus({ kind: "room", roomId });
@@ -1633,7 +1700,8 @@ export function AgentsVirtualOfficePanel({
 
         <div className="virtualOfficeLower">
           <div className="virtualRoomPulseGrid">
-            {roomPulseEntries.map(({ room, roomLead, roomQueue, occupancy, roomStatus, missionCoverage, roomPressureCount, roomPressureSeverity }) => (
+            {roomPulseEntries.map(
+              ({ room, roomLead, roomQueue, occupancy, roomStatus, missionCoverage, roomHistoryMetrics, roomPressureCount, roomPressureSeverity }) => (
               <button
                 key={room.id}
                 type="button"
@@ -1679,6 +1747,9 @@ export function AgentsVirtualOfficePanel({
                 ) : (
                   <p className="virtualRoomPulseHint">{copy.roomMissionIdle}</p>
                 )}
+                <p className="virtualRoomPulseHint">
+                  {copy.roomTrendSummary}: {getRoomTrendSummary(roomHistoryMetrics)}
+                </p>
                 <div className="virtualRoomPulseMeta">
                   <span>
                     {copy.roomOccupancy}: {occupancy}
@@ -1803,6 +1874,26 @@ export function AgentsVirtualOfficePanel({
                             <dt>{copy.updated}</dt>
                             <dd>{formatDateTimeLabel(parseTimestampMs(activeDetailTask.updatedAt), locale, common.na)}</dd>
                           </div>
+                          <div>
+                            <dt>{copy.detailHistorySource}</dt>
+                            <dd>{getHistorySourceLabel(activeDetailMetrics?.source || activeDetailTask.historySource, copy)}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailActiveAge}</dt>
+                            <dd>{formatHistoryHours(activeDetailMetrics?.activeAgeHours)}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailReviewWait}</dt>
+                            <dd>{formatHistoryHours(activeDetailMetrics?.reviewWaitHours)}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailBlockedDuration}</dt>
+                            <dd>{formatHistoryHours(activeDetailMetrics?.blockedDurationHours)}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.detailActivityGap}</dt>
+                            <dd>{formatHistoryHours(activeDetailMetrics?.activityGapHours)}</dd>
+                          </div>
                         </>
                       ) : selectedAgent ? (
                         <>
@@ -1824,6 +1915,10 @@ export function AgentsVirtualOfficePanel({
                           <div>
                             <dt>{copy.missionTasks}</dt>
                             <dd>{selectedRoomEntry.missionCoverage.taskCount}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.roomTrendSummary}</dt>
+                            <dd>{getRoomTrendSummary(selectedRoomEntry.roomHistoryMetrics)}</dd>
                           </div>
                         </>
                       ) : null}
