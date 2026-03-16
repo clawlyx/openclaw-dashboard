@@ -17,7 +17,7 @@ This roadmap defines the `v1.4.0 Agent Clarity` milestone. The goal is to make t
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 8: Agent Clarity** - Redesign the Agents surface around fast roster legibility, blocked/idle triage, and lightweight next-task suggestions.
+- [x] **Phase 8: Agent Clarity** - Redesign the Agents surface around fast roster legibility, blocked/idle triage, and lightweight next-task suggestions. Completed 2026-03-16.
 
 ## Phase Details
 
@@ -30,10 +30,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Blocked agents expose enough reason and time context to make intervention needs obvious without opening Mission Control first.
   3. Idle agents show credible lightweight next-task hints and a compact idle-assignment queue without pretending the system is auto-assigning work.
   4. The responsive layout preserves the same Working / Blocked / Idle mental model across desktop and smaller screens.
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 08-01: Rebuild the Agents view around roster clarity, blocked emphasis, and idle suggestion flow
+- [x] 08-01: Rebuild the Agents view around roster clarity, blocked emphasis, and idle suggestion flow
 
 ## Progress
 
@@ -42,4 +42,4 @@ Phases execute in numeric order: 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 8. Agent Clarity | 0/1 | Not started | - |
+| 8. Agent Clarity | 1/1 | Complete | 2026-03-16 |
