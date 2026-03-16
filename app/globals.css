@@ -2898,6 +2898,127 @@ html[data-theme="dark"] .officeRoomMeta span {
   gap: 10px;
 }
 
+.virtualTriageBoard,
+.virtualTriageQueue,
+.virtualTriageColumn,
+.virtualTriageCard,
+.virtualTriageQueueItem {
+  display: grid;
+  gap: 14px;
+}
+
+.virtualTriageGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.virtualTriageColumn {
+  align-content: start;
+  padding: 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(23, 21, 19, 0.08);
+  background: color-mix(in srgb, var(--surface-card) 84%, white);
+}
+
+.virtualTriageColumnworking {
+  background: linear-gradient(180deg, rgba(236, 248, 242, 0.92), rgba(249, 251, 248, 0.92));
+}
+
+.virtualTriageColumnblocked {
+  background: linear-gradient(180deg, rgba(255, 241, 236, 0.95), rgba(251, 246, 244, 0.92));
+}
+
+.virtualTriageColumnidle {
+  background: linear-gradient(180deg, rgba(244, 246, 249, 0.95), rgba(251, 251, 252, 0.92));
+}
+
+.virtualTriageColumnHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.virtualTriageColumnHead h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  letter-spacing: -0.04em;
+}
+
+.virtualTriageColumnHead p,
+.virtualTriageTask,
+.virtualTriageCallout p,
+.virtualTriageQueueItem p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.58;
+}
+
+.virtualTriageColumnHead p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.virtualTriageList,
+.virtualTriageQueueList {
+  display: grid;
+  gap: 12px;
+}
+
+.virtualTriageCard,
+.virtualTriageQueueItem {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(23, 21, 19, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.virtualTriageCardblocked {
+  box-shadow: inset 0 0 0 1px rgba(197, 82, 66, 0.12);
+}
+
+.virtualTriageTask {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.virtualTriageCallout {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(250, 248, 244, 0.84);
+  border: 1px solid rgba(23, 21, 19, 0.08);
+}
+
+.virtualTriageCallout strong,
+.virtualTriageCallout span {
+  color: var(--ink);
+}
+
+.virtualTriageCallout span {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.virtualTriageCalloutBlocked {
+  background: rgba(255, 241, 236, 0.92);
+  border-color: rgba(197, 82, 66, 0.16);
+}
+
+.virtualTriageQueue {
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px dashed rgba(23, 21, 19, 0.12);
+  background: rgba(255, 251, 245, 0.72);
+}
+
 .virtualBottleneckRail {
   display: grid;
   gap: 14px;
@@ -3667,6 +3788,10 @@ html[data-theme="dark"] .virtualOfficeRail,
 html[data-theme="dark"] .virtualRoomPulse,
 html[data-theme="dark"] .virtualDeskCard,
 html[data-theme="dark"] .virtualAlertItem,
+html[data-theme="dark"] .virtualTriageColumn,
+html[data-theme="dark"] .virtualTriageCard,
+html[data-theme="dark"] .virtualTriageQueue,
+html[data-theme="dark"] .virtualTriageQueueItem,
 html[data-theme="dark"] .virtualOfficeLegendChip,
 html[data-theme="dark"] .virtualRoomStatus,
 html[data-theme="dark"] .virtualOfficeEmpty,
@@ -3715,6 +3840,23 @@ html[data-theme="dark"] .virtualOfficeBoard {
 html[data-theme="dark"] .virtualOfficeDrawerPanel {
   border-color: rgba(111, 131, 170, 0.18);
   background: rgba(12, 20, 35, 0.74);
+}
+
+html[data-theme="dark"] .virtualTriageColumnworking,
+html[data-theme="dark"] .virtualTriageCard,
+html[data-theme="dark"] .virtualTriageQueueItem {
+  background: rgba(12, 20, 35, 0.78);
+}
+
+html[data-theme="dark"] .virtualTriageColumnblocked,
+html[data-theme="dark"] .virtualTriageCalloutBlocked {
+  background: rgba(49, 20, 22, 0.78);
+}
+
+html[data-theme="dark"] .virtualTriageColumnidle,
+html[data-theme="dark"] .virtualTriageQueue,
+html[data-theme="dark"] .virtualTriageCallout {
+  background: rgba(18, 28, 45, 0.74);
 }
 
 html[data-theme="dark"] .virtualOfficeScene {
@@ -3921,7 +4063,8 @@ html[data-theme="dark"] .historyGridLine {
   }
 
   .virtualOperatorSummaryGrid,
-  .virtualBottleneckList {
+  .virtualBottleneckList,
+  .virtualTriageGrid {
     grid-template-columns: 1fr;
   }
 
@@ -4021,6 +4164,11 @@ html[data-theme="dark"] .historyGridLine {
 
   .virtualOfficeSceneBadge {
     max-width: 100%;
+  }
+
+  .virtualTriageColumnHead {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .themeOption {

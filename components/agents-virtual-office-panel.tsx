@@ -31,6 +31,27 @@ type AgentsVirtualOfficeMessages = {
   virtualDescription: string;
   virtualBoardTitle: string;
   virtualBoardCopy: string;
+  triageTitle: string;
+  triageCopy: string;
+  triageWorkingCopy: string;
+  triageBlockedCopy: string;
+  triageIdleCopy: string;
+  triageNoWorking: string;
+  triageNoBlocked: string;
+  triageNoIdle: string;
+  triageDurationWorking: string;
+  triageDurationBlocked: string;
+  triageDurationIdle: string;
+  triageRoleFit: string;
+  triageSuggestionLabel: string;
+  triageSuggestionSameRoom: string;
+  triageSuggestionRoleFit: string;
+  triageSuggestionFallback: string;
+  triageSuggestionNone: string;
+  triageQueueTitle: string;
+  triageQueueCopy: string;
+  triageQueueEmpty: string;
+  triageQueueNoSuggestion: string;
   summaryAgents: string;
   summaryAttention: string;
   summaryQueues: string;
@@ -268,6 +289,28 @@ type DetailFocus =
   | null;
 
 type IntelligenceScope = "all" | "room" | "mission";
+
+type TriageSection = "working" | "blocked" | "idle";
+
+type IdleSuggestionKind = "same-room" | "role-fit" | "fallback" | "none";
+
+type IdleSuggestion = {
+  kind: IdleSuggestionKind;
+  task: MissionControlTaskSnapshot | null;
+  roomId?: string;
+};
+
+type TriageEntry = {
+  agent: AgentSnapshot;
+  section: TriageSection;
+  roomLabel: string;
+  taskLabel: string;
+  durationLabel: string;
+  focusTask: MissionControlTaskSnapshot | null;
+  blockedReason: string | null;
+  waitingOn: string | null;
+  suggestion: IdleSuggestion;
+};
 
 const createEmptyRoomMissionCoverage = (roomId: string): RoomMissionCoverage => ({
   roomId,
@@ -819,6 +862,38 @@ const buildFocusForTask = (
     taskId: task.tqId,
     featureId: task.featureId
   };
+};
+
+const getHoursSince = (value?: string) => {
+  const timestampMs = parseTimestampMs(value);
+  if (typeof timestampMs !== "number") return undefined;
+  const elapsedHours = (Date.now() - timestampMs) / (1000 * 60 * 60);
+  return elapsedHours > 0 ? elapsedHours : undefined;
+};
+
+const getAgentPreferredLanes = (agent: AgentSnapshot) => {
+  const role = agent.role.toLowerCase();
+  const lanes = new Set<MissionControlTaskSnapshot["lane"]>();
+
+  if (agent.roomId === "research" || role.includes("research")) lanes.add("research");
+  if (agent.roomId === "build" || role.includes("build") || role.includes("coding")) lanes.add("build");
+  if (agent.roomId === "review" || role.includes("review") || role.includes("quality") || role.includes("qa")) lanes.add("qa");
+  if (agent.roomId === "release" || role.includes("release")) lanes.add("release");
+
+  if (!lanes.size && (agent.roomId === "dispatch" || role.includes("triage") || role.includes("dispatch"))) {
+    lanes.add("research");
+    lanes.add("build");
+    lanes.add("qa");
+    lanes.add("release");
+  }
+
+  return lanes;
+};
+
+const classifyTriageSection = (agent: AgentSnapshot): TriageSection => {
+  if (agent.status === "blocked") return "blocked";
+  if (agent.status === "idle" || agent.status === "offline") return "idle";
+  return "working";
 };
 
 const getCompactRoomLabel = (roomId: string, roomLabel: string) => ROOM_SHORT_LABELS[roomId] || roomLabel.split(" ")[0] || roomLabel;
@@ -1473,6 +1548,124 @@ export function AgentsVirtualOfficePanel({
     typeof value === "number" && value > 0
       ? formatMessage(copy.historyHoursValue, { value: String(Math.max(1, Math.round(value))) })
       : common.na;
+  const triageEntries = (() => {
+    const getTriageDurationLabel = (section: TriageSection, value?: number) => {
+      const duration = formatHistoryHours(value);
+
+      switch (section) {
+        case "blocked":
+          return formatMessage(copy.triageDurationBlocked, { value: duration });
+        case "idle":
+          return formatMessage(copy.triageDurationIdle, { value: duration });
+        case "working":
+        default:
+          return formatMessage(copy.triageDurationWorking, { value: duration });
+      }
+    };
+    const readyUnownedTasks = liveMissionTasks.filter((task) => task.status === "ready" && !task.ownerAgentId);
+
+    const rankIdleSuggestion = (agent: AgentSnapshot): IdleSuggestion => {
+      const preferredLanes = getAgentPreferredLanes(agent);
+      const ranked = [...readyUnownedTasks]
+        .map((task) => {
+          const ownership = getMissionOwnership(task, agentRoomById);
+          const sameRoom = ownership.roomId === agent.roomId;
+          const roleFit = preferredLanes.has(task.lane);
+          const score = (sameRoom ? 300 : 0) + (roleFit ? 200 : 0) + 100;
+          const kind: IdleSuggestionKind = sameRoom ? "same-room" : roleFit ? "role-fit" : "fallback";
+
+          return {
+            task,
+            roomId: ownership.roomId,
+            score,
+            kind
+          };
+        })
+        .sort((left, right) => {
+          const scoreDelta = right.score - left.score;
+          if (scoreDelta !== 0) return scoreDelta;
+          return sortMissionTasks(left.task, right.task);
+        });
+
+      if (!ranked.length) {
+        return { kind: "none", task: null };
+      }
+
+      return {
+        kind: ranked[0].kind,
+        task: ranked[0].task,
+        roomId: ranked[0].roomId
+      };
+    };
+
+    return agents.agents
+      .map((agent) => {
+        const section = classifyTriageSection(agent);
+        const focusTask =
+          (agent.currentTaskId ? taskById.get(agent.currentTaskId) || null : null) ||
+          liveMissionTasks.find((task) => task.ownerAgentId === agent.id) ||
+          null;
+        const focusTaskMetrics = focusTask ? pressureModel.taskMetricsByTaskId[focusTask.tqId] || null : null;
+        const durationHours =
+          section === "blocked"
+            ? focusTaskMetrics?.blockedDurationHours || focusTaskMetrics?.currentWaitHours || getHoursSince(focusTask?.updatedAt) || getHoursSince(agent.lastEventAt)
+            : section === "idle"
+              ? focusTaskMetrics?.activityGapHours || getHoursSince(agent.lastEventAt) || getHoursSince(focusTask?.updatedAt)
+              : focusTaskMetrics?.activeAgeHours ||
+                focusTaskMetrics?.currentWaitHours ||
+                getHoursSince(focusTask?.startedAt) ||
+                getHoursSince(focusTask?.lastWorkedAt) ||
+                getHoursSince(focusTask?.updatedAt) ||
+                getHoursSince(agent.lastEventAt);
+
+        return {
+          agent,
+          section,
+          roomLabel: roomLabelById.get(agent.roomId) || common.na,
+          taskLabel: getDeskTask(agent, copy, common.unavailable),
+          durationLabel: getTriageDurationLabel(section, durationHours),
+          focusTask,
+          blockedReason: focusTask?.blockedReason || null,
+          waitingOn: focusTask?.waitingOn || null,
+          suggestion: section === "idle" ? rankIdleSuggestion(agent) : { kind: "none", task: null }
+        } satisfies TriageEntry;
+      })
+      .sort((left, right) => sortByLoad(left.agent, right.agent));
+  })();
+  const triageWorkingEntries = triageEntries.filter((entry) => entry.section === "working");
+  const triageBlockedEntries = triageEntries.filter((entry) => entry.section === "blocked");
+  const triageIdleEntries = triageEntries.filter((entry) => entry.section === "idle");
+  const triageIdleQueueEntries = triageIdleEntries
+    .map((entry) => ({
+      ...entry,
+      score:
+        entry.suggestion.kind === "same-room"
+          ? 3
+          : entry.suggestion.kind === "role-fit"
+            ? 2
+            : entry.suggestion.kind === "fallback"
+              ? 1
+              : 0
+    }))
+    .sort((left, right) => {
+      const scoreDelta = right.score - left.score;
+      if (scoreDelta !== 0) return scoreDelta;
+      return left.agent.name.localeCompare(right.agent.name);
+    });
+  const offlineCount = agents.agents.filter((agent) => agent.status === "offline").length;
+  const getSuggestionTone = (kind: IdleSuggestionKind) => {
+    switch (kind) {
+      case "same-room":
+        return copy.triageSuggestionSameRoom;
+      case "role-fit":
+        return copy.triageSuggestionRoleFit;
+      case "fallback":
+        return copy.triageSuggestionFallback;
+      case "none":
+      default:
+        return copy.triageSuggestionNone;
+    }
+  };
   const getRoomTrendSummary = (
     metrics:
       | {
@@ -1975,6 +2168,165 @@ export function AgentsVirtualOfficePanel({
                 <strong className="miniSummaryValue">{item.value}</strong>
               </article>
             ))}
+          </div>
+        </article>
+
+        <article className="virtualOfficeRail virtualTriageBoard">
+          <div className="virtualOfficeRailHeader">
+            <div>
+              <p className="eyebrow">{officeName}</p>
+              <h3>{copy.triageTitle}</h3>
+            </div>
+            <p className="virtualOfficeRailCopy">{copy.triageCopy}</p>
+          </div>
+
+          <div className="virtualOperatorSummaryFooter">
+            <span className="metaChip">
+              {copy.statusActive}: {triageWorkingEntries.length}
+            </span>
+            <span className="metaChip">
+              {copy.statusBlocked}: {triageBlockedEntries.length}
+            </span>
+            <span className="metaChip">
+              {copy.statusIdle}: {triageIdleEntries.length}
+            </span>
+            {offlineCount > 0 ? (
+              <span className="metaChip">
+                {copy.statusOffline}: {offlineCount}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="virtualTriageGrid">
+            {[
+              {
+                key: "working",
+                title: copy.statusActive,
+                description: copy.triageWorkingCopy,
+                empty: copy.triageNoWorking,
+                entries: triageWorkingEntries
+              },
+              {
+                key: "blocked",
+                title: copy.statusBlocked,
+                description: copy.triageBlockedCopy,
+                empty: copy.triageNoBlocked,
+                entries: triageBlockedEntries
+              },
+              {
+                key: "idle",
+                title: copy.statusIdle,
+                description: copy.triageIdleCopy,
+                empty: copy.triageNoIdle,
+                entries: triageIdleEntries
+              }
+            ].map((section) => (
+              <section key={section.key} className={`virtualTriageColumn virtualTriageColumn${section.key}`}>
+                <div className="virtualTriageColumnHead">
+                  <div>
+                    <h4>{section.title}</h4>
+                    <p>{section.description}</p>
+                  </div>
+                  <span className={`virtualPressureBadge virtualPressureBadge${section.key === "blocked" ? "high" : section.key === "idle" ? "low" : "medium"}`}>
+                    {section.entries.length}
+                  </span>
+                </div>
+
+                <div className="virtualTriageList">
+                  {section.entries.length ? (
+                    section.entries.map((entry) => (
+                      <button
+                        key={`triage:${section.key}:${entry.agent.id}`}
+                        type="button"
+                        className={`virtualTriageCard virtualDeskCardButton virtualTriageCard${entry.agent.status} ${
+                          selectedAgent?.id === entry.agent.id ? "virtualDeskCardSelected" : ""
+                        }`}
+                        onClick={() => toggleAgentFocus(entry.agent)}
+                      >
+                        <div className="virtualDeskCardHead">
+                          <strong>{entry.agent.name}</strong>
+                          <span>{getStatusLabel(entry.agent.status, copy)}</span>
+                        </div>
+                        <p className="virtualTriageTask">{entry.taskLabel}</p>
+                        <div className="virtualDeskCardMeta">
+                          <span>
+                            {copy.missionOwnerRoom}: {entry.roomLabel}
+                          </span>
+                          <span>{entry.durationLabel}</span>
+                          {entry.focusTask ? (
+                            <span>
+                              {copy.detailTaskId}: {entry.focusTask.tqId}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {section.key === "blocked" ? (
+                          <div className="virtualTriageCallout virtualTriageCalloutBlocked">
+                            <strong>{copy.detailBlockedReason}</strong>
+                            <p>{entry.blockedReason || entry.waitingOn || common.na}</p>
+                          </div>
+                        ) : null}
+
+                        {section.key === "idle" ? (
+                          <div className="virtualTriageCallout">
+                            <strong>{copy.triageSuggestionLabel}</strong>
+                            <p>
+                              {entry.suggestion.task
+                                ? `${entry.suggestion.task.title} · ${roomLabelById.get(entry.suggestion.roomId || "") || common.na}`
+                                : copy.triageSuggestionNone}
+                            </p>
+                            <span>{getSuggestionTone(entry.suggestion.kind)}</span>
+                          </div>
+                        ) : null}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="virtualOfficeEmpty">{section.empty}</div>
+                  )}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <div className="virtualTriageQueue">
+            <div className="virtualOfficeRailHeader">
+              <div>
+                <p className="eyebrow">{copy.statusIdle}</p>
+                <h3>{copy.triageQueueTitle}</h3>
+              </div>
+              <p className="virtualOfficeRailCopy">{copy.triageQueueCopy}</p>
+            </div>
+
+            <div className="virtualTriageQueueList">
+              {triageIdleQueueEntries.length ? (
+                triageIdleQueueEntries.map((entry) => (
+                  <button
+                    key={`triage-queue:${entry.agent.id}`}
+                    type="button"
+                    className="virtualTriageQueueItem virtualDeskCardButton"
+                    onClick={() => (entry.suggestion.task ? focusMissionTask(entry.suggestion.task) : toggleAgentFocus(entry.agent))}
+                  >
+                    <div className="virtualDeskCardHead">
+                      <strong>{entry.agent.name}</strong>
+                      <span>{getSuggestionTone(entry.suggestion.kind)}</span>
+                    </div>
+                    <p>
+                      {entry.suggestion.task
+                        ? `${entry.suggestion.task.title} · ${entry.suggestion.task.featureTitle}`
+                        : copy.triageQueueNoSuggestion}
+                    </p>
+                    <div className="virtualDeskCardMeta">
+                      <span>
+                        {copy.missionOwnerRoom}: {entry.roomLabel}
+                      </span>
+                      <span>{entry.durationLabel}</span>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="virtualOfficeEmpty">{copy.triageQueueEmpty}</div>
+              )}
+            </div>
           </div>
         </article>
 
