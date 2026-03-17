@@ -7,6 +7,7 @@ import type {
   AgentQueueSnapshot,
   AgentRoomSnapshot,
   AgentSnapshot,
+  AgentWorkloadSourceKind,
   AgentWorkStatus
 } from "@/lib/agents";
 
@@ -76,6 +77,12 @@ type AgentsMessages = {
   timelineTitle: string;
   timelineCopy: string;
   roomOccupancy: string;
+  provenanceLabel: string;
+  provenanceFallback: string;
+  workloadSourceRepoWork: string;
+  workloadSourcePersonalResearch: string;
+  workloadSourceCoordination: string;
+  workloadSourceSupport: string;
 };
 
 const roomAreaClass: Record<string, string> = {
@@ -152,6 +159,20 @@ const getEventSummary = (event: AgentActivitySnapshot, copy: AgentsMessages) => 
   if (event.kind === "assistant") return copy.eventAssistant;
   if (event.kind === "user") return copy.eventUser;
   return copy.eventSystem;
+};
+
+const getWorkloadSourceLabel = (sourceKind: AgentWorkloadSourceKind, copy: AgentsMessages) => {
+  switch (sourceKind) {
+    case "repo-work":
+      return copy.workloadSourceRepoWork;
+    case "personal-research":
+      return copy.workloadSourcePersonalResearch;
+    case "coordination":
+      return copy.workloadSourceCoordination;
+    case "support":
+    default:
+      return copy.workloadSourceSupport;
+  }
 };
 
 const sortByLoad = (left: AgentSnapshot, right: AgentSnapshot) => {
@@ -520,6 +541,13 @@ export function AgentsOfficePanel({
                       <strong className="agentDeskName">{agent.name}</strong>
                       <span className="agentDeskRole">{agent.role}</span>
                       <p className="agentDeskTask">{getDeskTask(agent, copy, common.na)}</p>
+                      <p className="virtualMissionCardSummary">
+                        {copy.provenanceLabel}:{" "}
+                        {agent.workloads?.[0]
+                          ? `${agent.workloads[0].title} · ${getWorkloadSourceLabel(agent.workloads[0].sourceKind, copy)}`
+                          : agent.provenanceNote || copy.provenanceFallback}
+                      </p>
+                      {agent.workloads?.[0]?.sourceNote ? <p className="virtualMissionCardSummary">{agent.workloads[0].sourceNote}</p> : null}
 
                       <div className="agentDeskFacts">
                         <span>

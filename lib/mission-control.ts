@@ -162,7 +162,7 @@ export type MissionControlSnapshot = {
   error?: string;
 };
 
-type LaunchpadStateRecord = {
+type MissionControlStateRecord = {
   ideas?: Array<Record<string, unknown>>;
   features?: Array<Record<string, unknown>>;
 };
@@ -182,174 +182,141 @@ type WorkerHeartbeatRecord = {
   };
 };
 
-const DEFAULT_LAUNCHPAD_HOME = path.join(os.homedir(), ".agent-launchpad");
-const DEFAULT_STATE_FILE = path.join(DEFAULT_LAUNCHPAD_HOME, "data", "launchpad-state.json");
-const DEFAULT_HEARTBEAT_FILE = path.join(DEFAULT_LAUNCHPAD_HOME, "runtime", "worker-heartbeat.json");
+const DEFAULT_MISSION_CONTROL_HOME = path.join(os.homedir(), ".openclaw", "mission-control");
+const DEFAULT_STATE_FILE = path.join(DEFAULT_MISSION_CONTROL_HOME, "archive-state.json");
+const DEFAULT_HEARTBEAT_FILE = path.join(DEFAULT_MISSION_CONTROL_HOME, "worker-heartbeat.json");
 const HEARTBEAT_FRESHNESS_MS = 5 * 60 * 1000;
 
-const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
+const SAMPLE_STATE: Required<MissionControlStateRecord> = {
   ideas: [
     {
       ideaId: "IDEA-001",
-      title: "OpenClaw Dashboard",
+      title: "Operator research digest",
       status: "clarifying",
-      project: "openclaw-dashboard",
-      workspace: "openclaw-dashboard",
-      repo: "openclaw-dashboard",
-      featureId: "F-0001-openclaw-dashboard",
+      project: "personal-research",
+      workspace: "operator-research",
+      repo: "personal-research",
+      featureId: "F-0001-operator-research-digest",
       updatedAt: "2026-03-10T11:15:00.000Z"
     },
     {
-      ideaId: "IDEA-002",
-      title: "Family Claw concierge",
+      ideaId: "IDEA-004",
+      title: "Concierge research notebook",
       status: "awaiting-confirmation",
-      project: "family-claw",
-      workspace: "family-claw",
-      repo: "family-claw",
-      featureId: "F-0002-family-claw-concierge",
+      project: "personal-research",
+      workspace: "operator-research",
+      repo: "personal-research",
+      featureId: "F-0004-concierge-research-notebook",
       updatedAt: "2026-03-10T09:42:00.000Z"
-    },
-    {
-      ideaId: "IDEA-003",
-      title: "Agent Workflow schema sync",
-      status: "clarifying",
-      project: "agent-workflow",
-      workspace: "agent-workflow",
-      repo: "agent-workflow",
-      featureId: "F-0003-agent-workflow-schema",
-      updatedAt: "2026-03-10T07:20:00.000Z"
     }
   ],
   features: [
     {
-      featureId: "F-0001-openclaw-dashboard",
-      title: "OpenClaw Dashboard",
-      status: "ready-to-release",
-      project: "openclaw-dashboard",
-      workspace: "openclaw-dashboard",
-      repo: "openclaw-dashboard",
-      deliveryMode: "pr-required",
+      featureId: "F-0001-operator-research-digest",
+      title: "Operator research digest",
+      status: "researching",
+      project: "personal-research",
+      workspace: "operator-research",
+      repo: "personal-research",
+      deliveryMode: "advisory-only",
       linkedIdeaId: "IDEA-001",
-      currentLane: "release",
-      artifactRoot: "/Users/clawlyx/Documents/GitHub/openclaw-dashboard/docs",
+      currentLane: "research",
+      artifactRoot: "/Users/clawlyx/.openclaw/mission-control/artifacts/advisory/F-0001-operator-research-digest/docs",
       artifacts: {
-        brief: "docs/briefs/F-0001-openclaw-dashboard.md",
-        rfc: "docs/rfc/F-0001-openclaw-dashboard.md",
-        qa: "docs/qa/F-0001-openclaw-dashboard.md",
-        release: "docs/release/F-0001-openclaw-dashboard.md"
+        brief: "artifacts/advisory/F-0001-operator-research-digest/docs/briefs/F-0001-operator-research-digest.md",
+        rfc: "artifacts/advisory/F-0001-operator-research-digest/docs/rfc/F-0001-operator-research-digest.md",
+        qa: "artifacts/advisory/F-0001-operator-research-digest/docs/qa/F-0001-operator-research-digest.md",
+        release: "artifacts/advisory/F-0001-operator-research-digest/docs/release/F-0001-operator-research-digest.md"
       },
-      summary: "The release PR is open and waiting for human review plus merge confirmation.",
+      summary: "Personal research stays visible after the archive cleanup, while repo-bound task systems remain retired.",
       delivery: {
-        branch: "feat/F-0001-openclaw-dashboard",
-        prUrl: "https://github.com/clawlyx/openclaw-dashboard/pull/1",
+        branch: "advisory/F-0001-operator-research-digest",
+        prUrl: null,
         prMerged: false,
-        repoRoot: "/Users/clawlyx/Documents/GitHub/openclaw-dashboard"
+        repoRoot: "/Users/clawlyx/.openclaw/mission-control/artifacts/advisory/F-0001-operator-research-digest"
       },
       tasks: [
         {
           tqId: "TQ-091",
-          title: "Research dashboard scope",
+          title: "Research operator digest outline",
           lane: "research",
-          status: "done",
-          updatedAt: "2026-03-09T12:15:00.000Z",
-          summary: "Finalized first-release scope and observability priorities."
-        },
-        {
-          tqId: "TQ-092",
-          title: "Implement dashboard shell",
-          lane: "build",
-          status: "done",
-          updatedAt: "2026-03-09T18:05:00.000Z",
-          summary: "Built the first dashboard layout and system panels."
-        },
-        {
-          tqId: "TQ-093",
-          title: "Validate dashboard release candidate",
-          lane: "qa",
-          status: "done",
-          updatedAt: "2026-03-10T08:10:00.000Z",
-          summary: "Completed manual UI checks and smoke validation."
-        },
-        {
-          tqId: "TQ-097",
-          title: "Open release PR",
-          lane: "release",
-          status: "review",
-          startedAt: "2026-03-14T08:10:00.000Z",
-          lastWorkedAt: "2026-03-14T16:20:00.000Z",
-          updatedAt: "2026-03-14T16:20:00.000Z",
-          summary: "PR is open and waiting for a merge decision.",
-          nextPlannedStep: "Merge the release PR and publish the release note once screenshots are approved.",
-          waitingOn: "human-merge",
+          status: "running",
+          startedAt: "2026-03-09T12:15:00.000Z",
+          lastWorkedAt: "2026-03-10T11:15:00.000Z",
+          updatedAt: "2026-03-10T11:15:00.000Z",
+          summary: "Consolidating the post-archive operator notes into one research digest.",
+          nextPlannedStep: "Package the research notes into a short decision memo for review.",
+          ownerAgentId: "research-agent",
+          ownerRoomId: "research",
           history: [
             {
-              at: "2026-03-14T08:10:00.000Z",
+              at: "2026-03-09T12:15:00.000Z",
               action: "start",
-              detail: "TQ-097 started from Mission Control.",
-              taskId: "TQ-097",
-              lane: "release",
+              detail: "TQ-091 started in the research lane.",
+              taskId: "TQ-091",
+              lane: "research",
               status: "running"
             },
             {
-              at: "2026-03-14T09:00:00.000Z",
-              action: "review",
-              detail: "TQ-097 moved to review.",
-              taskId: "TQ-097",
-              lane: "release",
-              status: "review"
-            },
-            {
-              at: "2026-03-14T16:20:00.000Z",
-              action: "review-followup",
-              detail: "Release screenshots were rechecked while the PR stayed in review.",
-              taskId: "TQ-097",
-              lane: "release",
-              status: "review"
+              at: "2026-03-10T11:15:00.000Z",
+              action: "worked",
+              detail: "Research notes were updated for TQ-091 after the legacy repo-task archive.",
+              taskId: "TQ-091",
+              lane: "research",
+              status: "running"
             }
           ]
         }
       ],
       history: [
-        { at: "2026-03-14T08:10:00.000Z", action: "task", detail: "TQ-097 started from Mission Control." },
-        { at: "2026-03-14T09:00:00.000Z", action: "task", detail: "TQ-097 moved to review." },
-        { at: "2026-03-14T16:20:00.000Z", action: "review", detail: "Release PR remained in review after screenshot follow-up." }
+        {
+          at: "2026-03-09T12:15:00.000Z",
+          action: "task",
+          detail: "TQ-091 started from Mission Control."
+        },
+        {
+          at: "2026-03-10T11:15:00.000Z",
+          action: "archive",
+          detail: "Repo-bound tasks were archived; the personal research queue remained active."
+        }
       ]
     },
     {
-      featureId: "F-0002-family-claw-concierge",
-      title: "Family Claw concierge",
+      featureId: "F-0004-concierge-research-notebook",
+      title: "Concierge research notebook",
       status: "researching",
-      project: "family-claw",
-      workspace: "family-claw",
-      repo: "family-claw",
-      deliveryMode: "push-required",
-      linkedIdeaId: "IDEA-002",
+      project: "personal-research",
+      workspace: "operator-research",
+      repo: "personal-research",
+      deliveryMode: "advisory-only",
+      linkedIdeaId: "IDEA-004",
       currentLane: "research",
-      artifactRoot: "/Users/clawlyx/Documents/GitHub/family-claw/docs",
+      artifactRoot: "/Users/clawlyx/.openclaw/mission-control/artifacts/advisory/F-0004-concierge-research-notebook/docs",
       artifacts: {
-        brief: "docs/briefs/F-0002-family-claw-concierge.md",
-        rfc: "docs/rfc/F-0002-family-claw-concierge.md",
-        qa: "docs/qa/F-0002-family-claw-concierge.md",
-        release: "docs/release/F-0002-family-claw-concierge.md"
+        brief: "artifacts/advisory/F-0004-concierge-research-notebook/docs/briefs/F-0004-concierge-research-notebook.md",
+        rfc: "artifacts/advisory/F-0004-concierge-research-notebook/docs/rfc/F-0004-concierge-research-notebook.md",
+        qa: "artifacts/advisory/F-0004-concierge-research-notebook/docs/qa/F-0004-concierge-research-notebook.md",
+        release: "artifacts/advisory/F-0004-concierge-research-notebook/docs/release/F-0004-concierge-research-notebook.md"
       },
-      summary: "Research is still clarifying the first concierge delivery slice.",
+      summary: "The remaining `TQ-XXX` queue is limited to personal research work with no repo-bound execution path.",
       delivery: {
-        branch: "feat/F-0002-family-claw-concierge",
+        branch: "advisory/F-0004-concierge-research-notebook",
         prUrl: null,
         prMerged: false,
-        repoRoot: "/Users/clawlyx/Documents/GitHub/family-claw"
+        repoRoot: "/Users/clawlyx/.openclaw/mission-control/artifacts/advisory/F-0004-concierge-research-notebook"
       },
       tasks: [
         {
           tqId: "TQ-101",
-          title: "Research concierge experience",
+          title: "Research concierge archive notes",
           lane: "research",
-          status: "running",
+          status: "review",
           startedAt: "2026-03-14T18:20:00.000Z",
           lastWorkedAt: "2026-03-15T10:45:00.000Z",
-          updatedAt: "2026-03-15T10:45:00.000Z",
-          summary: "Gathering first-release interaction patterns and concierge flows.",
-          nextPlannedStep: "Package the research notes into a short product brief for review.",
+          updatedAt: "2026-03-09T12:15:00.000Z",
+          summary: "Reviewing whether the surviving notes cleanly separate personal research from archived repo work.",
+          nextPlannedStep: "Approve the archive summary and keep the notebook as advisory-only reference material.",
+          waitingOn: "human-confirmation",
           ownerAgentId: "research-agent",
           ownerRoomId: "research",
           history: [
@@ -364,26 +331,18 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
             {
               at: "2026-03-15T08:15:00.000Z",
               action: "review",
-              detail: "TQ-101 paused in review while the concierge outline was checked.",
+              detail: "TQ-101 paused in review while the archive note was checked.",
               taskId: "TQ-101",
               lane: "research",
               status: "review"
             },
             {
-              at: "2026-03-15T10:10:00.000Z",
-              action: "resume",
-              detail: "TQ-101 moved back to running after review feedback landed.",
-              taskId: "TQ-101",
-              lane: "research",
-              status: "running"
-            },
-            {
               at: "2026-03-15T10:45:00.000Z",
               action: "worked",
-              detail: "Research notes were updated for TQ-101.",
+              detail: "Research notes were updated for TQ-101 after repo-bound entries were removed.",
               taskId: "TQ-101",
               lane: "research",
-              status: "running"
+              status: "review"
             }
           ]
         }
@@ -391,87 +350,28 @@ const SAMPLE_STATE: Required<LaunchpadStateRecord> = {
       history: [
         { at: "2026-03-14T18:20:00.000Z", action: "task", detail: "TQ-101 started from Mission Control." },
         { at: "2026-03-15T08:15:00.000Z", action: "task", detail: "TQ-101 paused for review." },
-        { at: "2026-03-15T10:45:00.000Z", action: "task", detail: "TQ-101 resumed and refreshed the concierge notes." }
-      ]
-    },
-    {
-      featureId: "F-0003-agent-workflow-schema",
-      title: "Agent Workflow schema sync",
-      status: "building",
-      project: "agent-workflow",
-      workspace: "agent-workflow",
-      repo: "agent-workflow",
-      deliveryMode: "push-required",
-      linkedIdeaId: "IDEA-003",
-      currentLane: "build",
-      artifactRoot: "/Users/clawlyx/Documents/GitHub/agent-workflow/docs",
-      artifacts: {
-        brief: "docs/briefs/F-0003-agent-workflow-schema.md",
-        rfc: "docs/rfc/F-0003-agent-workflow-schema.md",
-        qa: "docs/qa/F-0003-agent-workflow-schema.md",
-        release: "docs/release/F-0003-agent-workflow-schema.md"
-      },
-      summary: "Schema alignment is blocked on the shared workflow contract.",
-      delivery: {
-        branch: "feat/F-0003-agent-workflow-schema",
-        prUrl: null,
-        prMerged: false,
-        repoRoot: "/Users/clawlyx/Documents/GitHub/agent-workflow"
-      },
-      tasks: [
         {
-          tqId: "TQ-108",
-          title: "Unify workflow ownership schema",
-          lane: "build",
-          status: "blocked",
-          startedAt: "2026-03-15T11:05:00.000Z",
-          lastWorkedAt: "2026-03-15T13:25:00.000Z",
-          updatedAt: "2026-03-15T13:25:00.000Z",
-          summary: "Waiting for a final contract that keeps workstation ownership and workflow specs aligned.",
-          nextPlannedStep: "Resume implementation once the shared ownership fields are approved.",
-          blockedReason: "Waiting for the shared ownership contract to land in agent-workflow.",
-          ownerAgentId: "coding-agent",
-          ownerRoomId: "build",
-          history: [
-            {
-              at: "2026-03-15T11:05:00.000Z",
-              action: "start",
-              detail: "TQ-108 started from Mission Control.",
-              taskId: "TQ-108",
-              lane: "build",
-              status: "running"
-            },
-            {
-              at: "2026-03-15T13:25:00.000Z",
-              action: "block",
-              detail: "TQ-108 was blocked.",
-              taskId: "TQ-108",
-              lane: "build",
-              status: "blocked"
-            }
-          ]
+          at: "2026-03-15T10:45:00.000Z",
+          action: "archive",
+          detail: "Repo-bound clutter was removed and the remaining notebook stayed advisory-only."
         }
-      ],
-      history: [
-        { at: "2026-03-15T11:05:00.000Z", action: "task", detail: "TQ-108 started from Mission Control." },
-        { at: "2026-03-15T13:25:00.000Z", action: "task", detail: "TQ-108 was blocked." }
       ]
     }
   ]
 };
 
 const SAMPLE_HEARTBEAT: WorkerHeartbeatRecord = {
-  at: "2026-03-10T07:11:00.021Z",
+  at: "2026-03-15T10:45:00.000Z",
   pollMs: 15000,
-  activeFeatures: 3,
+  activeFeatures: 2,
   readyTasks: 0,
   reviewTasks: 1,
-  blockedTasks: 1,
+  blockedTasks: 0,
   latestTask: {
-    tqId: "TQ-108",
-    featureId: "F-0003-agent-workflow-schema",
-    lane: "build",
-    status: "blocked"
+    tqId: "TQ-101",
+    featureId: "F-0004-concierge-research-notebook",
+    lane: "research",
+    status: "review"
   }
 };
 
@@ -1015,7 +915,7 @@ const buildSnapshot = ({
   sourceLabel,
   notes
 }: {
-  state: LaunchpadStateRecord;
+  state: MissionControlStateRecord;
   heartbeat?: WorkerHeartbeatRecord;
   sourceKind: MissionControlSourceKind;
   pathLabel: string;
@@ -1071,11 +971,12 @@ const buildSnapshot = ({
 };
 
 export const readMissionControlSnapshot = async (): Promise<MissionControlSnapshot> => {
-  const configuredHome = process.env.AGENT_LAUNCHPAD_HOME?.trim();
-  const configuredStateFile = process.env.AGENT_LAUNCHPAD_STATE_FILE?.trim();
-  const launchpadHome = configuredHome || DEFAULT_LAUNCHPAD_HOME;
-  const stateFile = configuredStateFile || path.join(launchpadHome, "data", "launchpad-state.json");
-  const heartbeatFile = path.join(launchpadHome, "runtime", "worker-heartbeat.json");
+  const configuredHome = process.env.MISSION_CONTROL_HOME?.trim() || process.env.AGENT_LAUNCHPAD_HOME?.trim();
+  const configuredStateFile =
+    process.env.MISSION_CONTROL_STATE_FILE?.trim() || process.env.AGENT_LAUNCHPAD_STATE_FILE?.trim();
+  const missionControlHome = configuredHome || DEFAULT_MISSION_CONTROL_HOME;
+  const stateFile = configuredStateFile || path.join(missionControlHome, "archive-state.json");
+  const heartbeatFile = path.join(missionControlHome, "worker-heartbeat.json");
 
   const pathLabel = formatDisplayPath(stateFile);
   const heartbeatLabel = formatDisplayPath(heartbeatFile);
@@ -1090,14 +991,17 @@ export const readMissionControlSnapshot = async (): Promise<MissionControlSnapsh
         state: SAMPLE_STATE,
         heartbeat: heartbeat || SAMPLE_HEARTBEAT,
         sourceKind: "demo",
-        sourceLabel: "bundled launchpad sample",
+        sourceLabel: "bundled mission archive sample",
         pathLabel,
         heartbeatLabel,
-        notes: ["Showing bundled mission control data because no local Agent Launchpad state file was found."]
+        notes: [
+          "Showing bundled mission control data because no local mission archive state file was found.",
+          "Archived repo-bound task systems stay retired here; only personal research TQ records remain visible."
+        ]
       });
     }
 
-    const state = JSON.parse(await fs.readFile(stateFile, "utf8")) as LaunchpadStateRecord;
+    const state = JSON.parse(await fs.readFile(stateFile, "utf8")) as MissionControlStateRecord;
 
     return buildSnapshot({
       state,

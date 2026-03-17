@@ -4,7 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { readAgentsSnapshot, type AgentsSnapshot } from "@/lib/agents";
+import {
+  finalizeAgentsSnapshot,
+  readAgentsSnapshot,
+  type AgentAdvisorySuggestionSnapshot,
+  type AgentsSnapshot
+} from "@/lib/agents";
 import { readMissionControlSnapshot, type MissionControlSnapshot } from "@/lib/mission-control";
 import { buildPressureSignalsModel, type PressureSignalsModel } from "@/lib/pressure-signals";
 
@@ -201,6 +206,15 @@ type LiveUsageBreakdown = {
   topModel?: string;
   topModelSources: UsageSourceShare[];
   models: UsageModelRow[];
+};
+
+type RepoPlanSuggestion = {
+  id: string;
+  title: string;
+  summary?: string;
+  roomId?: string;
+  rankingReason: string;
+  sourceLabel: string;
 };
 
 const DEFAULT_OPENCLAW_HOME = path.join(os.homedir(), ".openclaw");
@@ -1005,7 +1019,7 @@ const classifyUnmappedFileLabel = (raw = "") => {
     ["stock market", "stock-report"],
     ["crypto market", "crypto-report"],
     ["heartbeat", "heartbeat-check"],
-    ["task-center", "task-center-dev"],
+    ["task-center", "personal-research"],
     ["coingecko", "market-query"],
     ["python3 -v", "runtime-check"],
     ["session_status", "status-check"]
@@ -1031,7 +1045,8 @@ const prettySource = (source = "") => {
     "main-unmapped-discord": "主会话 / Discord",
     "main-unmapped-telegram": "主会话 / Telegram",
     "main-unmapped-feishu": "主会话 / Feishu",
-    "main-unmapped-main": "主会话 / Local"
+    "main-unmapped-main": "主会话 / Local",
+    "personal-research": "Personal Research"
   };
 
   if (labels[raw]) return labels[raw];
@@ -1043,6 +1058,98 @@ const prettySource = (source = "") => {
   }
 
   return raw.replace(/-/g, " ");
+};
+
+const repoName = path.basename(process.cwd());
+
+const readRepoPlanSuggestions = async (): Promise<RepoPlanSuggestion[]> => {
+  const phasesRoot = path.join(process.cwd(), ".planning", "phases");
+
+  try {
+    const phaseDirectories = await fs.readdir(phasesRoot, { withFileTypes: true });
+    const suggestions: RepoPlanSuggestion[] = [];
+
+    for (const phaseEntry of phaseDirectories) {
+      if (!phaseEntry.isDirectory()) continue;
+      const phaseDir = path.join(phasesRoot, phaseEntry.name);
+      const entries = await fs.readdir(phaseDir);
+      const incompletePlanFiles = entries
+        .filter((entry) => /^\d+-\d+-PLAN\.md$/.test(entry))
+        .filter((entry) => !entries.includes(entry.replace("-PLAN.md", "-SUMMARY.md")))
+        .sort();
+
+      for (const planFile of incompletePlanFiles) {
+        const planPath = path.join(phaseDir, planFile);
+        const raw = await fs.readFile(planPath, "utf8");
+        const objectiveMatch = raw.match(/<objective>[\s\S]*?Output:\s*(.+?)<\/objective>/);
+        const taskMatch = raw.match(/<name>Task \d+:\s*(.+?)<\/name>/);
+        const objective = clean(objectiveMatch?.[1] || "");
+        const taskTitle = clean(taskMatch?.[1] || "");
+        const title = taskTitle || objective || planFile.replace("-PLAN.md", "");
+        const sourceLabel = phaseEntry.name.replace(/^\d+-/, "").replace(/-/g, " ");
+        const roomId = /research|doc|verify/i.test(raw)
+          ? "research"
+          : /review|qa/i.test(raw)
+            ? "review"
+            : "build";
+
+        suggestions.push({
+          id: planFile.replace("-PLAN.md", "").toLowerCase(),
+          title,
+          summary: objective || undefined,
+          roomId,
+          rankingReason: "Current repo phase still has an incomplete execution plan.",
+          sourceLabel: `Repo phase ${sourceLabel}`
+        });
+      }
+    }
+
+    return suggestions.slice(0, 6);
+  } catch {
+    return [];
+  }
+};
+
+const buildAdvisorySuggestions = async (
+  missionControl: MissionControlSnapshot
+): Promise<AgentAdvisorySuggestionSnapshot[]> => {
+  const repoPlans = await readRepoPlanSuggestions();
+  const repoSuggestions: AgentAdvisorySuggestionSnapshot[] = repoPlans.map((plan) => ({
+    id: `repo:${plan.id}`,
+    title: plan.title,
+    summary: plan.summary,
+    sourceKind: "repo-work",
+    confidence: "exact",
+    roomId: plan.roomId,
+    repo: repoName,
+    rankingReason: plan.rankingReason,
+    sourceLabel: plan.sourceLabel
+  }));
+  const researchSuggestions: AgentAdvisorySuggestionSnapshot[] = missionControl.features
+    .flatMap((feature) =>
+      feature.tasks
+        .filter((task) => task.lane === "research" && task.status !== "done")
+        .map((task) => ({
+          id: `research:${task.tqId}`,
+          title: task.title,
+          summary: task.summary,
+          sourceKind: "personal-research" as const,
+          confidence: "exact" as const,
+          roomId: task.ownerRoomId || "research",
+          repo: task.repo,
+          threadLabel: "#intake",
+          taskId: task.tqId,
+          featureTitle: task.featureTitle,
+          rankingReason:
+            task.status === "review"
+              ? "Personal research is waiting for a review or operator confirmation."
+              : "Personal research remains actionable in the intake queue.",
+          sourceLabel: "Mission archive research queue"
+        }))
+    )
+    .slice(0, 4);
+
+  return [...repoSuggestions, ...researchSuggestions];
 };
 
 const getLiveUsageBreakdown = async (
@@ -1475,8 +1582,14 @@ const readCronJobs = async (openclawHome: ResolvedOpenClawHome): Promise<CronSna
 export const getDashboardSnapshot = async (): Promise<DashboardSnapshot> => {
   const openclawHome = await resolveOpenClawHome();
   const generatedAt = new Date().toISOString();
-  const agents = await readAgentsSnapshot(openclawHome);
+  const baseAgents = await readAgentsSnapshot(openclawHome);
   const missionControl = await readMissionControlSnapshot();
+  const advisorySuggestions = await buildAdvisorySuggestions(missionControl);
+  const agents = finalizeAgentsSnapshot(baseAgents, {
+    advisorySuggestions,
+    coordinationHeadline:
+      "Live workloads show repo-work and intake-research provenance when available. Suggestions stay advisory and never recreate archived repo-task ownership."
+  });
 
   return {
     generatedAt,

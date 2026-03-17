@@ -144,7 +144,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const snapshot = await getDashboardSnapshot();
   const { usage, cron, agents, missionControl, openclawHome, openclawSourceKind, openclawSourceLabel } = snapshot;
-  const missionMutationMode = process.env.AGENT_LAUNCHPAD_API_BASE_URL?.trim() ? "remote" : "local";
+  const missionMutationMode = "local";
   const na = t.common.na;
   const unavailable = t.common.unavailable;
 

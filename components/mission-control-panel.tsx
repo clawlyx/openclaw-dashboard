@@ -369,7 +369,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
       )}`
     : copy.latestTaskFallback;
   const defaultRepo = missionControl.features.find((feature) => feature.repo && feature.repo !== "unbound")?.repo || "openclaw-dashboard";
-  const mutationMode = process.env.AGENT_LAUNCHPAD_API_BASE_URL?.trim() ? "remote" : "local";
+  const mutationMode = "local";
 
   if (!missionControl.available) {
     return (

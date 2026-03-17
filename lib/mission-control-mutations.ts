@@ -98,7 +98,7 @@ export type MissionTaskMutationResult = {
   nextTask: MutableTaskRecord | null;
 };
 
-const DEFAULT_LAUNCHPAD_HOME = path.join(os.homedir(), ".agent-launchpad");
+const DEFAULT_MISSION_CONTROL_HOME = path.join(os.homedir(), ".openclaw", "mission-control");
 const DEFAULT_REPO_ROOT = path.join(os.homedir(), "Documents", "GitHub");
 const TASK_LANES: MissionControlTaskLane[] = ["research", "build", "qa", "release"];
 
@@ -141,11 +141,14 @@ const normalizeDeliveryMode = (input: string, hasRepoBinding: boolean): MissionC
   }
 };
 
-const advisoryArtifactRoot = (launchpadHome: string, featureId: string) =>
-  path.join(launchpadHome, "artifacts", "advisory", featureId);
+const advisoryArtifactRoot = (missionControlHome: string, featureId: string) =>
+  path.join(missionControlHome, "artifacts", "advisory", featureId);
 
 const resolveRepoRoot = (repoInput: string) => {
-  const configuredRoot = normalizeText(process.env.AGENT_LAUNCHPAD_REPO_ROOT) || DEFAULT_REPO_ROOT;
+  const configuredRoot =
+    normalizeText(process.env.MISSION_CONTROL_REPO_ROOT) ||
+    normalizeText(process.env.AGENT_LAUNCHPAD_REPO_ROOT) ||
+    DEFAULT_REPO_ROOT;
   if (!repoInput) return configuredRoot;
   if (path.isAbsolute(repoInput)) return repoInput;
   return path.join(configuredRoot, repoInput);
@@ -237,12 +240,17 @@ const defaultState = (): MutableState => ({
 });
 
 const resolveRuntimePaths = () => {
-  const launchpadHome = normalizeText(process.env.AGENT_LAUNCHPAD_HOME) || DEFAULT_LAUNCHPAD_HOME;
+  const missionControlHome =
+    normalizeText(process.env.MISSION_CONTROL_HOME) ||
+    normalizeText(process.env.AGENT_LAUNCHPAD_HOME) ||
+    DEFAULT_MISSION_CONTROL_HOME;
   const stateFile =
-    normalizeText(process.env.AGENT_LAUNCHPAD_STATE_FILE) || path.join(launchpadHome, "data", "launchpad-state.json");
+    normalizeText(process.env.MISSION_CONTROL_STATE_FILE) ||
+    normalizeText(process.env.AGENT_LAUNCHPAD_STATE_FILE) ||
+    path.join(missionControlHome, "archive-state.json");
 
   return {
-    launchpadHome,
+    missionControlHome,
     stateFile
   };
 };
@@ -366,7 +374,7 @@ export const createMissionControlIntake = async (input: MissionIntakeInput): Pro
       throw new Error("Title and details are required");
     }
 
-    const { launchpadHome, stateFile } = resolveRuntimePaths();
+    const { missionControlHome, stateFile } = resolveRuntimePaths();
     const state = await readState(stateFile);
     const repoInput = normalizeText(input.repo);
     const repo = repoNameFromInput(repoInput);
@@ -382,7 +390,7 @@ export const createMissionControlIntake = async (input: MissionIntakeInput): Pro
       deliveryMode === "advisory-only" && requestedLane !== "research" ? "research" : requestedLane;
     const resolvedRepoRoot = hasRepoBinding
       ? resolveRepoRoot(repoInput)
-      : advisoryArtifactRoot(launchpadHome, featureId);
+      : advisoryArtifactRoot(missionControlHome, featureId);
 
     const idea: MutableIdeaRecord = {
       ideaId,
@@ -490,12 +498,12 @@ export const updateMissionControlTask = async ({
       throw new Error("Task id is required");
     }
 
-    const { launchpadHome, stateFile } = resolveRuntimePaths();
+    const { missionControlHome, stateFile } = resolveRuntimePaths();
     const state = await readState(stateFile);
     const featureIndex = state.features.findIndex((feature) => feature.tasks.some((task) => task.tqId === taskId));
 
     if (featureIndex < 0) {
-      throw new Error(`Task ${taskId} was not found in Launchpad state.`);
+      throw new Error(`Task ${taskId} was not found in the local mission archive state.`);
     }
 
     const sourceFeature = state.features[featureIndex];
@@ -617,7 +625,7 @@ export const updateMissionControlTask = async ({
     };
 
     const artifactIdea = resolveArtifactIdea(feature, state, now);
-    const artifactRepoRoot = feature.delivery.repoRoot || advisoryArtifactRoot(launchpadHome, feature.featureId);
+    const artifactRepoRoot = feature.delivery.repoRoot || advisoryArtifactRoot(missionControlHome, feature.featureId);
     const artifacts = await syncFeatureArtifactBundle({
       repoRoot: artifactRepoRoot,
       feature,

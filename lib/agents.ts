@@ -7,6 +7,8 @@ export type AgentRoomTone = "sage" | "clay" | "ocean" | "gold" | "berry" | "slat
 export type AgentActivityKind = "assistant" | "user" | "tool" | "system";
 export type AgentQueueTone = "default" | "active" | "warning";
 export type AgentActivityTone = "default" | "warning" | "success";
+export type AgentWorkloadSourceKind = "repo-work" | "personal-research" | "coordination" | "support";
+export type AgentWorkloadConfidence = "exact" | "partial";
 
 export type AgentRoomSnapshot = {
   id: string;
@@ -37,6 +39,34 @@ export type AgentActivitySnapshot = {
   tone?: AgentActivityTone;
 };
 
+export type AgentWorkloadSnapshot = {
+  id: string;
+  title: string;
+  summary?: string;
+  sourceKind: AgentWorkloadSourceKind;
+  confidence: AgentWorkloadConfidence;
+  repo?: string;
+  threadLabel?: string;
+  channelLabel?: string;
+  taskLabel?: string;
+  sourceNote?: string;
+};
+
+export type AgentAdvisorySuggestionSnapshot = {
+  id: string;
+  title: string;
+  summary?: string;
+  sourceKind: AgentWorkloadSourceKind;
+  confidence: AgentWorkloadConfidence;
+  roomId?: string;
+  repo?: string;
+  threadLabel?: string;
+  taskId?: string;
+  featureTitle?: string;
+  rankingReason: string;
+  sourceLabel: string;
+};
+
 export type AgentSnapshot = {
   id: string;
   name: string;
@@ -56,6 +86,8 @@ export type AgentSnapshot = {
   lastEventAt?: string;
   latestActivityKind?: AgentActivityKind;
   latestToolName?: string;
+  workloads?: AgentWorkloadSnapshot[];
+  provenanceNote?: string;
 };
 
 export type AgentsSnapshot = {
@@ -67,6 +99,8 @@ export type AgentsSnapshot = {
   agents: AgentSnapshot[];
   queues: AgentQueueSnapshot[];
   recentEvents: AgentActivitySnapshot[];
+  advisorySuggestions?: AgentAdvisorySuggestionSnapshot[];
+  coordinationHeadline?: string;
   notes?: string[];
   error?: string;
 };
@@ -271,6 +305,28 @@ const normalizeActivityTone = (value?: string): AgentActivityTone | undefined =>
     case "default":
     case "warning":
     case "success":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeWorkloadSourceKind = (value?: string): AgentWorkloadSourceKind | undefined => {
+  switch (value) {
+    case "repo-work":
+    case "personal-research":
+    case "coordination":
+    case "support":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeWorkloadConfidence = (value?: string): AgentWorkloadConfidence | undefined => {
+  switch (value) {
+    case "exact":
+    case "partial":
       return value;
     default:
       return undefined;
@@ -501,6 +557,116 @@ const resolveUpdatedAt = ({
   return latest;
 };
 
+const normalizeWorkload = (value: unknown, fallbackId: string): AgentWorkloadSnapshot | null => {
+  const entry = asObject(value);
+  const title = asString(entry?.title);
+  const sourceKind = normalizeWorkloadSourceKind(asString(entry?.sourceKind));
+  const confidence = normalizeWorkloadConfidence(asString(entry?.confidence));
+  if (!title || !sourceKind || !confidence) return null;
+
+  return {
+    id: asString(entry?.id) || fallbackId,
+    title,
+    summary: asString(entry?.summary),
+    sourceKind,
+    confidence,
+    repo: asString(entry?.repo),
+    threadLabel: asString(entry?.threadLabel),
+    channelLabel: asString(entry?.channelLabel),
+    taskLabel: asString(entry?.taskLabel),
+    sourceNote: asString(entry?.sourceNote)
+  };
+};
+
+const normalizeAdvisorySuggestion = (value: unknown, fallbackId: string): AgentAdvisorySuggestionSnapshot | null => {
+  const entry = asObject(value);
+  const title = asString(entry?.title);
+  const sourceKind = normalizeWorkloadSourceKind(asString(entry?.sourceKind));
+  const confidence = normalizeWorkloadConfidence(asString(entry?.confidence));
+  const rankingReason = asString(entry?.rankingReason);
+  const sourceLabel = asString(entry?.sourceLabel);
+  if (!title || !sourceKind || !confidence || !rankingReason || !sourceLabel) return null;
+
+  return {
+    id: asString(entry?.id) || fallbackId,
+    title,
+    summary: asString(entry?.summary),
+    sourceKind,
+    confidence,
+    roomId: asString(entry?.roomId),
+    repo: asString(entry?.repo),
+    threadLabel: asString(entry?.threadLabel),
+    taskId: asString(entry?.taskId),
+    featureTitle: asString(entry?.featureTitle),
+    rankingReason,
+    sourceLabel
+  };
+};
+
+const deriveFallbackWorkloads = (agent: AgentSnapshot): AgentWorkloadSnapshot[] | undefined => {
+  if (agent.workloads?.length || agent.status === "idle" || agent.status === "offline") return agent.workloads;
+
+  const sourceKind: AgentWorkloadSourceKind =
+    agent.roomId === "research"
+      ? "personal-research"
+      : agent.roomId === "dispatch"
+        ? "coordination"
+        : agent.roomId === "concierge"
+          ? "support"
+          : "repo-work";
+  const threadLabel =
+    sourceKind === "personal-research"
+      ? "#intake"
+      : sourceKind === "repo-work"
+        ? "#repo-work"
+        : sourceKind === "coordination"
+          ? "Dispatch"
+          : "Support";
+  const title = agent.currentTask || agent.focus || `${agent.name} is active`;
+
+  return [
+    {
+      id: `${agent.id}:fallback`,
+      title,
+      sourceKind,
+      confidence: "partial",
+      threadLabel,
+      taskLabel: agent.currentTaskId,
+      sourceNote: "Fallback desk context only. Add explicit workload metadata for exact provenance."
+    }
+  ];
+};
+
+export const finalizeAgentsSnapshot = (
+  snapshot: AgentsSnapshot,
+  options?: {
+    advisorySuggestions?: AgentAdvisorySuggestionSnapshot[];
+    coordinationHeadline?: string;
+    notes?: string[];
+  }
+): AgentsSnapshot => {
+  const normalizedAgents = snapshot.agents.map((agent) => {
+    const workloads = deriveFallbackWorkloads(agent);
+    return {
+      ...agent,
+      workloads,
+      provenanceNote:
+        agent.provenanceNote ||
+        (workloads?.some((workload) => workload.confidence === "partial")
+          ? "Showing a partial provenance view until richer session metadata is available."
+          : undefined)
+    };
+  });
+
+  return {
+    ...snapshot,
+    agents: normalizedAgents,
+    advisorySuggestions: options?.advisorySuggestions || snapshot.advisorySuggestions,
+    coordinationHeadline: options?.coordinationHeadline || snapshot.coordinationHeadline,
+    notes: [...(snapshot.notes || []), ...(options?.notes || [])].filter(Boolean)
+  };
+};
+
 const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Promise<AgentsSnapshot | null> => {
   const configPath = path.join(openclawHome.home, "agents", AGENT_DASHBOARD_CONFIG);
   if (!(await pathExists(configPath))) return null;
@@ -561,7 +727,13 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
           nextHandoff: asString(entry?.nextHandoff),
           lastEventAt: asString(entry?.lastEventAt),
           latestActivityKind: normalizeActivityKind(asString(entry?.latestActivityKind)),
-          latestToolName: asString(entry?.latestToolName)
+          latestToolName: asString(entry?.latestToolName),
+          workloads: Array.isArray(entry?.workloads)
+            ? entry.workloads
+                .map((workload, index) => normalizeWorkload(workload, `${agentId}:workload:${index + 1}`))
+                .filter((workload): workload is AgentWorkloadSnapshot => Boolean(workload))
+            : undefined,
+          provenanceNote: asString(entry?.provenanceNote)
         });
       }
     }
@@ -620,8 +792,13 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
     const notes = Array.isArray(data.notes)
       ? data.notes.map((note) => asString(note)).filter((note): note is string => Boolean(note))
       : undefined;
+    const advisorySuggestions = Array.isArray(data.advisorySuggestions)
+      ? data.advisorySuggestions
+          .map((entry, index) => normalizeAdvisorySuggestion(entry, `advisory:${index + 1}`))
+          .filter((entry): entry is AgentAdvisorySuggestionSnapshot => Boolean(entry))
+      : undefined;
 
-    return {
+    return finalizeAgentsSnapshot({
       available: true,
       officeName: asString(data.officeName) || "OpenClaw Office",
       updatedAt: resolveUpdatedAt({
@@ -634,8 +811,10 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
       agents,
       queues,
       recentEvents,
+      advisorySuggestions,
+      coordinationHeadline: asString(data.coordinationHeadline),
       notes
-    };
+    });
   } catch (error) {
     return {
       available: false,
@@ -737,7 +916,7 @@ const readDerivedAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Promis
     const hydratedRooms = withDerivedRoomLeads(visibleRooms.length ? visibleRooms : rooms, agents);
     const recentEvents = buildDerivedEvents(agents);
 
-    return {
+    return finalizeAgentsSnapshot({
       available: true,
       officeName: "OpenClaw Office",
       updatedAt: resolveUpdatedAt({ recentEvents, agents }),
@@ -750,7 +929,7 @@ const readDerivedAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Promis
         openclawHome.sourceKind === "demo"
           ? ["Showing bundled demo data because no local agent dashboard snapshot was found."]
           : undefined
-    };
+    });
   } catch (error) {
     return {
       available: false,

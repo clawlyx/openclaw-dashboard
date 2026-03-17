@@ -8,9 +8,11 @@ import { formatDateTimeLabel } from "@/lib/dashboard-presenters";
 import { formatMessage, type Locale } from "@/lib/i18n";
 import type {
   AgentsSnapshot,
+  AgentAdvisorySuggestionSnapshot,
   AgentActivitySnapshot,
   AgentRoomSnapshot,
   AgentSnapshot,
+  AgentWorkloadSourceKind,
   AgentWorkStatus
 } from "@/lib/agents";
 import type { MissionControlSnapshot, MissionControlTaskSnapshot, MissionControlTaskStatus } from "@/lib/mission-control";
@@ -223,6 +225,23 @@ type AgentsVirtualOfficeMessages = {
   liveTaskSystem: string;
   liveTaskIdle: string;
   liveTaskOffline: string;
+  provenanceLabel: string;
+  provenanceFallback: string;
+  provenanceExact: string;
+  provenancePartial: string;
+  advisoryLabel: string;
+  advisoryReasonLabel: string;
+  coordinationTitle: string;
+  coordinationCopy: string;
+  coordinationActiveTitle: string;
+  coordinationActiveEmpty: string;
+  coordinationSuggestionsTitle: string;
+  coordinationSuggestionsEmpty: string;
+  coordinationHeadlineFallback: string;
+  workloadSourceRepoWork: string;
+  workloadSourcePersonalResearch: string;
+  workloadSourceCoordination: string;
+  workloadSourceSupport: string;
 };
 
 type SceneSpot = {
@@ -288,8 +307,6 @@ type DetailFocus =
     }
   | null;
 
-type IntelligenceScope = "all" | "room" | "mission";
-
 type TriageSection = "working" | "blocked" | "idle";
 
 type IdleSuggestionKind = "same-room" | "role-fit" | "fallback" | "none";
@@ -298,6 +315,7 @@ type IdleSuggestion = {
   kind: IdleSuggestionKind;
   task: MissionControlTaskSnapshot | null;
   roomId?: string;
+  advisory?: AgentAdvisorySuggestionSnapshot;
 };
 
 type TriageEntry = {
@@ -660,6 +678,23 @@ const getEventSummary = (event: AgentActivitySnapshot, copy: AgentsVirtualOffice
   if (event.kind === "user") return copy.eventUser;
   return copy.eventSystem;
 };
+
+const getWorkloadSourceLabel = (sourceKind: AgentWorkloadSourceKind, copy: AgentsVirtualOfficeMessages) => {
+  switch (sourceKind) {
+    case "repo-work":
+      return copy.workloadSourceRepoWork;
+    case "personal-research":
+      return copy.workloadSourcePersonalResearch;
+    case "coordination":
+      return copy.workloadSourceCoordination;
+    case "support":
+    default:
+      return copy.workloadSourceSupport;
+  }
+};
+
+const getWorkloadConfidenceLabel = (confidence: "exact" | "partial", copy: AgentsVirtualOfficeMessages) =>
+  confidence === "exact" ? copy.provenanceExact : copy.provenancePartial;
 
 const sortByLoad = (left: AgentSnapshot, right: AgentSnapshot) => {
   const leftScore = STATUS_PRIORITY[left.status] * 100 + (left.queueCount || 0) * 12 + (left.utilization || 0);
@@ -1267,7 +1302,6 @@ export function AgentsVirtualOfficePanel({
   mutationMode: MissionTaskMutationMode;
 }) {
   const [selectedFocus, setSelectedFocus] = useState<DetailFocus>(null);
-  const [intelligenceScope, setIntelligenceScope] = useState<IntelligenceScope>("all");
   const officeName = agents.officeName || copy.fallbackOffice;
   const onlineAgents = agents.agents.filter((agent) => agent.status !== "offline");
   const queueTotal = agents.agents.reduce((sum, agent) => sum + (agent.queueCount || 0), 0);
@@ -1457,15 +1491,6 @@ export function AgentsVirtualOfficePanel({
       ? liveMissionTasks.filter((task) => getMissionOwnership(task, agentRoomById).roomId === selectedRoomId)
       : [];
   const selectedAgentIds = new Set(selectedRoomEntry?.roomAgents.map((agent) => agent.id) || []);
-  const roomPulseEntries = useMemo(
-    () =>
-      [...roomEntries].sort((left, right) => {
-        const priorityDelta = right.roomPriority - left.roomPriority;
-        if (priorityDelta !== 0) return priorityDelta;
-        return left.room.label.localeCompare(right.room.label);
-      }),
-    [roomEntries]
-  );
   const missionFeedTasks = useMemo(() => {
     const roomId = selectedRoomId;
     const taskScore = (task: MissionControlTaskSnapshot) => {
@@ -1563,11 +1588,38 @@ export function AgentsVirtualOfficePanel({
       }
     };
     const readyUnownedTasks = liveMissionTasks.filter((task) => task.status === "ready" && !task.ownerAgentId);
+    const advisorySuggestions = agents.advisorySuggestions || [];
 
     const rankIdleSuggestion = (agent: AgentSnapshot): IdleSuggestion => {
       const preferredLanes = getAgentPreferredLanes(agent);
-      const ranked = [...readyUnownedTasks]
-        .map((task) => {
+      const ranked: Array<{
+        advisory?: AgentAdvisorySuggestionSnapshot;
+        task: MissionControlTaskSnapshot | null;
+        roomId: string;
+        score: number;
+        kind: IdleSuggestionKind;
+      }> = [
+        ...advisorySuggestions.map((advisory) => {
+          const relatedTask = advisory.taskId ? taskById.get(advisory.taskId) || null : null;
+          const candidateRoomId =
+            advisory.roomId || (relatedTask ? getMissionOwnership(relatedTask, agentRoomById).roomId : agent.roomId);
+          const sameRoom = candidateRoomId === agent.roomId;
+          const roleFit =
+            (advisory.sourceKind === "personal-research" && agent.roomId === "research") ||
+            (advisory.sourceKind === "repo-work" && (agent.roomId === "build" || agent.roomId === "review")) ||
+            (relatedTask ? preferredLanes.has(relatedTask.lane) : false);
+          const score = (sameRoom ? 300 : 0) + (roleFit ? 200 : 0) + (advisory.confidence === "exact" ? 80 : 40);
+          const kind: IdleSuggestionKind = sameRoom ? "same-room" : roleFit ? "role-fit" : "fallback";
+
+          return {
+            advisory,
+            task: relatedTask,
+            roomId: candidateRoomId,
+            score,
+            kind
+          };
+        }),
+        ...[...readyUnownedTasks].map((task) => {
           const ownership = getMissionOwnership(task, agentRoomById);
           const sameRoom = ownership.roomId === agent.roomId;
           const roleFit = preferredLanes.has(task.lane);
@@ -1575,16 +1627,19 @@ export function AgentsVirtualOfficePanel({
           const kind: IdleSuggestionKind = sameRoom ? "same-room" : roleFit ? "role-fit" : "fallback";
 
           return {
+            advisory: undefined,
             task,
             roomId: ownership.roomId,
             score,
             kind
           };
         })
+      ]
         .sort((left, right) => {
           const scoreDelta = right.score - left.score;
           if (scoreDelta !== 0) return scoreDelta;
-          return sortMissionTasks(left.task, right.task);
+          if (left.task && right.task) return sortMissionTasks(left.task, right.task);
+          return left.advisory?.title.localeCompare(right.advisory?.title || "") || 0;
         });
 
       if (!ranked.length) {
@@ -1594,7 +1649,8 @@ export function AgentsVirtualOfficePanel({
       return {
         kind: ranked[0].kind,
         task: ranked[0].task,
-        roomId: ranked[0].roomId
+        roomId: ranked[0].roomId,
+        advisory: ranked[0].advisory
       };
     };
 
@@ -1653,6 +1709,10 @@ export function AgentsVirtualOfficePanel({
       return left.agent.name.localeCompare(right.agent.name);
     });
   const offlineCount = agents.agents.filter((agent) => agent.status === "offline").length;
+  const activeWorkloadAgents = triageWorkingEntries
+    .filter((entry) => entry.agent.workloads?.length)
+    .slice(0, 4);
+  const coordinationSuggestions = (agents.advisorySuggestions || []).slice(0, 4);
   const getSuggestionTone = (kind: IdleSuggestionKind) => {
     switch (kind) {
       case "same-room":
@@ -1711,131 +1771,6 @@ export function AgentsVirtualOfficePanel({
     if (!facts.length) return copy.roomExplanationHealthy;
     return facts.join(" · ");
   };
-  const scopedRoomEntries =
-    intelligenceScope === "room" && selectedRoomId
-      ? roomPulseEntries.filter(({ room }) => room.id === selectedRoomId)
-      : intelligenceScope === "mission" && scopeMissionTask
-        ? roomPulseEntries.filter(({ room, missionCoverage }) => {
-            const missionRoomId = getMissionOwnership(scopeMissionTask, agentRoomById).roomId;
-            return room.id === missionRoomId || missionCoverage.primaryTaskId === scopeMissionTask.tqId;
-          })
-        : roomPulseEntries;
-  const scopedMissionTasks =
-    intelligenceScope === "room" && selectedRoomId
-      ? liveMissionTasks.filter((task) => getMissionOwnership(task, agentRoomById).roomId === selectedRoomId)
-      : intelligenceScope === "mission" && scopeMissionTask
-        ? liveMissionTasks.filter((task) => task.featureId === scopeMissionTask.featureId)
-        : liveMissionTasks;
-  const scopedPressureSignals =
-    intelligenceScope === "room" && selectedRoomId
-      ? pressureModel.signals.filter((signal) => signal.roomId === selectedRoomId)
-      : intelligenceScope === "mission" && scopeMissionTask
-        ? pressureModel.signals.filter(
-            (signal) => signal.featureId === scopeMissionTask.featureId || signal.taskId === scopeMissionTask.tqId
-          )
-        : pressureModel.signals;
-  const rankedRoomIntelligence = scopedRoomEntries.map((entry, index) => {
-    const roomMetrics = entry.roomHistoryMetrics;
-    const queueAgeHours = Math.max(roomMetrics?.longestActiveAgeHours || 0, roomMetrics?.longestActivityGapHours || 0);
-    const reviewWaitHours = roomMetrics?.longestReviewWaitHours || 0;
-    const blockedHours = roomMetrics?.longestBlockedDurationHours || 0;
-    const throughputScore = summarizeThroughput(entry.roomQueue, entry.missionCoverage.taskCount);
-    const reasons = [
-      blockedHours > 0 ? `${copy.intelligenceBlocked}: ${formatMessage(copy.historyHoursValue, { value: String(Math.max(1, Math.round(blockedHours))) })}` : null,
-      reviewWaitHours > 0
-        ? `${copy.intelligenceReviewWait}: ${formatMessage(copy.historyHoursValue, { value: String(Math.max(1, Math.round(reviewWaitHours))) })}`
-        : null,
-      queueAgeHours > 0
-        ? `${copy.intelligenceQueueAge}: ${formatMessage(copy.historyHoursValue, { value: String(Math.max(1, Math.round(queueAgeHours))) })}`
-        : null,
-      entry.roomPressureCount > 0 ? `${copy.intelligenceSignals}: ${entry.roomPressureCount}` : null,
-      `${copy.intelligenceThroughput}: ${String(throughputScore)}`
-    ].filter((value): value is string => Boolean(value));
-
-    return {
-      ...entry,
-      rank: index + 1,
-      queueAgeHours,
-      reviewWaitHours,
-      blockedHours,
-      throughputScore,
-      reasons
-    };
-  });
-  const scopedPressureSignalCount = scopedPressureSignals.length;
-  const scopedQueueTotal = scopedMissionTasks.length;
-  const topRoomIntelligence = rankedRoomIntelligence[0] || null;
-  const scopedScopeLabel =
-    intelligenceScope === "room"
-      ? selectedRoomEntry?.room.label || copy.operatorScopeRoom
-      : intelligenceScope === "mission"
-        ? scopeMissionTask?.featureTitle || copy.operatorScopeNoMission
-        : copy.operatorScopeAll;
-  const rankMissionTask = (task: MissionControlTaskSnapshot) => {
-    const metrics = pressureModel.taskMetricsByTaskId[task.tqId];
-    const severity = pressureModel.taskTopSeverityByTaskId[task.tqId];
-    const signalCount = pressureModel.taskSignalCountByTaskId[task.tqId] || 0;
-
-    return (severity ? PRESSURE_SEVERITY_WEIGHT[severity] : 0) +
-      signalCount * 28 +
-      Math.round(metrics?.blockedDurationHours || 0) * 6 +
-      Math.round(metrics?.reviewWaitHours || 0) * 5 +
-      Math.round(metrics?.activeAgeHours || 0) * 2 +
-      Math.round(metrics?.activityGapHours || 0);
-  };
-  const hottestMissionTask =
-    [...scopedMissionTasks].sort((left, right) => {
-      const scoreDelta = rankMissionTask(right) - rankMissionTask(left);
-      if (scoreDelta !== 0) return scoreDelta;
-      return sortMissionTasks(left, right);
-    })[0] || null;
-  const getBottleneckReasons = (task: MissionControlTaskSnapshot) => {
-    const metrics = pressureModel.taskMetricsByTaskId[task.tqId];
-    const signalCount = pressureModel.taskSignalCountByTaskId[task.tqId] || 0;
-    const roomId = getMissionOwnership(task, agentRoomById).roomId;
-    const roomEntry = roomEntries.find((entry) => entry.room.id === roomId);
-    const reasons = [
-      metrics?.lifecycle ? `${copy.operatorSummaryReasonLifecycle}: ${getLifecycleStateLabel(metrics.lifecycle.state, copy)}` : null,
-      metrics?.blockedDurationHours
-        ? `${copy.operatorSummaryReasonBlocked}: ${formatHistoryHours(metrics.blockedDurationHours)}`
-        : null,
-      metrics?.reviewWaitHours ? `${copy.operatorSummaryReasonReview}: ${formatHistoryHours(metrics.reviewWaitHours)}` : null,
-      metrics?.activeAgeHours ? `${copy.operatorSummaryReasonAge}: ${formatHistoryHours(metrics.activeAgeHours)}` : null,
-      metrics?.activityGapHours ? `${copy.operatorSummaryReasonGap}: ${formatHistoryHours(metrics.activityGapHours)}` : null,
-      signalCount > 0 ? `${copy.operatorSummaryReasonSignals}: ${signalCount}` : null,
-      task.waitingOn ? `${copy.operatorSummaryReasonWaiting}: ${humanizeStateLabel(task.waitingOn) || task.waitingOn}` : null,
-      roomEntry?.roomPressureCount ? `${copy.operatorSummaryReasonOverload}: ${roomEntry.roomPressureCount}` : null,
-      roomEntry ? `${copy.operatorSummaryReasonThroughput}: ${summarizeThroughput(roomEntry.roomQueue, roomEntry.missionCoverage.taskCount)}` : null
-    ].filter((value): value is string => Boolean(value));
-
-    return reasons.slice(0, 4);
-  };
-  const bottleneckEntries = [...scopedMissionTasks]
-    .map((task) => {
-      const ownership = getMissionOwnership(task, agentRoomById);
-      const metrics = pressureModel.taskMetricsByTaskId[task.tqId];
-      const severity = pressureModel.taskTopSeverityByTaskId[task.tqId];
-      const signalCount = pressureModel.taskSignalCountByTaskId[task.tqId] || 0;
-      const reasons = getBottleneckReasons(task);
-      return {
-        task,
-        ownership,
-        metrics,
-        severity,
-        signalCount,
-        reasons,
-        score: rankMissionTask(task)
-      };
-    })
-    .sort((left, right) => {
-      const scoreDelta = right.score - left.score;
-      if (scoreDelta !== 0) return scoreDelta;
-      return sortMissionTasks(left.task, right.task);
-    })
-    .slice(0, 4);
-  const topBottleneck = bottleneckEntries[0] || null;
-  const interventionTask = topBottleneck?.task || hottestMissionTask;
-
   const focusRoom = (roomId: string) => {
     setSelectedFocus({ kind: "room", roomId });
   };
@@ -2260,6 +2195,16 @@ export function AgentsVirtualOfficePanel({
                           ) : null}
                         </div>
 
+                        {section.key === "working" && entry.agent.workloads?.[0] ? (
+                          <div className="virtualTriageCallout">
+                            <strong>{copy.provenanceLabel}</strong>
+                            <p>
+                              {entry.agent.workloads[0].title} · {getWorkloadSourceLabel(entry.agent.workloads[0].sourceKind, copy)}
+                            </p>
+                            <span>{getWorkloadConfidenceLabel(entry.agent.workloads[0].confidence, copy)}</span>
+                          </div>
+                        ) : null}
+
                         {section.key === "blocked" ? (
                           <div className="virtualTriageCallout virtualTriageCalloutBlocked">
                             <strong>{copy.detailBlockedReason}</strong>
@@ -2269,13 +2214,19 @@ export function AgentsVirtualOfficePanel({
 
                         {section.key === "idle" ? (
                           <div className="virtualTriageCallout">
-                            <strong>{copy.triageSuggestionLabel}</strong>
+                            <strong>{copy.advisoryLabel}</strong>
                             <p>
-                              {entry.suggestion.task
-                                ? `${entry.suggestion.task.title} · ${roomLabelById.get(entry.suggestion.roomId || "") || common.na}`
-                                : copy.triageSuggestionNone}
+                              {entry.suggestion.advisory
+                                ? `${entry.suggestion.advisory.title} · ${entry.suggestion.advisory.sourceLabel}`
+                                : entry.suggestion.task
+                                  ? `${entry.suggestion.task.title} · ${roomLabelById.get(entry.suggestion.roomId || "") || common.na}`
+                                  : copy.triageSuggestionNone}
                             </p>
-                            <span>{getSuggestionTone(entry.suggestion.kind)}</span>
+                            <span>
+                              {entry.suggestion.advisory
+                                ? entry.suggestion.advisory.rankingReason
+                                : copy.triageSuggestionNone}
+                            </span>
                           </div>
                         ) : null}
                       </button>
@@ -2308,11 +2259,18 @@ export function AgentsVirtualOfficePanel({
                   >
                     <div className="virtualDeskCardHead">
                       <strong>{entry.agent.name}</strong>
-                      <span>{getSuggestionTone(entry.suggestion.kind)}</span>
+                      <span>{entry.suggestion.advisory ? entry.suggestion.advisory.sourceLabel : getSuggestionTone(entry.suggestion.kind)}</span>
                     </div>
                     <p>
-                      {entry.suggestion.task
-                        ? `${entry.suggestion.task.title} · ${entry.suggestion.task.featureTitle}`
+                      {entry.suggestion.advisory
+                        ? entry.suggestion.advisory.title
+                        : entry.suggestion.task
+                          ? `${entry.suggestion.task.title} · ${entry.suggestion.task.featureTitle}`
+                          : copy.triageQueueNoSuggestion}
+                    </p>
+                    <p className="virtualMissionCardSummary">
+                      {entry.suggestion.advisory
+                        ? entry.suggestion.advisory.rankingReason
                         : copy.triageQueueNoSuggestion}
                     </p>
                     <div className="virtualDeskCardMeta">
@@ -2331,316 +2289,75 @@ export function AgentsVirtualOfficePanel({
         </article>
 
         <div className="virtualOfficeLower">
-          <article className="virtualOfficeRail virtualOperatorSummaryRail">
+          <article className="virtualOfficeRail">
             <div className="virtualOfficeRailHeader">
               <div>
-                <p className="eyebrow">{scopedScopeLabel}</p>
-                <h3>{copy.operatorSummaryTitle}</h3>
+                <p className="eyebrow">{copy.coordinationTitle}</p>
+                <h3>{copy.coordinationTitle}</h3>
               </div>
-              <p className="virtualOfficeRailCopy">{copy.operatorSummaryCopy}</p>
+              <p className="virtualOfficeRailCopy">{agents.coordinationHeadline || copy.coordinationHeadlineFallback}</p>
             </div>
-            <div className="virtualIntelligenceScopeBar" aria-label={copy.operatorSummaryTitle}>
-              <button
-                type="button"
-                className={`virtualOfficeFilter ${intelligenceScope === "all" ? "virtualOfficeFilterActive" : ""}`}
-                onClick={() => setIntelligenceScope("all")}
-              >
-                {copy.operatorScopeAll}
-              </button>
-              <button
-                type="button"
-                className={`virtualOfficeFilter ${intelligenceScope === "room" ? "virtualOfficeFilterActive" : ""}`}
-                onClick={() => setIntelligenceScope("room")}
-                disabled={!selectedRoomId}
-              >
-                {copy.operatorScopeRoom}
-              </button>
-              <button
-                type="button"
-                className={`virtualOfficeFilter ${intelligenceScope === "mission" ? "virtualOfficeFilterActive" : ""}`}
-                onClick={() => setIntelligenceScope("mission")}
-                disabled={!scopeMissionTask}
-              >
-                {scopeMissionTask ? copy.operatorScopeMission : copy.operatorScopeNoMission}
-              </button>
-            </div>
-            <div className="virtualOperatorSummaryGrid">
-              <button
-                type="button"
-                className="virtualOperatorSummaryCard"
-                onClick={() => (hottestMissionTask ? focusMissionTask(hottestMissionTask) : undefined)}
-                disabled={!hottestMissionTask}
-              >
-                <span className="miniSummaryLabel">{copy.operatorSummaryHottestMission}</span>
-                <strong className="virtualOperatorSummaryValue">
-                  {hottestMissionTask ? hottestMissionTask.featureTitle : copy.operatorSummaryNoMission}
-                </strong>
-                <p className="virtualOperatorSummaryMeta">
-                  {hottestMissionTask
-                    ? getLifecycleSummary({
-                        lifecycle: pressureModel.taskMetricsByTaskId[hottestMissionTask.tqId]?.lifecycle,
-                        status: hottestMissionTask.status,
-                        currentWaitHours: pressureModel.taskMetricsByTaskId[hottestMissionTask.tqId]?.currentWaitHours,
-                        activityGapHours: pressureModel.taskMetricsByTaskId[hottestMissionTask.tqId]?.activityGapHours,
-                        source: pressureModel.taskMetricsByTaskId[hottestMissionTask.tqId]?.source,
-                        copy,
-                        common,
-                        formatHistoryHours
-                      })
-                    : copy.operatorSummaryHealthy}
-                </p>
-              </button>
-              <button
-                type="button"
-                className="virtualOperatorSummaryCard"
-                onClick={() => (topRoomIntelligence ? focusRoom(topRoomIntelligence.room.id) : undefined)}
-                disabled={!topRoomIntelligence}
-              >
-                <span className="miniSummaryLabel">{copy.operatorSummaryCriticalRoom}</span>
-                <strong className="virtualOperatorSummaryValue">
-                  {topRoomIntelligence ? topRoomIntelligence.room.label : copy.operatorSummaryHealthy}
-                </strong>
-                <p className="virtualOperatorSummaryMeta">
-                  {topRoomIntelligence
-                    ? `${getLifecycleStateLabel(topRoomIntelligence.roomHistoryMetrics?.lifecycle?.state, copy)} · ${getRoomExplanation(
-                        topRoomIntelligence.roomHistoryMetrics,
-                        topRoomIntelligence.roomPressureCount
-                      )}`
-                    : copy.operatorSummaryHealthy}
-                </p>
-              </button>
-              <button
-                type="button"
-                className="virtualOperatorSummaryCard"
-                onClick={() => (interventionTask ? focusMissionTask(interventionTask) : undefined)}
-                disabled={!interventionTask}
-              >
-                <span className="miniSummaryLabel">{copy.operatorSummaryIntervention}</span>
-                <strong className="virtualOperatorSummaryValue">
-                  {interventionTask ? interventionTask.title : copy.operatorSummaryNoIntervention}
-                </strong>
-                <p className="virtualOperatorSummaryMeta">
-                  {interventionTask
-                    ? getBottleneckReasons(interventionTask).join(" · ") || copy.operatorSummaryNeedsFocus
-                    : copy.operatorSummaryHealthy}
-                </p>
-              </button>
-            </div>
-            <div className="virtualOperatorSummaryFooter">
-              <span className="metaChip">
-                {copy.operatorSummarySignals}: {scopedPressureSignalCount}
-              </span>
-              <span className="metaChip">
-                {copy.missionTasks}: {scopedQueueTotal}
-              </span>
-              <span className="metaChip">
-                {copy.summaryRooms}: {rankedRoomIntelligence.length}
-              </span>
-            </div>
-            <div className="virtualBottleneckRail">
-              <div className="virtualOfficeRailHeader">
-                <div>
-                  <p className="eyebrow">{scopedScopeLabel}</p>
-                  <h3>{copy.operatorSummaryBottlenecksTitle}</h3>
-                </div>
-                <p className="virtualOfficeRailCopy">{copy.operatorSummaryBottlenecksCopy}</p>
-              </div>
-              <div className="virtualBottleneckList">
-                {bottleneckEntries.length ? (
-                  bottleneckEntries.map((entry, index) => (
-                    <button
-                      key={`bottleneck:${entry.task.tqId}`}
-                      type="button"
-                      className="virtualBottleneckCard"
-                      onClick={() => focusMissionTask(entry.task)}
-                    >
-                      <div className="virtualIntelligenceHead">
-                        <strong>
-                          {index + 1}. {entry.task.title}
-                        </strong>
-                        <span className={`virtualPressureBadge virtualPressureBadge${entry.severity || "low"}`}>
-                          {copy.operatorSummaryStatus}: {humanizeStateLabel(entry.task.status) || common.na}
-                        </span>
-                      </div>
-                      <p className="virtualIntelligenceCopy">
-                        {entry.task.featureTitle} · {roomLabelById.get(entry.ownership.roomId) || common.na}
-                      </p>
-                      <div className="virtualDeskCardMeta">
-                        <span>
-                          {copy.operatorSummaryReasonLifecycle}: {getLifecycleStateLabel(entry.metrics?.lifecycle?.state, copy)}
-                        </span>
-                        <span>
-                          {copy.operatorSummarySignals}: {entry.signalCount}
-                        </span>
-                        <span>
-                          {copy.intelligenceReviewWait}: {formatHistoryHours(entry.metrics?.reviewWaitHours)}
-                        </span>
-                        <span>
-                          {copy.intelligenceBlocked}: {formatHistoryHours(entry.metrics?.blockedDurationHours)}
-                        </span>
-                        <span>
-                          {copy.intelligenceQueueAge}: {formatHistoryHours(entry.metrics?.activeAgeHours)}
-                        </span>
-                      </div>
-                      <p className="virtualIntelligenceReasons">{entry.reasons.join(" · ") || copy.operatorSummaryBottlenecksEmpty}</p>
-                    </button>
-                  ))
-                ) : (
-                  <div className="virtualOfficeEmpty">{copy.operatorSummaryBottlenecksEmpty}</div>
-                )}
-              </div>
-            </div>
-          </article>
-          <article className="virtualOfficeRail virtualIntelligenceRail">
-            <div className="virtualOfficeRailHeader">
-              <div>
-                <p className="eyebrow">{activeRoomLabel}</p>
-                <h3>{copy.intelligenceTitle}</h3>
-              </div>
-              <p className="virtualOfficeRailCopy">{copy.intelligenceCopy}</p>
-            </div>
-            <div className="virtualIntelligenceScopeBar" aria-label={copy.intelligenceTitle}>
-              <button
-                type="button"
-                className={`virtualOfficeFilter ${intelligenceScope === "all" ? "virtualOfficeFilterActive" : ""}`}
-                onClick={() => setIntelligenceScope("all")}
-              >
-                {copy.intelligenceScopeAll}
-              </button>
-              <button
-                type="button"
-                className={`virtualOfficeFilter ${intelligenceScope === "room" ? "virtualOfficeFilterActive" : ""}`}
-                onClick={() => setIntelligenceScope("room")}
-                disabled={!selectedRoomId}
-              >
-                {copy.intelligenceScopeRoom}
-              </button>
-              <button
-                type="button"
-                className={`virtualOfficeFilter ${intelligenceScope === "mission" ? "virtualOfficeFilterActive" : ""}`}
-                onClick={() => setIntelligenceScope("mission")}
-                disabled={!scopeMissionTask}
-              >
-                {scopeMissionTask ? copy.intelligenceScopeMission : copy.intelligenceScopeNoMission}
-              </button>
-            </div>
-            <div className="virtualIntelligenceList">
-              {rankedRoomIntelligence.length ? (
-                rankedRoomIntelligence.map((entry) => (
-                  <button
-                    key={`intel:${entry.room.id}`}
-                    type="button"
-                    className={`virtualIntelligenceCard ${selectedRoomId === entry.room.id ? "virtualIntelligenceCardActive" : ""}`}
-                    onClick={() => {
-                      setIntelligenceScope("room");
-                      focusRoom(entry.room.id);
-                    }}
-                  >
-                    <div className="virtualIntelligenceHead">
-                      <strong>{entry.room.label}</strong>
-                      <span className={`virtualPressureBadge virtualPressureBadge${entry.roomPressureSeverity || "low"}`}>
-                        {copy.intelligenceRank} {entry.rank}
-                      </span>
-                    </div>
-                    <p className="virtualIntelligenceCopy">{getRoomExplanation(entry.roomHistoryMetrics, entry.roomPressureCount)}</p>
-                    <div className="virtualDeskCardMeta">
-                      <span>
-                        {copy.intelligenceQueueAge}: {formatHistoryHours(entry.queueAgeHours)}
-                      </span>
-                      <span>
-                        {copy.intelligenceReviewWait}: {formatHistoryHours(entry.reviewWaitHours)}
-                      </span>
-                      <span>
-                        {copy.intelligenceBlocked}: {formatHistoryHours(entry.blockedHours)}
-                      </span>
-                      <span>
-                        {copy.intelligenceThroughput}: {entry.throughputScore}
-                      </span>
-                    </div>
-                    <p className="virtualIntelligenceReasons">
-                      {copy.intelligenceReasons}: {entry.reasons.join(" · ")}
-                    </p>
-                  </button>
-                ))
-              ) : (
-                <div className="virtualOfficeEmpty">{copy.intelligenceCompareEmpty}</div>
-              )}
-            </div>
-          </article>
-          <div className="virtualRoomPulseGrid">
-            {roomPulseEntries.map(
-              ({ room, roomLead, roomQueue, occupancy, roomStatus, missionCoverage, roomHistoryMetrics, roomPressureCount, roomPressureSeverity }) => (
-              <button
-                key={room.id}
-                type="button"
-                className={`virtualRoomPulse virtualRoomPulseButton ${selectedRoomId === room.id ? "virtualRoomPulseActive" : ""} ${
-                  selectedRoomEntry && selectedRoomId !== room.id ? "virtualRoomPulseMuted" : ""
-                } ${roomPressureSeverity ? `virtualRoomPulseSeverity${roomPressureSeverity}` : ""}`}
-                onClick={() => toggleRoomFocus(room.id)}
-              >
-                <div className="virtualRoomPulseHead">
-                  <strong>{room.label}</strong>
-                  <div className="virtualRoomPulseHeadMeta">
-                    {roomPressureCount > 0 ? (
-                      <span className={`virtualPressureBadge virtualPressureBadge${roomPressureSeverity || "medium"}`}>
-                        {copy.roomPressure}: {roomPressureCount}
-                      </span>
-                    ) : null}
-                    <span className={`virtualRoomStatus virtualRoomStatus${roomStatus}`}>{getStatusLabel(roomStatus, copy)}</span>
+            <div className="virtualOfficeCoordinationGrid">
+              <article className="virtualOfficeDrawerPanel">
+                <p className="eyebrow">{copy.coordinationActiveTitle}</p>
+                {activeWorkloadAgents.length ? (
+                  <div className="virtualMissionList">
+                    {activeWorkloadAgents.map((entry) => (
+                      <button
+                        key={`active-workload:${entry.agent.id}`}
+                        type="button"
+                        className={`virtualMissionCard virtualMissionCardButton ${selectedAgent?.id === entry.agent.id ? "virtualDeskCardSelected" : ""}`}
+                        onClick={() => toggleAgentFocus(entry.agent)}
+                      >
+                        <div className="virtualMissionCardHead">
+                          <strong>{entry.agent.name}</strong>
+                          <span>{getWorkloadSourceLabel(entry.agent.workloads?.[0]?.sourceKind || "coordination", copy)}</span>
+                        </div>
+                        <p>{entry.agent.workloads?.[0]?.title || entry.taskLabel}</p>
+                        <p className="virtualMissionCardSummary">
+                          {entry.agent.workloads?.[0]?.summary || entry.agent.provenanceNote || copy.provenanceFallback}
+                        </p>
+                        <div className="virtualDeskCardMeta">
+                          <span>{copy.provenanceLabel}: {getWorkloadConfidenceLabel(entry.agent.workloads?.[0]?.confidence || "partial", copy)}</span>
+                          <span>{copy.missionOwnerRoom}: {entry.roomLabel}</span>
+                          <span>{entry.agent.workloads?.[0]?.threadLabel || entry.agent.workloads?.[0]?.channelLabel || common.na}</span>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                </div>
-                <p className="virtualRoomPulseCopy">
-                  {copy.roomLead}: {roomLead}
-                </p>
-                {missionCoverage.primaryFeatureTitle ? (
-                  <>
-                    <p className="virtualRoomPulseMission">
-                      {copy.roomMission}: {missionCoverage.primaryFeatureTitle}
-                    </p>
-                    <p className="virtualRoomPulseHint">
-                      {copy.task}: {missionCoverage.primaryTaskTitle || common.na}
-                    </p>
-                    <p className="virtualRoomPulseHint">
-                      {copy.missionOwnership}:{" "}
-                      {missionCoverage.primaryOwnershipSource
-                        ? getOwnershipLabel(missionCoverage.primaryOwnershipSource, copy)
-                        : common.na}
-                      {missionCoverage.primaryOwnerAgentId
-                        ? ` · ${copy.missionOwnerAgent}: ${
-                            agentNameById.get(missionCoverage.primaryOwnerAgentId) || common.na
-                          }`
-                        : ""}
-                    </p>
-                  </>
                 ) : (
-                  <p className="virtualRoomPulseHint">{copy.roomMissionIdle}</p>
+                  <div className="virtualOfficeEmpty">{copy.coordinationActiveEmpty}</div>
                 )}
-                <p className="virtualRoomPulseHint">
-                  {copy.roomTrendSummary}: {getRoomExplanation(roomHistoryMetrics, roomPressureCount)}
-                </p>
-                <div className="virtualRoomPulseMeta">
-                  <span>
-                    {copy.roomOccupancy}: {occupancy}
-                  </span>
-                  <span>
-                    {copy.roomQueue}: {roomQueue}
-                  </span>
-                  <span>
-                    {copy.missionTasks}: {missionCoverage.taskCount}
-                  </span>
-                  {roomPressureCount > 0 ? (
-                    <span>
-                      {copy.roomPressure}: {roomPressureCount}
-                    </span>
-                  ) : null}
-                  <span>
-                    {missionCoverage.blockedCount > 0 ? copy.missionBlocked : copy.missionReviews}:{" "}
-                    {missionCoverage.blockedCount > 0 ? missionCoverage.blockedCount : missionCoverage.reviewCount}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+              </article>
+
+              <article className="virtualOfficeDrawerPanel">
+                <p className="eyebrow">{copy.coordinationSuggestionsTitle}</p>
+                {coordinationSuggestions.length ? (
+                  <div className="virtualMissionList">
+                    {coordinationSuggestions.map((suggestion) => (
+                      <article key={suggestion.id} className="virtualMissionCard">
+                        <div className="virtualMissionCardHead">
+                          <strong>{suggestion.title}</strong>
+                          <span>{getWorkloadSourceLabel(suggestion.sourceKind, copy)}</span>
+                        </div>
+                        {suggestion.summary ? <p>{suggestion.summary}</p> : null}
+                        <p className="virtualMissionCardSummary">
+                          {copy.advisoryReasonLabel}: {suggestion.rankingReason}
+                        </p>
+                        <div className="virtualDeskCardMeta">
+                          <span>{copy.advisoryLabel}: {suggestion.sourceLabel}</span>
+                          <span>{copy.provenanceLabel}: {getWorkloadConfidenceLabel(suggestion.confidence, copy)}</span>
+                          <span>{suggestion.threadLabel || suggestion.repo || common.na}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="virtualOfficeEmpty">{copy.coordinationSuggestionsEmpty}</div>
+                )}
+              </article>
+            </div>
+          </article>
 
           <div className="virtualOfficeDigestGrid">
             <article className="virtualOfficeRail virtualOfficeDrawer">
@@ -2688,6 +2405,14 @@ export function AgentsVirtualOfficePanel({
                           <div>
                             <dt>{copy.nextHandoff}</dt>
                             <dd>{selectedAgent.nextHandoff || common.na}</dd>
+                          </div>
+                          <div>
+                            <dt>{copy.provenanceLabel}</dt>
+                            <dd>
+                              {selectedAgent.workloads?.[0]
+                                ? `${selectedAgent.workloads[0].title} · ${getWorkloadSourceLabel(selectedAgent.workloads[0].sourceKind, copy)}`
+                                : selectedAgent.provenanceNote || copy.provenanceFallback}
+                            </dd>
                           </div>
                         </>
                       ) : selectedRoomEntry ? (
@@ -3040,6 +2765,12 @@ export function AgentsVirtualOfficePanel({
                           <span>{getStatusLabel(agent.status, copy)}</span>
                         </div>
                         <p>{getDeskTask(agent, copy, common.unavailable)}</p>
+                        <p className="virtualMissionCardSummary">
+                          {copy.provenanceLabel}:{" "}
+                          {agent.workloads?.[0]
+                            ? `${agent.workloads[0].title} · ${getWorkloadSourceLabel(agent.workloads[0].sourceKind, copy)}`
+                            : agent.provenanceNote || copy.provenanceFallback}
+                        </p>
                         <div className="virtualDeskCardMeta">
                           <span>
                             {copy.focus}: {agent.focus || common.na}

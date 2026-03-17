@@ -1,6 +1,7 @@
 {
   "officeName": "OpenClaw Studio",
   "updatedAt": "2026-03-15T13:30:15.281Z",
+  "coordinationHeadline": "Phase 10 demo data shows exact repo-work and intake provenance, plus advisory next steps sourced from repo plans and personal research.",
   "rooms": [
     {
       "id": "dispatch",
@@ -34,8 +35,8 @@
       "role": "Dispatcher",
       "roomId": "dispatch",
       "status": "active",
-      "currentTask": "Routing the new Agents surface into the dashboard shell.",
-      "focus": "Cross-agent routing",
+      "currentTask": "Keeping the post-archive office summary coherent after repo-task retirement.",
+      "focus": "Archive boundary",
       "model": "openai/gpt-5",
       "queueCount": 3,
       "sessionCount": 44,
@@ -43,7 +44,20 @@
       "nextHandoff": "Build Bay",
       "lastEventAt": "2026-03-15T13:30:15.281Z",
       "latestActivityKind": "tool",
-      "latestToolName": "read"
+      "latestToolName": "read",
+      "workloads": [
+        {
+          "id": "main-coordination",
+          "title": "Coordinate Phase 10 execution handoffs",
+          "summary": "Dispatch is tracking repo-work progress and keeping the office summary aligned with the current phase.",
+          "sourceKind": "coordination",
+          "confidence": "exact",
+          "repo": "openclaw-dashboard",
+          "threadLabel": "Phase 10 execution",
+          "channelLabel": "Dispatch",
+          "sourceNote": "Derived from the live execution thread metadata."
+        }
+      ]
     },
     {
       "id": "intake-agent",
@@ -51,7 +65,7 @@
       "role": "Triage Lead",
       "roomId": "dispatch",
       "status": "waiting",
-      "currentTask": "Holding backlog context while the review and build rooms drift in different directions.",
+      "currentTask": "Holding new asks until they are either archived or reframed as personal research.",
       "focus": "New asks",
       "model": "openai/gpt-5-mini",
       "queueCount": 4,
@@ -69,16 +83,29 @@
       "status": "active",
       "currentTaskId": "TQ-101",
       "lastTaskId": "TQ-091",
-      "nextTaskId": "TQ-103",
-      "currentTask": "Rebuilding concierge notes after a review loop cleared this morning.",
-      "focus": "Recovering research lane",
+      "currentTask": "Reviewing the surviving concierge research notes after repo-task cleanup.",
+      "focus": "Personal research",
       "model": "openai/gpt-5-mini",
       "queueCount": 2,
       "sessionCount": 1,
       "utilization": 78,
       "nextHandoff": "Review Booth",
       "lastEventAt": "2026-03-15T10:45:51.004Z",
-      "latestActivityKind": "assistant"
+      "latestActivityKind": "assistant",
+      "workloads": [
+        {
+          "id": "research-intake",
+          "title": "Concierge archive research notebook",
+          "summary": "Validating that the surviving TQ set stays personal-research-only.",
+          "sourceKind": "personal-research",
+          "confidence": "exact",
+          "repo": "personal-research",
+          "threadLabel": "Concierge archive notes",
+          "channelLabel": "#intake",
+          "taskLabel": "TQ-101",
+          "sourceNote": "Sourced from intake-thread session metadata."
+        }
+      ]
     },
     {
       "id": "product-agent",
@@ -86,8 +113,8 @@
       "role": "Product Strategist",
       "roomId": "research",
       "status": "idle",
-      "currentTask": "Keeping scope and acceptance notes warm for the next version cut.",
-      "focus": "Version framing",
+      "currentTask": "Keeping the archive policy and verification notes warm for the next version cut.",
+      "focus": "Archive policy",
       "model": "anthropic/claude-sonnet-4-5",
       "queueCount": 1,
       "sessionCount": 1,
@@ -102,18 +129,42 @@
       "role": "Builder",
       "roomId": "build",
       "status": "active",
-      "currentTaskId": "TQ-108",
-      "lastTaskId": "TQ-092",
-      "currentTask": "Unifying the workflow ownership schema after a new contract block hit the build lane.",
-      "focus": "Slipping build lane",
+      "currentTask": "Implementing the provenance-driven roster and coordination layout for Phase 10.",
+      "focus": "Repo provenance",
       "model": "openai/gpt-5-codex",
-      "queueCount": 5,
-      "sessionCount": 1,
-      "utilization": 87,
+      "queueCount": 3,
+      "sessionCount": 2,
+      "utilization": 84,
       "nextHandoff": "Review Booth",
       "lastEventAt": "2026-03-15T13:25:09.442Z",
       "latestActivityKind": "tool",
-      "latestToolName": "exec"
+      "latestToolName": "exec",
+      "workloads": [
+        {
+          "id": "coding-repo-primary",
+          "title": "Phase 10 plan 10-02 UI implementation",
+          "summary": "Rendering explicit repo/thread provenance and a shorter coordination scan path in the Agents surface.",
+          "sourceKind": "repo-work",
+          "confidence": "exact",
+          "repo": "openclaw-dashboard",
+          "threadLabel": "OpenClaw Discord bridge",
+          "channelLabel": "#repo-work",
+          "taskLabel": "10-02",
+          "sourceNote": "Captured from the active repo-work coding thread."
+        },
+        {
+          "id": "coding-repo-secondary",
+          "title": "Phase 10 plan 10-03 docs alignment",
+          "summary": "Keeping README and runbook updates in sync with the final coordination surface.",
+          "sourceKind": "repo-work",
+          "confidence": "exact",
+          "repo": "openclaw-dashboard",
+          "threadLabel": "Docs follow-up",
+          "channelLabel": "#repo-work",
+          "taskLabel": "10-03",
+          "sourceNote": "Second active coding session mapped from the same repo-work surface."
+        }
+      ]
     },
     {
       "id": "local-agent",
@@ -121,7 +172,7 @@
       "role": "Local Helper",
       "roomId": "concierge",
       "status": "idle",
-      "currentTask": "Watching for local follow-up work and environment chores.",
+      "currentTask": "Watching for local follow-up work now that repo-task automation is archived.",
       "focus": "Local support",
       "model": "openai/gpt-5-mini",
       "queueCount": 1,
@@ -137,10 +188,8 @@
       "role": "Quality Review",
       "roomId": "review",
       "status": "waiting",
-      "lastTaskId": "TQ-093",
-      "nextTaskId": "TQ-097",
-      "currentTask": "Holding the release lane while the PR stays in review for another cycle.",
-      "focus": "Sustained review pressure",
+      "currentTask": "Waiting on human confirmation that the surviving TQ set is personal-research-only.",
+      "focus": "Archive verification",
       "model": "openai/gpt-5-mini",
       "queueCount": 2,
       "sessionCount": 1,
@@ -154,15 +203,13 @@
       "name": "Release Agent",
       "role": "Release Captain",
       "roomId": "release",
-      "status": "blocked",
-      "currentTaskId": "TQ-097",
-      "lastTaskId": "TQ-093",
-      "currentTask": "Waiting on human merge confirmation after a full day of review follow-up.",
-      "focus": "Sustained release review",
+      "status": "idle",
+      "currentTask": "Release handoff is quiet because repo-bound delivery tasks were archived in Phase 9.",
+      "focus": "Archive complete",
       "model": "anthropic/claude-sonnet-4-5",
-      "queueCount": 3,
+      "queueCount": 0,
       "sessionCount": 1,
-      "utilization": 63,
+      "utilization": 14,
       "nextHandoff": "Main Console",
       "lastEventAt": "2026-03-15T12:58:31.000Z",
       "latestActivityKind": "user"
@@ -182,15 +229,15 @@
       "label": "Implementation lane",
       "owner": "Coding Agent",
       "target": "Build Bay",
-      "count": 5,
-      "tone": "active"
+      "count": 1,
+      "tone": "default"
     },
     {
       "id": "review-holds",
       "label": "Review holds",
       "owner": "QA Agent",
       "target": "Review Booth",
-      "count": 2,
+      "count": 1,
       "tone": "default"
     },
     {
@@ -198,8 +245,8 @@
       "label": "Release blockers",
       "owner": "Release Agent",
       "target": "Release Dock",
-      "count": 1,
-      "tone": "warning"
+      "count": 0,
+      "tone": "default"
     },
     {
       "id": "doc-polish",
@@ -210,6 +257,48 @@
       "tone": "active"
     }
   ],
+  "advisorySuggestions": [
+    {
+      "id": "repo-10-03",
+      "title": "Document the provenance contract and verification flow",
+      "summary": "README and runbook updates are still needed after the UI lands.",
+      "sourceKind": "repo-work",
+      "confidence": "exact",
+      "roomId": "research",
+      "repo": "openclaw-dashboard",
+      "taskId": "10-03",
+      "featureTitle": "Phase 10 docs",
+      "rankingReason": "The current repo phase still has a downstream documentation plan waiting behind active UI work.",
+      "sourceLabel": "Repo phase agent work provenance"
+    },
+    {
+      "id": "repo-10-02",
+      "title": "Review the concise coordination layout polish",
+      "summary": "QA can pick up the roster and lower-half scan-path review once the implementation stabilizes.",
+      "sourceKind": "repo-work",
+      "confidence": "exact",
+      "roomId": "review",
+      "repo": "openclaw-dashboard",
+      "taskId": "10-02",
+      "featureTitle": "Phase 10 UI review",
+      "rankingReason": "The current repo phase has active build work that will need a clear review handoff next.",
+      "sourceLabel": "Repo phase agent work provenance"
+    },
+    {
+      "id": "research-tq-101",
+      "title": "Approve the concierge archive notes",
+      "summary": "Personal research is waiting for operator confirmation after the archive cleanup.",
+      "sourceKind": "personal-research",
+      "confidence": "exact",
+      "roomId": "research",
+      "repo": "personal-research",
+      "threadLabel": "#intake",
+      "taskId": "TQ-101",
+      "featureTitle": "Concierge research notebook",
+      "rankingReason": "This research thread is actionable now and remains advisory-only.",
+      "sourceLabel": "Mission archive research queue"
+    }
+  ],
   "recentEvents": [
     {
       "id": "event-main-1",
@@ -218,15 +307,15 @@
       "kind": "tool",
       "toolName": "read",
       "summary": "Main Console reprioritized the lifecycle milestone summary.",
-      "detail": "The operator summary now calls out a slipping build lane, a recovering research lane, and sustained release review pressure."
+      "detail": "The operator summary now calls out the archive boundary, the surviving personal research queue, and the retired repo-task lanes."
     },
     {
       "id": "event-research-1",
       "agentId": "research-agent",
       "at": "2026-03-15T10:45:51.004Z",
       "kind": "assistant",
-      "summary": "Research Agent recovered from a review loop.",
-      "detail": "The concierge notes moved back to running after review feedback landed and fresh edits were made."
+      "summary": "Research Agent refreshed the surviving TQ notebook.",
+      "detail": "The concierge notes were updated after repo-bound task records were archived out of the mission dataset."
     },
     {
       "id": "event-coding-1",
@@ -234,24 +323,24 @@
       "at": "2026-03-15T13:25:09.442Z",
       "kind": "tool",
       "toolName": "exec",
-      "summary": "Coding Agent slipped into a new contract block.",
-      "detail": "Build Bay escalated from running to blocked after the shared ownership contract changed underneath the patch."
+      "summary": "Coding Agent is serving two repo-work threads at once.",
+      "detail": "Build Bay is showing a multi-session repo-work case so the operator can see both the active UI implementation and the pending docs follow-up."
     },
     {
       "id": "event-release-1",
       "agentId": "release-agent",
       "at": "2026-03-15T12:58:31.000Z",
       "kind": "user",
-      "summary": "Release Agent is still waiting on human merge confirmation.",
-      "detail": "The release lane stayed in review through another screenshot check and still needs a human decision before ship."
+      "summary": "Release Agent confirmed there is no active repo-bound release lane.",
+      "detail": "The release desk is now quiet because Phase 9 archived the old repo-task delivery path instead of keeping it half-live."
     },
     {
       "id": "event-intake-1",
       "agentId": "intake-agent",
       "at": "2026-03-15T11:15:28.726Z",
       "kind": "assistant",
-      "summary": "Intake Agent marked the next intervention order.",
-      "detail": "Dispatch is keeping new asks warm while the operator resolves the slipping build lane first."
+      "summary": "Intake Agent marked the archive filter order.",
+      "detail": "Dispatch is keeping new asks warm while the operator confirms which TQ items stay as personal research."
     }
   ]
 }
