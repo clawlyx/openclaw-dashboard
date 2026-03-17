@@ -4,7 +4,7 @@
 
 OpenClaw workstation with dedicated Agents, Mission Control, Overview, History, Usage, and Scheduler workspaces.
 
-Current milestone: `1.3.0 Operator Intelligence`.
+Latest release: `1.4.0 Agent Clarity`.
 
 <p align="center">
   <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard agents virtual office desktop preview" width="78%" />
@@ -30,6 +30,9 @@ Current milestone: `1.3.0 Operator Intelligence`.
 - top-level dashboard shell with a primary menu, contextual left navigation, and single-panel rendering
 - dedicated `Agents` workspace with room-based navigation, explicit mission ownership, and live Mission Control join-up
 - `Virtual Office` pixel office scene for active, waiting, blocked, and idle agents
+- explicit repo-work / intake provenance on working agents, including multi-session workload entries when metadata is available
+- advisory idle suggestions sourced from local repo plans plus personal research, with ranking reasons kept clearly non-owning
+- concise coordination brief that replaces the old lower-half analytics sprawl with active workloads and likely next moves
 - room-level mission ownership inside the office view, including inline mission queue cards that can focus the owning room
 - shared room or agent detail drawer with task path, handoffs, and linked artifacts
 - inline office actions for advancing, blocking, or resetting the focused Mission Control task
@@ -57,7 +60,7 @@ The repo is intentionally broader than a single usage report skill. The goal is 
 The app supports separate source paths for the two live datasets:
 
 - agents + usage + scheduler: reads from `OPENCLAW_HOME` or `~/.openclaw`
-- mission control: reads from `AGENT_LAUNCHPAD_HOME` or `~/.agent-launchpad`
+- mission control: reads from `MISSION_CONTROL_HOME` or `~/.openclaw/mission-control`
 - demo mode: if either live path is missing, that surface falls back to bundled demo data
 - local frontend binding: `pnpm dev` / `pnpm start` read `DASHBOARD_URL` from `.env` or `.env.local`
 
@@ -72,9 +75,10 @@ live install is present, the app serves bundled demo data instead.
 
 This keeps the app centered on your own OpenClaw setup and avoids needing a custom backend yet.
 The JSON snapshot is also exposed at `/api/snapshot`, including normalized `agents` data for the
-office views, shared `pressure` lifecycle data for operator surfaces and verification, `usage.history`
-data for charts, `usage.providerLimits` for active rolling windows, and `usage.providerProfiles`
-for saved provider profiles such as OpenAI Codex and OpenRouter.
+office views, explicit `agents.workloads` and `agents.advisorySuggestions` coordination fields,
+shared `pressure` lifecycle data for operator surfaces and verification, `usage.history` data for
+charts, `usage.providerLimits` for active rolling windows, and `usage.providerProfiles` for saved
+provider profiles such as OpenAI Codex and OpenRouter.
 
 ## Quick Start
 
@@ -113,25 +117,30 @@ Then just run `pnpm dev` or `pnpm start`. The scripts will bind Next.js to that 
 If you want to force the fully bundled demo dataset for screenshots, previews, or CI, put this in `.env` / `.env.local` or use it inline:
 
 ```bash
-OPENCLAW_HOME=demo/openclaw-home AGENT_LAUNCHPAD_HOME=/tmp/openclaw-dashboard-demo pnpm dev
+OPENCLAW_HOME=demo/openclaw-home MISSION_CONTROL_HOME=/tmp/openclaw-dashboard-demo pnpm dev
 ```
 
-The `AGENT_LAUNCHPAD_HOME` path above can point to a missing directory. When no Launchpad state file exists there, Mission Control falls back to the bundled sample state instead of your real local queue.
+The `MISSION_CONTROL_HOME` path above can point to a missing directory. When no mission archive state file exists there, Mission Control falls back to the bundled post-archive sample instead of any real local queue. Legacy `AGENT_LAUNCHPAD_HOME` is still accepted as a compatibility alias, but the repo-task bridge itself is archived.
 
 ## Validation
 
-Lifecycle demo run:
+Release verification demo run:
 
 ```bash
-OPENCLAW_HOME=demo/openclaw-home AGENT_LAUNCHPAD_HOME=/tmp/openclaw-dashboard-demo pnpm start
+OPENCLAW_HOME=demo/openclaw-home MISSION_CONTROL_HOME=/tmp/openclaw-dashboard-demo pnpm start
 ```
 
 What to confirm before release:
 
-- `Agents` shows a slipping build case, a sustained review case, and a recovering research case from bundled demo data
+- `Agents` shows repo-work provenance, intake-thread provenance, and a multi-session working-agent case from bundled demo data
+- the lower-half Agents surface opens with `Coordination brief`, `Active workloads`, and `Advisory next moves` instead of the older analytics-heavy rails
+- idle suggestions explain their advisory source and ranking reason without reading like auto-assignment
 - `/api/snapshot` exposes the same lifecycle states under `pressure.taskMetricsByTaskId` and `pressure.roomMetricsByRoomId`
+- `/api/snapshot` also exposes `agents.workloads`, `agents.advisorySuggestions`, and `agents.coordinationHeadline`
+- `Mission Control` shows only the surviving personal-research `TQ-XXX` tasks, with repo-bound task systems described as archived rather than live
+- the bundled mission notes make the keep/archive/remove boundary explicit for the surviving `TQ-091` and `TQ-101` research items
 - README and preview screenshots in `.github/assets/` are captured only from the bundled demo dataset
-- `package.json`, README milestone copy, and the changelog all agree on `1.3.0`
+- `package.json`, README release copy, and the changelog all agree on `1.4.0`
 
 ```bash
 pnpm lint
@@ -151,7 +160,7 @@ request.
 
 ## Current Surfaces
 
-- `Agents`: virtual office, room mission ownership, lifecycle-aware operator summary, owner detail drawer, inline office actions, pressure rail, office floor, queues and handoffs, recent activity
+- `Agents`: virtual office, provenance-aware working roster, advisory idle suggestions, concise coordination brief, owner detail drawer, inline office actions, pressure rail, office floor, queues and handoffs, recent activity
 - `Mission Control`: active missions, execution queue, review desk, release lane, and mission intake
 - `Overview`: latest summary cards and high-signal operational state
 - `History`: usage history trends and chart views

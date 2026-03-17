@@ -1,61 +1,53 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4.0
-milestone_name: agent-clarity
-status: phase_completed
-stopped_at: Phase 8 executed and verified
-last_updated: "2026-03-16T01:49:27Z"
-last_activity: 2026-03-16 — Executed and verified `08-01` for the `v1.4.0` Agent Clarity milestone
+milestone: none
+milestone_name: none
+status: milestone_completed
+stopped_at: v1.4.0 archived and ready for next milestone definition
+last_updated: "2026-03-16T16:45:00Z"
+last_activity: 2026-03-16 — Archived the v1.4.0 Agent Clarity milestone and reconciled release metadata
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-03-15)
+See: `.planning/PROJECT.md` (updated 2026-03-16)
 
 **Core value:** One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.  
-**Current focus:** Make the Agents view much easier to scan so the operator can tell who is working, blocked, or idle at a glance.
+**Current focus:** No active milestone. Ready for the next milestone definition.
 
 ## Current Position
 
 Milestone: `v1.4.0 Agent Clarity`
-Phase: `8. Agent Clarity`
-Plan: `08-01` complete
-Status: Phase 8 executed and verified
-Last activity: 2026-03-16 — Executed and verified `08-01` for the `v1.4.0` Agent Clarity milestone
+Phase: Archived
+Plan: Archived
+Status: Complete and archived
+Last activity: 2026-03-16 — Archived the v1.4.0 Agent Clarity milestone and reconciled release metadata
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Milestone Stats
 
-- Previous milestone archive: `v1.3.0`
-- Active milestone target: `v1.4.0 Agent Clarity`
-- Next command: `$gsd-progress`
+- Previous milestone archive: `v1.4.0`
+- Next milestone target: not defined yet; start with `$gsd-new-milestone`
 
 ## Pending Todos
 
-- Review milestone closeout routing for `v1.4.0 Agent Clarity`
-- Plan a follow-up gap phase only if future live snapshots expose triage issues the current verification path did not cover
+- Define the next milestone with `$gsd-new-milestone`
 
 ## Blockers/Concerns
 
-- None currently. Keep Mission Control as the ownership source of truth if follow-up triage changes are added later.
-
-## Accumulated Context
-
-### Roadmap Evolution
-
-- Phase 8 added: Rebuild the Agents surface around Working / Blocked / Idle triage and lightweight next-task suggestions
+- None
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:45:00.000Z
-Stopped at: Phase 8 executed and verified
-Resume file: .planning/phases/08-agent-clarity/08-VERIFICATION.md
+Last session: 2026-03-16T16:45:00.000Z
+Stopped at: v1.4.0 archived and ready for next milestone definition
+Resume file: .planning/PROJECT.md

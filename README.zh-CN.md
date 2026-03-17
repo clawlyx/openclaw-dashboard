@@ -4,7 +4,7 @@
 
 一个面向 OpenClaw 的工作站应用，提供 Agents、Mission Control、概览、历史、用量和调度等独立工作区。
 
-当前里程碑：`1.3.0 Operator Intelligence`。
+当前已发布版本：`1.4.0 Agent Clarity`。
 
 <p align="center">
   <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard Agents 虚拟办公室桌面端预览" width="78%" />
@@ -30,6 +30,9 @@
 - 顶部主菜单 + 左侧上下文导航 + 单面板渲染的 dashboard shell
 - 独立的 `Agents` 工作区，带按房间组织的二级导航、显式任务归属和 Mission Control 联动
 - 用像素风 `Virtual Office` 直观展示 active / waiting / blocked / idle agents
+- Working agents 会直接显示 repo-work / intake 来源，并在元数据足够时展示多 session 工作负载
+- Idle 建议会同时参考本地 repo 计划和个人研究队列，并明确说明这只是建议而不是归属真相
+- 默认下半屏改成更简洁的协同摘要，只保留当前工作负载和下一步建议，而不是堆满分析栏
 - 在办公室视图里直接展示房间级任务归属、内联 mission queue，以及点击任务卡后聚焦归属房间
 - 共享的房间 / agent 详情抽屉，可查看任务路径、交接记录和关联交付物
 - 可直接在办公室抽屉内执行 Mission Control 任务动作
@@ -57,7 +60,7 @@
 应用对两类实时数据分别读取：
 
 - agents + usage + scheduler：从 `OPENCLAW_HOME` 或 `~/.openclaw` 读取
-- mission control：从 `AGENT_LAUNCHPAD_HOME` 或 `~/.agent-launchpad` 读取
+- mission control：从 `MISSION_CONTROL_HOME` 或 `~/.openclaw/mission-control` 读取
 - 演示模式：任一实时路径缺失时，对应页面会回退到内置 demo 数据
 - 本地前端绑定：`pnpm dev` / `pnpm start` 会从 `.env` 或 `.env.local` 读取 `DASHBOARD_URL`
 
@@ -68,7 +71,7 @@
 - usage 报告：`workspace/memory/usage/*.md`
 - cron 任务：`cron/jobs.json`
 
-这意味着它仍然围绕你自己的 OpenClaw 本地数据运行，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供 Agents 办公室视图使用的归一化 `agents` 数据、供 operator surface 与验证共用的 `pressure` 生命周期数据、供图表使用的 `usage.history` 数据、用于 active 滚动窗口的 `usage.providerLimits`，以及用于已保存 provider profile 的 `usage.providerProfiles`。
+这意味着它仍然围绕你自己的 OpenClaw 本地数据运行，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供 Agents 办公室视图使用的归一化 `agents` 数据、显式的 `agents.workloads` / `agents.advisorySuggestions` 协同字段、供 operator surface 与验证共用的 `pressure` 生命周期数据、供图表使用的 `usage.history` 数据、用于 active 滚动窗口的 `usage.providerLimits`，以及用于已保存 provider profile 的 `usage.providerProfiles`。
 
 ## 快速开始
 
@@ -107,25 +110,30 @@ DASHBOARD_URL=http://localhost:3000
 如果你想在截图、预览或 CI 中强制使用完整的内置 demo 数据，可以把这行放进 `.env` / `.env.local`，或者直接内联运行：
 
 ```bash
-OPENCLAW_HOME=demo/openclaw-home AGENT_LAUNCHPAD_HOME=/tmp/openclaw-dashboard-demo pnpm dev
+OPENCLAW_HOME=demo/openclaw-home MISSION_CONTROL_HOME=/tmp/openclaw-dashboard-demo pnpm dev
 ```
 
-上面的 `AGENT_LAUNCHPAD_HOME` 可以指向一个不存在的目录。只要这个目录下没有 Launchpad 状态文件，Mission Control 就会回退到仓库内置的 sample state，而不会读取你本机真实队列。
+上面的 `MISSION_CONTROL_HOME` 可以指向一个不存在的目录。只要这个目录下没有 mission archive 状态文件，Mission Control 就会回退到仓库内置的归档后样例，而不会读取你本机真实队列。旧的 `AGENT_LAUNCHPAD_HOME` 仍可作为兼容别名，但 repo-task bridge 本身已经退役。
 
 ## 验证
 
-生命周期演示验证命令：
+发布验证演示命令：
 
 ```bash
-OPENCLAW_HOME=demo/openclaw-home AGENT_LAUNCHPAD_HOME=/tmp/openclaw-dashboard-demo pnpm start
+OPENCLAW_HOME=demo/openclaw-home MISSION_CONTROL_HOME=/tmp/openclaw-dashboard-demo pnpm start
 ```
 
 发布前需要确认：
 
-- `Agents` 页面能从内置 demo 数据中看出一个滑落中的 build case、一个持续中的 review case，以及一个恢复中的 research case
+- `Agents` 页面能从内置 demo 数据中看出 repo-work 来源、`#intake` 研究来源，以及一个多 session 的 working agent case
+- Agents 默认下半屏会先展示 `Coordination brief`、`Active workloads` 和 `Advisory next moves`，而不是旧的分析型大面板
+- Idle 建议会解释来源和排序原因，而且文案保持为建议而不是自动指派
 - `/api/snapshot` 在 `pressure.taskMetricsByTaskId` 和 `pressure.roomMetricsByRoomId` 下暴露出同一组生命周期状态
+- `/api/snapshot` 还会暴露 `agents.workloads`、`agents.advisorySuggestions` 和 `agents.coordinationHeadline`
+- `Mission Control` 页面只展示保留下来的个人研究 `TQ-XXX` 任务，并明确说明 repo-bound task system 已归档
+- 内置 mission 注释能清楚说明 `TQ-091` 与 `TQ-101` 被保留，而 repo-bound 任务记录已被归档或移除
 - `.github/assets/` 中的 README 与预览截图全部来自内置 demo 数据，而不是本机真实数据
-- `package.json`、README 里的里程碑描述和 changelog 对 `1.3.0` 版本保持一致
+- `package.json`、README 里的发布描述和 changelog 对 `1.4.0` 版本保持一致
 
 ```bash
 pnpm lint
@@ -143,7 +151,7 @@ pnpm check
 
 ## 当前页面
 
-- `Agents`：Virtual Office、房间级任务归属、生命周期 operator summary、详情抽屉、办公室动作、压力轨道、Office Floor、Queues & handoffs、Recent activity
+- `Agents`：Virtual Office、带来源的 working roster、建议型 idle suggestions、简洁协同摘要、详情抽屉、办公室动作、压力轨道、Office Floor、Queues & handoffs、Recent activity
 - `Mission Control`：Active missions、Execution queue、Review desk、Release lane、Mission intake
 - `Overview`：最新摘要卡片和高优先级运行状态
 - `History`：usage 历史趋势和图表视图

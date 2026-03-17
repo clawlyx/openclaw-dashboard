@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-03-16
+
+### Added
+
+- A roster-first `Agents` triage flow with explicit Working / Blocked / Idle sections, stronger blocked-agent emphasis, and compact advisory idle suggestions.
+- Provenance-aware workload entries in `/api/snapshot` so working agents can expose repo-work, intake-thread, and multi-session context directly in the UI.
+- A concise coordination brief with `Active workloads` and `Advisory next moves` so the default lower-half Agents view stays actionable instead of analytics-heavy.
+
+### Changed
+
+- Archived `task-center`, `agent-launchpad`, and `agent-workflow` as live repo-task ownership systems and kept only the intentional personal-research `TQ-XXX` archive queue in bundled Mission Control data.
+- Updated README docs, Chinese docs, and the Mission Control runbook to explain the archive boundary, provenance contract, and advisory suggestion rules for the shipped `1.4.0` release.
+- Bumped the app version to `1.4.0` for the Agent Clarity milestone.
+
+### Fixed
+
+- Prevented legacy remote mutation env vars from reviving the retired repo-task bridge; archive-era task routes now return `410` instead.
+- Kept provenance fallback language visibly partial so missing session metadata does not read like exact workload truth.
+
 ## [1.3.0] - 2026-03-15
 
 ### Added
