@@ -7,7 +7,7 @@ OpenClaw Dashboard is the operator workstation for a local OpenClaw setup. It tu
 ## Current State
 
 - **Shipped version:** `1.4.0` on 2026-03-16
-- **Milestone status:** archived locally and ready for the next milestone definition
+- **Milestone status:** `v1.5.0 Coordination Clarity` is active and in planning
 - **Codebase shape:** Next.js App Router + React + TypeScript workstation, about 16.2k LOC across `app`, `components`, `lib`, and `demo`
 - **Validation baseline:** `pnpm check`, bundled-demo browser verification, `/api/snapshot` provenance checks, and archive-boundary API validation
 - **Archives:** `.planning/milestones/v1.2.0-ROADMAP.md`, `.planning/milestones/v1.2.0-REQUIREMENTS.md`, `.planning/milestones/v1.3.0-ROADMAP.md`, `.planning/milestones/v1.3.0-REQUIREMENTS.md`, `.planning/milestones/v1.4.0-ROADMAP.md`, `.planning/milestones/v1.4.0-REQUIREMENTS.md`, and `.planning/milestones/v1.4.0-MILESTONE-AUDIT.md`
@@ -16,9 +16,14 @@ OpenClaw Dashboard is the operator workstation for a local OpenClaw setup. It tu
 
 One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.
 
-## Current Milestone
+## Current Milestone: v1.5.0 Coordination Clarity
 
-No active milestone is defined. `1.4.0 Agent Clarity` shipped on 2026-03-16 and is archived under `.planning/milestones/`.
+**Goal:** Make coordination across Agents and Mission Control easier to trust and faster to act on by clarifying task-to-agent mapping, overlap and handoff state, and the operator's next move without introducing new control surfaces.
+
+**Target features:**
+- Sharper task-to-agent mapping between Agents and Mission Control that clarifies who is serving what and where the operator should inspect or intervene
+- Better overlap, handoff, and intervention visibility on the existing Agents and Mission Control surfaces
+- More obvious next-action cues so the operator can tell the most useful move without reconstructing coordination state manually
 
 ## Requirements
 
@@ -35,16 +40,17 @@ No active milestone is defined. `1.4.0 Agent Clarity` shipped on 2026-03-16 and 
 
 ### Active
 
-- [ ] Mission Control gives even clearer task ownership / task-to-agent mapping beyond the agent-focused provenance added in `1.4.0`
-- [ ] Agents view improves overlap, handoff, and intervention clarity beyond the concise default coordination layer shipped in `1.4.0`
-- [ ] Workstation predicts likely next bottlenecks from lifecycle and coordination signals before pressure escalates
-- [ ] Operator can control host services and worker processes from the workstation
+- [ ] Agents and Mission Control make task-to-agent mapping clearer without creating a second ownership system
+- [ ] Existing coordination surfaces expose overlap, handoff risk, and intervention needs more explicitly
+- [ ] The default operator scan path makes the next best action obvious from current state alone
 
 ### Out of Scope
 
 - Automatic assignment, autonomous staffing, or fake certainty about what an agent should do next
+- Predictive bottleneck forecasting or SLA-style forecasting — deferred by the `v1.5.0` brief
+- Host service or worker-process controls — deferred by the `v1.5.0` brief
+- Net-new coordination workspace expansion beyond current Agents and Mission Control surfaces — prioritize clarity on known surfaces first
 - Moving task ownership truth out of Mission Control into Agents
-- Broad runtime-control expansion before the next milestone is explicitly scoped
 - Multi-user collaboration or shared operator sessions — single-operator workstation for now
 
 ## Context
@@ -54,13 +60,9 @@ No active milestone is defined. `1.4.0 Agent Clarity` shipped on 2026-03-16 and 
 - Mission Control now treats `task-center`, `agent-launchpad`, and `agent-workflow` as archived context only; surviving task-center-like data is intentional personal research
 - Bundled demo data now includes deterministic repo-work, intake-thread, and multi-session workload cases safe for public docs and runbooks
 - Public README assets are demo-data driven and must remain safe to publish
-
-## Next Milestone Goals
-
-- Deepen task-to-agent clarity between Agents and Mission Control without reintroducing dual ownership semantics
-- Improve overlap, handoff, and coordination visibility beyond the concise default brief
-- Decide whether the next milestone should prioritize coordination depth, forecasting, or runtime leverage before adding new phases
-- Preserve the archive boundary and public-safe demo validation path established in `1.4.0`
+- `v1.5.0` deliberately skips research and should deepen clarity on existing Agents and Mission Control surfaces before any net-new workspace expansion
+- Forecasting and host controls were considered and explicitly deferred so the milestone stays focused on today's coordination blind spots
+- The milestone must preserve the archive boundary and public-safe demo validation path established in `1.4.0`
 
 ## Constraints
 
@@ -99,4 +101,4 @@ No active milestone is defined. `1.4.0 Agent Clarity` shipped on 2026-03-16 and 
 </details>
 
 ---
-*Last updated: 2026-03-16 after shipping v1.4.0 milestone*
+*Last updated: 2026-03-16 after starting the v1.5.0 Coordination Clarity milestone*

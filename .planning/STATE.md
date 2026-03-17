@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-status: milestone_completed
-stopped_at: v1.4.0 archived and ready for next milestone definition
-last_updated: "2026-03-16T16:45:00Z"
-last_activity: 2026-03-16 — Archived the v1.4.0 Agent Clarity milestone and reconciled release metadata
+milestone: v1.5.0
+milestone_name: Coordination Clarity
+status: defining_requirements
+stopped_at: Defining milestone requirements for v1.5.0 Coordination Clarity
+last_updated: "2026-03-17T03:28:05Z"
+last_activity: 2026-03-16 — Started the v1.5.0 Coordination Clarity milestone and reset planning state
 progress:
   total_phases: 0
   completed_phases: 0
@@ -21,26 +21,27 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-03-16)
 
 **Core value:** One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.  
-**Current focus:** No active milestone. Ready for the next milestone definition.
+**Current focus:** Define the `v1.5.0 Coordination Clarity` requirements and roadmap.
 
 ## Current Position
 
-Milestone: `v1.4.0 Agent Clarity`
-Phase: Archived
-Plan: Archived
-Status: Complete and archived
-Last activity: 2026-03-16 — Archived the v1.4.0 Agent Clarity milestone and reconciled release metadata
+Milestone: `v1.5.0 Coordination Clarity`
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-16 — Started the `v1.5.0 Coordination Clarity` milestone and reset planning state
 
 Progress: [----------] 0%
 
 ## Milestone Stats
 
 - Previous milestone archive: `v1.4.0`
-- Next milestone target: not defined yet; start with `$gsd-new-milestone`
+- Active milestone target: `v1.5.0 Coordination Clarity`
+- Research mode: skipped for this milestone
 
 ## Pending Todos
 
-- Define the next milestone with `$gsd-new-milestone`
+- Define `v1.5.0` requirements and roadmap
 
 ## Blockers/Concerns
 
@@ -48,6 +49,6 @@ Progress: [----------] 0%
 
 ## Session Continuity
 
-Last session: 2026-03-16T16:45:00.000Z
-Stopped at: v1.4.0 archived and ready for next milestone definition
+Last session: 2026-03-17T03:28:05.000Z
+Stopped at: Defining milestone requirements for v1.5.0 Coordination Clarity
 Resume file: .planning/PROJECT.md
