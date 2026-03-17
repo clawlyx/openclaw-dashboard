@@ -54,21 +54,21 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MAP-01 | TBD | Pending |
-| MAP-02 | TBD | Pending |
-| MAP-03 | TBD | Pending |
-| HAND-01 | TBD | Pending |
-| HAND-02 | TBD | Pending |
-| HAND-03 | TBD | Pending |
-| NEXT-01 | TBD | Pending |
-| NEXT-02 | TBD | Pending |
-| NEXT-03 | TBD | Pending |
+| MAP-01 | Phase 11 | Pending |
+| MAP-02 | Phase 11 | Pending |
+| MAP-03 | Phase 11 | Pending |
+| HAND-01 | Phase 12 | Pending |
+| HAND-02 | Phase 12 | Pending |
+| HAND-03 | Phase 12 | Pending |
+| NEXT-01 | Phase 13 | Pending |
+| NEXT-02 | Phase 13 | Pending |
+| NEXT-03 | Phase 13 | Pending |
 
 **Coverage:**
 - v1.5.0 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9 ⚠️
+- Mapped to phases: 9
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after initial milestone definition*
+*Last updated: 2026-03-16 after roadmap creation*
