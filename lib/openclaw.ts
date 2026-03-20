@@ -8,7 +8,12 @@ import {
   finalizeAgentsSnapshot,
   readAgentsSnapshot,
   type AgentAdvisorySuggestionSnapshot,
+  type AgentCoordinationPriority,
+  type AgentCoordinationSnapshot,
+  type AgentHandoffSnapshot,
   type AgentMissionMappingSnapshot,
+  type AgentOverlapEvidence,
+  type AgentOverlapGroupSnapshot,
   type AgentSnapshot,
   type AgentWorkloadSnapshot,
   type AgentsSnapshot
@@ -1449,6 +1454,325 @@ const scoreFeatureCandidate = (agent: AgentSnapshot, agentTokens: Set<string>, f
   return score;
 };
 
+type CoordinationCandidate = {
+  key: string;
+  label: string;
+  taskId?: string;
+  taskTitle?: string;
+  featureId?: string;
+  featureTitle?: string;
+  repo?: string;
+  threadLabel?: string;
+  lane?: string;
+  evidence: AgentOverlapEvidence[];
+  destination?: NonNullable<AgentMissionMappingSnapshot["destination"]>;
+};
+
+const ACTIVE_COORDINATION_STATUSES = new Set<AgentSnapshot["status"]>(["active", "blocked", "waiting"]);
+const COORDINATION_ROOM_HINTS: Record<string, string[]> = {
+  dispatch: ["dispatch", "dispatch desk", "main console", "triage"],
+  research: ["research", "research bay", "intake"],
+  build: ["build", "build bay", "coding"],
+  review: ["review", "review booth", "qa"],
+  release: ["release", "release dock"],
+  concierge: ["concierge", "support", "personal"]
+};
+
+const getCoordinationKey = (value: string) => normalizeSearchText(value).replace(/\s+/g, "-");
+
+const getMissionLaneFromRoomId = (roomId?: string) => {
+  switch (roomId) {
+    case "research":
+      return "research";
+    case "build":
+      return "build";
+    case "review":
+      return "qa";
+    case "release":
+      return "release";
+    default:
+      return undefined;
+  }
+};
+
+const getPriorityRank = (priority: AgentCoordinationPriority) =>
+  priority === "intervene" ? 3 : priority === "watch" ? 2 : 1;
+
+const getHigherPriority = (left: AgentCoordinationPriority, right: AgentCoordinationPriority) =>
+  getPriorityRank(left) >= getPriorityRank(right) ? left : right;
+
+const extractAgentIdsFromText = (values: Array<string | undefined>) => {
+  const agentIds = new Set<string>();
+
+  for (const value of values) {
+    if (!value) continue;
+    const normalized = value.toLowerCase();
+
+    if (normalized.includes("main console")) {
+      agentIds.add("main");
+    }
+
+    for (const match of value.matchAll(/\b[a-z0-9-]+-agent\b/gi)) {
+      const agentId = match[0]?.toLowerCase();
+      if (agentId) agentIds.add(agentId);
+    }
+  }
+
+  return [...agentIds];
+};
+
+const inferRoomIdFromText = (value?: string) => {
+  if (!value) return undefined;
+  const normalized = normalizeSearchText(value);
+
+  for (const [roomId, hints] of Object.entries(COORDINATION_ROOM_HINTS)) {
+    if (hints.some((hint) => normalized.includes(normalizeSearchText(hint)))) {
+      return roomId;
+    }
+  }
+
+  return undefined;
+};
+
+const getCoordinationAgentRank = (agent: AgentSnapshot) => {
+  const statusScore = agent.status === "active" ? 40 : agent.status === "waiting" ? 28 : agent.status === "blocked" ? 24 : 0;
+  return statusScore + (agent.queueCount || 0) * 3 + Math.round((agent.utilization || 0) / 10);
+};
+
+const getPrimaryCoordinationCandidate = (agent: AgentSnapshot): CoordinationCandidate | null => {
+  if (agent.missionMapping?.taskId) {
+    return {
+      key: `task:${agent.missionMapping.taskId.toUpperCase()}`,
+      label: agent.missionMapping.taskTitle || agent.missionMapping.taskId,
+      taskId: agent.missionMapping.taskId,
+      taskTitle: agent.missionMapping.taskTitle,
+      featureId: agent.missionMapping.featureId,
+      featureTitle: agent.missionMapping.featureTitle,
+      lane: agent.missionMapping.lane,
+      evidence: ["shared-task"],
+      destination: agent.missionMapping.destination
+    };
+  }
+
+  if (agent.missionMapping?.featureId) {
+    return {
+      key: `feature:${agent.missionMapping.featureId}`,
+      label: agent.missionMapping.featureTitle || agent.missionMapping.featureId,
+      featureId: agent.missionMapping.featureId,
+      featureTitle: agent.missionMapping.featureTitle,
+      lane: agent.missionMapping.lane,
+      evidence: ["shared-feature"],
+      destination: agent.missionMapping.destination
+    };
+  }
+
+  const workload = agent.workloads?.find((entry) => entry.confidence === "exact") || agent.workloads?.[0];
+  if (!workload?.repo) return null;
+
+  if (workload.threadLabel) {
+    return {
+      key: `thread:${workload.repo}:${getCoordinationKey(workload.threadLabel)}`,
+      label: workload.title,
+      repo: workload.repo,
+      threadLabel: workload.threadLabel,
+      evidence: ["shared-thread", "shared-repo"]
+    };
+  }
+
+  return {
+    key: `repo:${workload.repo}`,
+    label: workload.title,
+    repo: workload.repo,
+    evidence: ["shared-repo"]
+  };
+};
+
+const buildOverlapGroups = (agentsSnapshot: AgentsSnapshot) => {
+  const activeAgents = agentsSnapshot.agents.filter((agent) => ACTIVE_COORDINATION_STATUSES.has(agent.status));
+  const groups = new Map<string, { candidate: CoordinationCandidate; agents: AgentSnapshot[] }>();
+
+  for (const agent of activeAgents) {
+    const candidate = getPrimaryCoordinationCandidate(agent);
+    if (!candidate) continue;
+
+    const existing = groups.get(candidate.key);
+    if (existing) {
+      existing.agents.push(agent);
+      continue;
+    }
+
+    groups.set(candidate.key, {
+      candidate,
+      agents: [agent]
+    });
+  }
+
+  return [...groups.values()]
+    .filter((group) => group.agents.length >= 2)
+    .map(({ candidate, agents }) => {
+      const exactCount = agents.filter((agent) => agent.missionMapping?.state === "exact").length;
+      const partialCount = agents.filter((agent) => agent.missionMapping?.state === "partial").length;
+      const roomCount = new Set(agents.map((agent) => agent.roomId)).size;
+      const hasMissionTruth = Boolean(candidate.taskId || candidate.featureId);
+      const state =
+        hasMissionTruth && roomCount > 1 && exactCount + partialCount >= Math.max(1, Math.ceil(agents.length / 2))
+          ? "parallel"
+          : "ambiguous";
+      const evidence = [
+        ...candidate.evidence,
+        exactCount > 0 ? "exact-mapping" : null,
+        partialCount > 0 ? "partial-mapping" : null,
+        roomCount > 1 ? "room-split" : "same-room",
+        !hasMissionTruth ? "unknown-owner" : null
+      ].filter((value): value is AgentOverlapEvidence => Boolean(value));
+
+      return {
+        id: candidate.key,
+        label: candidate.label,
+        state,
+        priority: state === "ambiguous" ? "intervene" : "routine",
+        agentIds: agents.map((agent) => agent.id),
+        taskId: candidate.taskId,
+        taskTitle: candidate.taskTitle,
+        featureId: candidate.featureId,
+        featureTitle: candidate.featureTitle,
+        repo: candidate.repo,
+        threadLabel: candidate.threadLabel,
+        lane: candidate.lane,
+        evidence: [...new Set(evidence)],
+        destination: candidate.destination
+      } satisfies AgentOverlapGroupSnapshot;
+    })
+    .sort((left, right) => {
+      const priorityDelta = getPriorityRank(right.priority) - getPriorityRank(left.priority);
+      if (priorityDelta !== 0) return priorityDelta;
+      return left.label.localeCompare(right.label);
+    });
+};
+
+const deriveAgentHandoff = (
+  agent: AgentSnapshot,
+  taskById: Map<string, MissionControlTaskSnapshot>,
+  agentById: Map<string, AgentSnapshot>,
+  agentsByRoomId: Map<string, AgentSnapshot[]>
+): AgentHandoffSnapshot | undefined => {
+  const mapping = agent.missionMapping;
+  const task = mapping?.taskId ? taskById.get(mapping.taskId.toUpperCase()) : undefined;
+  if (!task || (mapping?.state !== "exact" && task.ownerAgentId !== agent.id)) return undefined;
+
+  const explicitNextAgentId = extractAgentIdsFromText([task.waitingOn, task.nextPlannedStep, agent.nextHandoff]).find(
+    (agentId) => agentId !== agent.id && agentById.has(agentId)
+  );
+  const inferredNextRoomId =
+    (explicitNextAgentId ? agentById.get(explicitNextAgentId)?.roomId : undefined) ||
+    inferRoomIdFromText(agent.nextHandoff) ||
+    inferRoomIdFromText(task.waitingOn) ||
+    inferRoomIdFromText(task.nextPlannedStep) ||
+    (task.status === "review" ? "review" : undefined);
+  const nextAgent =
+    (explicitNextAgentId ? agentById.get(explicitNextAgentId) : undefined) ||
+    (inferredNextRoomId
+      ? (agentsByRoomId.get(inferredNextRoomId) || [])
+          .filter((candidate) => candidate.id !== agent.id && candidate.status !== "offline")
+          .sort((left, right) => getCoordinationAgentRank(right) - getCoordinationAgentRank(left))[0]
+      : undefined);
+  const nextQueue = task.status === "review" ? "review" : task.status === "blocked" ? "blocked" : undefined;
+  const nextLane = nextAgent ? getMissionLaneFromRoomId(nextAgent.roomId) : getMissionLaneFromRoomId(inferredNextRoomId);
+  const lastAgentId = task.ownerAgentId || agent.id;
+  const lastAgent = agentById.get(lastAgentId) || (lastAgentId === agent.id ? agent : undefined);
+  const waitingOnHuman = /(human|operator|approval|confirm)/i.test(task.waitingOn || "");
+  const state = nextAgent || inferredNextRoomId || nextLane || nextQueue ? (waitingOnHuman ? "stalled" : "active") : "unknown";
+  const source =
+    explicitNextAgentId || task.waitingOn
+      ? "waiting-on"
+      : agent.nextHandoff || task.status === "review"
+        ? "task-status"
+        : "unknown";
+
+  return {
+    state,
+    source,
+    nextKind: nextAgent ? "agent" : inferredNextRoomId ? "room" : nextLane ? "lane" : "unknown",
+    updatedAt: task.history[task.history.length - 1]?.at || task.updatedAt || agent.lastEventAt,
+    taskId: task.tqId,
+    taskTitle: task.title,
+    featureId: task.featureId,
+    featureTitle: task.featureTitle,
+    lastAgentId: lastAgent?.id,
+    lastAgentName: lastAgent?.name || lastAgentId,
+    nextAgentId: nextAgent?.id,
+    nextAgentName: nextAgent?.name,
+    nextRoomId: nextAgent?.roomId || inferredNextRoomId,
+    nextLane,
+    nextQueue,
+    destination: getMissionTaskDestination(task)
+  };
+};
+
+const buildCoordinationModel = (agentsSnapshot: AgentsSnapshot, missionControl: MissionControlSnapshot) => {
+  const overlapGroups = buildOverlapGroups(agentsSnapshot);
+  const taskById = new Map(
+    missionControl.features.flatMap((feature) => feature.tasks).map((task) => [task.tqId.toUpperCase(), task] as const)
+  );
+  const agentById = new Map(agentsSnapshot.agents.map((agent) => [agent.id, agent] as const));
+  const agentsByRoomId = new Map<string, AgentSnapshot[]>();
+
+  for (const agent of agentsSnapshot.agents) {
+    const roomAgents = agentsByRoomId.get(agent.roomId) || [];
+    roomAgents.push(agent);
+    agentsByRoomId.set(agent.roomId, roomAgents);
+  }
+
+  const coordinationByAgent = new Map<string, AgentCoordinationSnapshot>();
+
+  for (const group of overlapGroups) {
+    for (const agentId of group.agentIds) {
+      const current = coordinationByAgent.get(agentId) || {
+        priority: "routine",
+        primaryGroupId: undefined,
+        overlapGroupIds: []
+      };
+
+      current.overlapGroupIds = [...new Set([...current.overlapGroupIds, group.id])];
+      current.primaryGroupId = current.primaryGroupId || group.id;
+      current.priority = getHigherPriority(current.priority, group.priority);
+      coordinationByAgent.set(agentId, current);
+    }
+  }
+
+  for (const agent of agentsSnapshot.agents.filter((entry) => ACTIVE_COORDINATION_STATUSES.has(entry.status))) {
+    const handoff = deriveAgentHandoff(agent, taskById, agentById, agentsByRoomId);
+    if (!handoff) continue;
+
+    const current = coordinationByAgent.get(agent.id) || {
+      priority: "routine",
+      primaryGroupId: undefined,
+      overlapGroupIds: []
+    };
+
+    current.handoff = handoff;
+    current.priority = getHigherPriority(current.priority, handoff.state === "active" ? "watch" : handoff.state === "stalled" ? "intervene" : "routine");
+    coordinationByAgent.set(agent.id, current);
+  }
+
+  const ambiguousCount = overlapGroups.filter((group) => group.state === "ambiguous").length;
+  const parallelCount = overlapGroups.filter((group) => group.state === "parallel").length;
+  const activeHandoffCount = [...coordinationByAgent.values()].filter(
+    (entry) => entry.handoff && entry.handoff.state !== "unknown"
+  ).length;
+
+  const coordinationHeadline =
+    ambiguousCount || parallelCount || activeHandoffCount
+      ? `${parallelCount} healthy shared-work group${parallelCount === 1 ? "" : "s"}, ${ambiguousCount} overlap risk${ambiguousCount === 1 ? "" : "s"} needing intervention, and ${activeHandoffCount} active handoff${activeHandoffCount === 1 ? "" : "s"} are visible in this snapshot.`
+      : "No trustworthy overlap or handoff signals are available yet.";
+
+  return {
+    overlapGroups,
+    coordinationByAgent: Object.fromEntries(coordinationByAgent.entries()),
+    coordinationHeadline
+  };
+};
+
 const buildMissionMappings = (agentsSnapshot: AgentsSnapshot, missionControl: MissionControlSnapshot) => {
   const tasks = missionControl.features.flatMap((feature) => feature.tasks).filter((task) => task.status !== "done");
   const taskById = new Map(tasks.map((task) => [task.tqId.toUpperCase(), task]));
@@ -1990,11 +2314,15 @@ export const getDashboardSnapshot = async (): Promise<DashboardSnapshot> => {
   const missionControl = await readMissionControlSnapshot();
   const advisorySuggestions = await buildAdvisorySuggestions(missionControl);
   const missionMappings = buildMissionMappings(baseAgents, missionControl);
-  const agents = finalizeAgentsSnapshot(baseAgents, {
+  const agentsWithMappings = finalizeAgentsSnapshot(baseAgents, {
+    missionMappings
+  });
+  const coordination = buildCoordinationModel(agentsWithMappings, missionControl);
+  const agents = finalizeAgentsSnapshot(agentsWithMappings, {
     advisorySuggestions,
-    missionMappings,
-    coordinationHeadline:
-      "Mission Control links now read as exact, partial, or unavailable from the Agents snapshot itself, while Mission Control remains the ownership source of truth."
+    coordinationByAgent: coordination.coordinationByAgent,
+    overlapGroups: coordination.overlapGroups,
+    coordinationHeadline: coordination.coordinationHeadline
   });
 
   return {
