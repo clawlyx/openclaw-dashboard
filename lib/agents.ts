@@ -21,6 +21,21 @@ export type AgentMissionMappingEvidence =
   | "none";
 export type AgentMissionMappingPanel = "missions" | "queue" | "reviews" | "release";
 export type AgentMissionMappingQueue = "ready" | "running" | "review" | "blocked";
+export type AgentCoordinationPriority = "routine" | "watch" | "intervene";
+export type AgentOverlapState = "parallel" | "ambiguous";
+export type AgentOverlapEvidence =
+  | "shared-task"
+  | "shared-feature"
+  | "shared-thread"
+  | "shared-repo"
+  | "exact-mapping"
+  | "partial-mapping"
+  | "room-split"
+  | "same-room"
+  | "unknown-owner";
+export type AgentHandoffState = "active" | "stalled" | "unknown";
+export type AgentHandoffSource = "task-status" | "waiting-on" | "agent-handoff" | "unknown";
+export type AgentHandoffNextKind = "agent" | "room" | "lane" | "unknown";
 
 export type AgentRoomSnapshot = {
   id: string;
@@ -101,6 +116,49 @@ export type AgentMissionMappingSnapshot = {
   destination?: AgentMissionMappingDestination;
 };
 
+export type AgentHandoffSnapshot = {
+  state: AgentHandoffState;
+  source: AgentHandoffSource;
+  nextKind: AgentHandoffNextKind;
+  updatedAt?: string;
+  taskId?: string;
+  taskTitle?: string;
+  featureId?: string;
+  featureTitle?: string;
+  lastAgentId?: string;
+  lastAgentName?: string;
+  nextAgentId?: string;
+  nextAgentName?: string;
+  nextRoomId?: string;
+  nextLane?: string;
+  nextQueue?: AgentMissionMappingQueue;
+  destination?: AgentMissionMappingDestination;
+};
+
+export type AgentOverlapGroupSnapshot = {
+  id: string;
+  label: string;
+  state: AgentOverlapState;
+  priority: AgentCoordinationPriority;
+  agentIds: string[];
+  taskId?: string;
+  taskTitle?: string;
+  featureId?: string;
+  featureTitle?: string;
+  repo?: string;
+  threadLabel?: string;
+  lane?: string;
+  evidence: AgentOverlapEvidence[];
+  destination?: AgentMissionMappingDestination;
+};
+
+export type AgentCoordinationSnapshot = {
+  priority: AgentCoordinationPriority;
+  primaryGroupId?: string;
+  overlapGroupIds: string[];
+  handoff?: AgentHandoffSnapshot;
+};
+
 export type AgentSnapshot = {
   id: string;
   name: string;
@@ -123,6 +181,7 @@ export type AgentSnapshot = {
   workloads?: AgentWorkloadSnapshot[];
   provenanceNote?: string;
   missionMapping?: AgentMissionMappingSnapshot;
+  coordination?: AgentCoordinationSnapshot;
 };
 
 export type AgentsSnapshot = {
@@ -136,6 +195,7 @@ export type AgentsSnapshot = {
   recentEvents: AgentActivitySnapshot[];
   advisorySuggestions?: AgentAdvisorySuggestionSnapshot[];
   coordinationHeadline?: string;
+  overlapGroups?: AgentOverlapGroupSnapshot[];
   notes?: string[];
   error?: string;
 };
@@ -419,6 +479,79 @@ const normalizeMissionMappingQueue = (value?: string): AgentMissionMappingQueue 
   }
 };
 
+const normalizeCoordinationPriority = (value?: string): AgentCoordinationPriority | undefined => {
+  switch (value) {
+    case "routine":
+    case "watch":
+    case "intervene":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeOverlapState = (value?: string): AgentOverlapState | undefined => {
+  switch (value) {
+    case "parallel":
+    case "ambiguous":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeOverlapEvidence = (value?: string): AgentOverlapEvidence | undefined => {
+  switch (value) {
+    case "shared-task":
+    case "shared-feature":
+    case "shared-thread":
+    case "shared-repo":
+    case "exact-mapping":
+    case "partial-mapping":
+    case "room-split":
+    case "same-room":
+    case "unknown-owner":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeHandoffState = (value?: string): AgentHandoffState | undefined => {
+  switch (value) {
+    case "active":
+    case "stalled":
+    case "unknown":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeHandoffSource = (value?: string): AgentHandoffSource | undefined => {
+  switch (value) {
+    case "task-status":
+    case "waiting-on":
+    case "agent-handoff":
+    case "unknown":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeHandoffNextKind = (value?: string): AgentHandoffNextKind | undefined => {
+  switch (value) {
+    case "agent":
+    case "room":
+    case "lane":
+    case "unknown":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
 const createDefaultRooms = () => DEFAULT_AGENT_ROOMS.map((room) => ({ ...room }));
 
 const formatAgentName = (agentId: string) => {
@@ -689,13 +822,25 @@ const normalizeAdvisorySuggestion = (value: unknown, fallbackId: string): AgentA
   };
 };
 
+const normalizeMissionDestination = (value: unknown): AgentMissionMappingDestination | undefined => {
+  const destination = asObject(value);
+  const panel = normalizeMissionMappingPanel(asString(destination?.panel));
+
+  if (!panel) return undefined;
+
+  return {
+    panel,
+    taskId: asString(destination?.taskId),
+    featureId: asString(destination?.featureId),
+    queue: normalizeMissionMappingQueue(asString(destination?.queue)),
+    lane: asString(destination?.lane)
+  };
+};
+
 const normalizeMissionMapping = (value: unknown): AgentMissionMappingSnapshot | null => {
   const entry = asObject(value);
   const state = normalizeMissionMappingState(asString(entry?.state));
   if (!state) return null;
-
-  const destination = asObject(entry?.destination);
-  const panel = normalizeMissionMappingPanel(asString(destination?.panel));
 
   return {
     state,
@@ -708,15 +853,84 @@ const normalizeMissionMapping = (value: unknown): AgentMissionMappingSnapshot | 
     taskStatus: asString(entry?.taskStatus),
     featureStatus: asString(entry?.featureStatus),
     sourceNote: asString(entry?.sourceNote),
-    destination: panel
-      ? {
-          panel,
-          taskId: asString(destination?.taskId),
-          featureId: asString(destination?.featureId),
-          queue: normalizeMissionMappingQueue(asString(destination?.queue)),
-          lane: asString(destination?.lane)
-        }
-      : undefined
+    destination: normalizeMissionDestination(entry?.destination)
+  };
+};
+
+const normalizeHandoff = (value: unknown): AgentHandoffSnapshot | null => {
+  const entry = asObject(value);
+  const state = normalizeHandoffState(asString(entry?.state));
+  const source = normalizeHandoffSource(asString(entry?.source));
+  const nextKind = normalizeHandoffNextKind(asString(entry?.nextKind));
+  if (!state || !source || !nextKind) return null;
+
+  return {
+    state,
+    source,
+    nextKind,
+    updatedAt: asString(entry?.updatedAt),
+    taskId: asString(entry?.taskId),
+    taskTitle: asString(entry?.taskTitle),
+    featureId: asString(entry?.featureId),
+    featureTitle: asString(entry?.featureTitle),
+    lastAgentId: asString(entry?.lastAgentId),
+    lastAgentName: asString(entry?.lastAgentName),
+    nextAgentId: asString(entry?.nextAgentId),
+    nextAgentName: asString(entry?.nextAgentName),
+    nextRoomId: asString(entry?.nextRoomId),
+    nextLane: asString(entry?.nextLane),
+    nextQueue: normalizeMissionMappingQueue(asString(entry?.nextQueue)),
+    destination: normalizeMissionDestination(entry?.destination)
+  };
+};
+
+const normalizeCoordination = (value: unknown): AgentCoordinationSnapshot | null => {
+  const entry = asObject(value);
+  const priority = normalizeCoordinationPriority(asString(entry?.priority));
+  if (!priority) return null;
+
+  const overlapGroupIds = Array.isArray(entry?.overlapGroupIds)
+    ? entry.overlapGroupIds.map((groupId) => asString(groupId)).filter((groupId): groupId is string => Boolean(groupId))
+    : [];
+
+  return {
+    priority,
+    primaryGroupId: asString(entry?.primaryGroupId),
+    overlapGroupIds,
+    handoff: normalizeHandoff(entry?.handoff) || undefined
+  };
+};
+
+const normalizeOverlapGroup = (value: unknown, fallbackId: string): AgentOverlapGroupSnapshot | null => {
+  const entry = asObject(value);
+  const label = asString(entry?.label);
+  const state = normalizeOverlapState(asString(entry?.state));
+  const priority = normalizeCoordinationPriority(asString(entry?.priority));
+  const agentIds = Array.isArray(entry?.agentIds)
+    ? entry.agentIds.map((agentId) => asString(agentId)).filter((agentId): agentId is string => Boolean(agentId))
+    : [];
+  const evidence = Array.isArray(entry?.evidence)
+    ? entry.evidence
+        .map((item) => normalizeOverlapEvidence(asString(item)))
+        .filter((item): item is AgentOverlapEvidence => Boolean(item))
+    : [];
+  if (!label || !state || !priority || agentIds.length < 2) return null;
+
+  return {
+    id: asString(entry?.id) || fallbackId,
+    label,
+    state,
+    priority,
+    agentIds,
+    taskId: asString(entry?.taskId),
+    taskTitle: asString(entry?.taskTitle),
+    featureId: asString(entry?.featureId),
+    featureTitle: asString(entry?.featureTitle),
+    repo: asString(entry?.repo),
+    threadLabel: asString(entry?.threadLabel),
+    lane: asString(entry?.lane),
+    evidence,
+    destination: normalizeMissionDestination(entry?.destination)
   };
 };
 
@@ -760,6 +974,8 @@ export const finalizeAgentsSnapshot = (
     advisorySuggestions?: AgentAdvisorySuggestionSnapshot[];
     coordinationHeadline?: string;
     missionMappings?: Record<string, AgentMissionMappingSnapshot>;
+    coordinationByAgent?: Record<string, AgentCoordinationSnapshot>;
+    overlapGroups?: AgentOverlapGroupSnapshot[];
     notes?: string[];
   }
 ): AgentsSnapshot => {
@@ -773,7 +989,8 @@ export const finalizeAgentsSnapshot = (
         (workloads?.some((workload) => workload.confidence === "partial")
           ? "Showing a partial provenance view until richer session metadata is available."
           : undefined),
-      missionMapping: agent.missionMapping || options?.missionMappings?.[agent.id]
+      missionMapping: agent.missionMapping || options?.missionMappings?.[agent.id],
+      coordination: agent.coordination || options?.coordinationByAgent?.[agent.id]
     };
   });
 
@@ -782,6 +999,7 @@ export const finalizeAgentsSnapshot = (
     agents: normalizedAgents,
     advisorySuggestions: options?.advisorySuggestions || snapshot.advisorySuggestions,
     coordinationHeadline: options?.coordinationHeadline || snapshot.coordinationHeadline,
+    overlapGroups: options?.overlapGroups || snapshot.overlapGroups,
     notes: [...(snapshot.notes || []), ...(options?.notes || [])].filter(Boolean)
   };
 };
@@ -853,7 +1071,8 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
                 .filter((workload): workload is AgentWorkloadSnapshot => Boolean(workload))
             : undefined,
           provenanceNote: asString(entry?.provenanceNote),
-          missionMapping: normalizeMissionMapping(entry?.missionMapping) || undefined
+          missionMapping: normalizeMissionMapping(entry?.missionMapping) || undefined,
+          coordination: normalizeCoordination(entry?.coordination) || undefined
         });
       }
     }
@@ -917,6 +1136,11 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
           .map((entry, index) => normalizeAdvisorySuggestion(entry, `advisory:${index + 1}`))
           .filter((entry): entry is AgentAdvisorySuggestionSnapshot => Boolean(entry))
       : undefined;
+    const overlapGroups = Array.isArray(data.overlapGroups)
+      ? data.overlapGroups
+          .map((entry, index) => normalizeOverlapGroup(entry, `group:${index + 1}`))
+          .filter((entry): entry is AgentOverlapGroupSnapshot => Boolean(entry))
+      : undefined;
 
     return finalizeAgentsSnapshot({
       available: true,
@@ -933,6 +1157,7 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
       recentEvents,
       advisorySuggestions,
       coordinationHeadline: asString(data.coordinationHeadline),
+      overlapGroups,
       notes
     });
   } catch (error) {
