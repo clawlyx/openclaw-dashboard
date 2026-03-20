@@ -31,8 +31,10 @@ Latest release: `1.4.0 Agent Clarity`.
 - dedicated `Agents` workspace with room-based navigation, explicit mission ownership, and live Mission Control join-up
 - `Virtual Office` pixel office scene for active, waiting, blocked, and idle agents
 - explicit repo-work / intake provenance on working agents, including multi-session workload entries when metadata is available
+- explicit `Mission Control` mapping states on working agents, labeled as exact, partial, or unavailable without moving ownership truth out of Mission Control
 - advisory idle suggestions sourced from local repo plans plus personal research, with ranking reasons kept clearly non-owning
 - concise coordination brief that replaces the old lower-half analytics sprawl with active workloads and likely next moves
+- one-click handoff from trustworthy Agents mapping cards into the closest relevant `Mission Control` panel
 - room-level mission ownership inside the office view, including inline mission queue cards that can focus the owning room
 - shared room or agent detail drawer with task path, handoffs, and linked artifacts
 - inline office actions for advancing, blocking, or resetting the focused Mission Control task
@@ -76,6 +78,7 @@ live install is present, the app serves bundled demo data instead.
 This keeps the app centered on your own OpenClaw setup and avoids needing a custom backend yet.
 The JSON snapshot is also exposed at `/api/snapshot`, including normalized `agents` data for the
 office views, explicit `agents.workloads` and `agents.advisorySuggestions` coordination fields,
+explicit `agents.missionMapping` handoff metadata for exact / partial / unavailable Mission Control joins,
 shared `pressure` lifecycle data for operator surfaces and verification, `usage.history` data for
 charts, `usage.providerLimits` for active rolling windows, and `usage.providerProfiles` for saved
 provider profiles such as OpenAI Codex and OpenRouter.
@@ -133,11 +136,14 @@ OPENCLAW_HOME=demo/openclaw-home MISSION_CONTROL_HOME=/tmp/openclaw-dashboard-de
 What to confirm before release:
 
 - `Agents` shows repo-work provenance, intake-thread provenance, and a multi-session working-agent case from bundled demo data
+- `Agents` also shows one exact, one partial, and one unavailable Mission Control mapping state in demo mode
 - the lower-half Agents surface opens with `Coordination brief`, `Active workloads`, and `Advisory next moves` instead of the older analytics-heavy rails
+- exact and partial Agents mapping cards expose a Mission Control handoff, while unavailable mappings stay visibly non-actionable
 - idle suggestions explain their advisory source and ranking reason without reading like auto-assignment
 - `/api/snapshot` exposes the same lifecycle states under `pressure.taskMetricsByTaskId` and `pressure.roomMetricsByRoomId`
-- `/api/snapshot` also exposes `agents.workloads`, `agents.advisorySuggestions`, and `agents.coordinationHeadline`
+- `/api/snapshot` also exposes `agents.workloads`, `agents.advisorySuggestions`, `agents.coordinationHeadline`, and `agents.missionMapping`
 - `Mission Control` shows only the surviving personal-research `TQ-XXX` tasks, with repo-bound task systems described as archived rather than live
+- Agents-to-Mission Control handoff lands on the linked review or mission context without implying ownership moved into Agents
 - the bundled mission notes make the keep/archive/remove boundary explicit for the surviving `TQ-091` and `TQ-101` research items
 - README and preview screenshots in `.github/assets/` are captured only from the bundled demo dataset
 - `package.json`, README release copy, and the changelog all agree on `1.4.0`
@@ -160,8 +166,8 @@ request.
 
 ## Current Surfaces
 
-- `Agents`: virtual office, provenance-aware working roster, advisory idle suggestions, concise coordination brief, owner detail drawer, inline office actions, pressure rail, office floor, queues and handoffs, recent activity
-- `Mission Control`: active missions, execution queue, review desk, release lane, and mission intake
+- `Agents`: virtual office, provenance-aware working roster, Mission Control mapping states, advisory idle suggestions, concise coordination brief, owner detail drawer, inline office actions, pressure rail, office floor, queues and handoffs, recent activity
+- `Mission Control`: active missions, execution queue, review desk, release lane, mission intake, and Agents handoff highlighting
 - `Overview`: latest summary cards and high-signal operational state
 - `History`: usage history trends and chart views
 - `Usage`: provider state, rolling limits, source share, and model breakdown

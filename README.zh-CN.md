@@ -31,8 +31,10 @@
 - 独立的 `Agents` 工作区，带按房间组织的二级导航、显式任务归属和 Mission Control 联动
 - 用像素风 `Virtual Office` 直观展示 active / waiting / blocked / idle agents
 - Working agents 会直接显示 repo-work / intake 来源，并在元数据足够时展示多 session 工作负载
+- Working agents 还会直接显示 `Mission Control` 映射状态，明确区分精确、部分和不可用，同时继续把任务真相留在 Mission Control
 - Idle 建议会同时参考本地 repo 计划和个人研究队列，并明确说明这只是建议而不是归属真相
 - 默认下半屏改成更简洁的协同摘要，只保留当前工作负载和下一步建议，而不是堆满分析栏
+- 当 Agents 上存在可信映射时，可以一键跳转到最相关的 `Mission Control` 面板
 - 在办公室视图里直接展示房间级任务归属、内联 mission queue，以及点击任务卡后聚焦归属房间
 - 共享的房间 / agent 详情抽屉，可查看任务路径、交接记录和关联交付物
 - 可直接在办公室抽屉内执行 Mission Control 任务动作
@@ -71,7 +73,7 @@
 - usage 报告：`workspace/memory/usage/*.md`
 - cron 任务：`cron/jobs.json`
 
-这意味着它仍然围绕你自己的 OpenClaw 本地数据运行，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供 Agents 办公室视图使用的归一化 `agents` 数据、显式的 `agents.workloads` / `agents.advisorySuggestions` 协同字段、供 operator surface 与验证共用的 `pressure` 生命周期数据、供图表使用的 `usage.history` 数据、用于 active 滚动窗口的 `usage.providerLimits`，以及用于已保存 provider profile 的 `usage.providerProfiles`。
+这意味着它仍然围绕你自己的 OpenClaw 本地数据运行，不需要额外自定义后端。JSON 快照也会通过 `/api/snapshot` 暴露出来，其中包含供 Agents 办公室视图使用的归一化 `agents` 数据、显式的 `agents.workloads` / `agents.advisorySuggestions` 协同字段、用于精确 / 部分 / 不可用 Mission Control 联动的 `agents.missionMapping` 元数据、供 operator surface 与验证共用的 `pressure` 生命周期数据、供图表使用的 `usage.history` 数据、用于 active 滚动窗口的 `usage.providerLimits`，以及用于已保存 provider profile 的 `usage.providerProfiles`。
 
 ## 快速开始
 
@@ -126,11 +128,14 @@ OPENCLAW_HOME=demo/openclaw-home MISSION_CONTROL_HOME=/tmp/openclaw-dashboard-de
 发布前需要确认：
 
 - `Agents` 页面能从内置 demo 数据中看出 repo-work 来源、`#intake` 研究来源，以及一个多 session 的 working agent case
+- `Agents` 页面在 demo 模式下还会展示一个精确、一个部分、一个不可用的 Mission Control 映射状态
 - Agents 默认下半屏会先展示 `Coordination brief`、`Active workloads` 和 `Advisory next moves`，而不是旧的分析型大面板
+- 精确和部分映射会暴露 `Mission Control` 跳转动作，而不可用映射会明确保持不可点击
 - Idle 建议会解释来源和排序原因，而且文案保持为建议而不是自动指派
 - `/api/snapshot` 在 `pressure.taskMetricsByTaskId` 和 `pressure.roomMetricsByRoomId` 下暴露出同一组生命周期状态
-- `/api/snapshot` 还会暴露 `agents.workloads`、`agents.advisorySuggestions` 和 `agents.coordinationHeadline`
+- `/api/snapshot` 还会暴露 `agents.workloads`、`agents.advisorySuggestions`、`agents.coordinationHeadline` 和 `agents.missionMapping`
 - `Mission Control` 页面只展示保留下来的个人研究 `TQ-XXX` 任务，并明确说明 repo-bound task system 已归档
+- 从 Agents 跳转到 Mission Control 后，会直接落到相关任务或队列上下文，不会暗示归属已经转移到 Agents
 - 内置 mission 注释能清楚说明 `TQ-091` 与 `TQ-101` 被保留，而 repo-bound 任务记录已被归档或移除
 - `.github/assets/` 中的 README 与预览截图全部来自内置 demo 数据，而不是本机真实数据
 - `package.json`、README 里的发布描述和 changelog 对 `1.4.0` 版本保持一致
@@ -151,8 +156,8 @@ pnpm check
 
 ## 当前页面
 
-- `Agents`：Virtual Office、带来源的 working roster、建议型 idle suggestions、简洁协同摘要、详情抽屉、办公室动作、压力轨道、Office Floor、Queues & handoffs、Recent activity
-- `Mission Control`：Active missions、Execution queue、Review desk、Release lane、Mission intake
+- `Agents`：Virtual Office、带来源的 working roster、Mission Control 映射状态、建议型 idle suggestions、简洁协同摘要、详情抽屉、办公室动作、压力轨道、Office Floor、Queues & handoffs、Recent activity
+- `Mission Control`：Active missions、Execution queue、Review desk、Release lane、Mission intake，以及来自 Agents 的高亮交接上下文
 - `Overview`：最新摘要卡片和高优先级运行状态
 - `History`：usage 历史趋势和图表视图
 - `Usage`：provider 状态、滚动限额、来源占比和模型明细
