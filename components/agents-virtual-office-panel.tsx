@@ -10,6 +10,7 @@ import type {
   AgentsSnapshot,
   AgentAdvisorySuggestionSnapshot,
   AgentActivitySnapshot,
+  AgentMissionMappingSnapshot,
   AgentRoomSnapshot,
   AgentSnapshot,
   AgentWorkloadSourceKind,
@@ -229,6 +230,16 @@ type AgentsVirtualOfficeMessages = {
   provenanceFallback: string;
   provenanceExact: string;
   provenancePartial: string;
+  mappingLabel: string;
+  mappingExact: string;
+  mappingPartial: string;
+  mappingUnavailable: string;
+  mappingExactHint: string;
+  mappingPartialHint: string;
+  mappingUnavailableHint: string;
+  mappingSystemRecord: string;
+  mappingAction: string;
+  mappingNoAction: string;
   advisoryLabel: string;
   advisoryReasonLabel: string;
   coordinationTitle: string;
@@ -695,6 +706,58 @@ const getWorkloadSourceLabel = (sourceKind: AgentWorkloadSourceKind, copy: Agent
 
 const getWorkloadConfidenceLabel = (confidence: "exact" | "partial", copy: AgentsVirtualOfficeMessages) =>
   confidence === "exact" ? copy.provenanceExact : copy.provenancePartial;
+
+const getMissionMappingStateLabel = (mapping: AgentMissionMappingSnapshot | undefined, copy: AgentsVirtualOfficeMessages) => {
+  switch (mapping?.state) {
+    case "exact":
+      return copy.mappingExact;
+    case "partial":
+      return copy.mappingPartial;
+    case "unavailable":
+    default:
+      return copy.mappingUnavailable;
+  }
+};
+
+const getMissionMappingHeadline = (mapping: AgentMissionMappingSnapshot | undefined, copy: AgentsVirtualOfficeMessages) => {
+  if (!mapping) return copy.mappingUnavailable;
+  return mapping.taskTitle || mapping.featureTitle || copy.mappingUnavailable;
+};
+
+const getMissionMappingHint = (mapping: AgentMissionMappingSnapshot | undefined, copy: AgentsVirtualOfficeMessages) => {
+  switch (mapping?.state) {
+    case "exact":
+      return copy.mappingExactHint;
+    case "partial":
+      return copy.mappingPartialHint;
+    case "unavailable":
+    default:
+      return copy.mappingUnavailableHint;
+  }
+};
+
+const getMissionMappingClassName = (mapping: AgentMissionMappingSnapshot | undefined) => {
+  const state = mapping?.state || "unavailable";
+  return `${state.charAt(0).toUpperCase()}${state.slice(1)}`;
+};
+
+const getMissionControlHref = (mapping: AgentMissionMappingSnapshot | undefined, locale: Locale) => {
+  if (!mapping?.destination) return null;
+
+  const search = new URLSearchParams();
+  if (locale === "zh") {
+    search.set("lang", "zh");
+  }
+  search.set("view", "mission-control");
+  search.set("panel", mapping.destination.panel);
+  search.set("missionMapping", mapping.state);
+  if (mapping.destination.taskId) search.set("missionTask", mapping.destination.taskId);
+  if (mapping.destination.featureId) search.set("missionFeature", mapping.destination.featureId);
+  if (mapping.destination.queue) search.set("missionQueue", mapping.destination.queue);
+  if (mapping.destination.lane) search.set("missionLane", mapping.destination.lane);
+
+  return `/?${search.toString()}`;
+};
 
 const sortByLoad = (left: AgentSnapshot, right: AgentSnapshot) => {
   const leftScore = STATUS_PRIORITY[left.status] * 100 + (left.queueCount || 0) * 12 + (left.utilization || 0);
@@ -1723,8 +1786,37 @@ export function AgentsVirtualOfficePanel({
         return copy.triageSuggestionFallback;
       case "none":
       default:
-        return copy.triageSuggestionNone;
+      return copy.triageSuggestionNone;
     }
+  };
+  const renderMissionMapping = (mapping: AgentMissionMappingSnapshot | undefined, compact = false) => {
+    const mappingHref = getMissionControlHref(mapping, locale);
+    const mappingReference = mapping?.taskId || mapping?.featureId;
+    const mappingClassName = getMissionMappingClassName(mapping);
+
+    return (
+      <div className={`missionMappingCard missionMappingCard${mappingClassName} ${compact ? "missionMappingCardCompact" : ""}`}>
+        <div className="missionMappingHead">
+          <span className="missionMappingLabel">{copy.mappingLabel}</span>
+          <span className={`missionMappingChip missionMappingChip${mappingClassName}`}>
+            {getMissionMappingStateLabel(mapping, copy)}
+          </span>
+        </div>
+        <strong className="missionMappingTitle">{getMissionMappingHeadline(mapping, copy)}</strong>
+        <p className="missionMappingCopy">{getMissionMappingHint(mapping, copy)}</p>
+        <div className="missionMappingMeta">
+          <span>{copy.mappingSystemRecord}</span>
+          {mappingReference ? <span>{mappingReference}</span> : null}
+        </div>
+        {mappingHref ? (
+          <a className="missionMappingAction" href={mappingHref}>
+            {copy.mappingAction}
+          </a>
+        ) : (
+          <span className="missionMappingAction missionMappingActionDisabled">{copy.mappingNoAction}</span>
+        )}
+      </div>
+    );
   };
   const getRoomTrendSummary = (
     metrics:
@@ -2195,13 +2287,11 @@ export function AgentsVirtualOfficePanel({
                           ) : null}
                         </div>
 
-                        {section.key === "working" && entry.agent.workloads?.[0] ? (
+                        {section.key === "working" ? (
                           <div className="virtualTriageCallout">
-                            <strong>{copy.provenanceLabel}</strong>
-                            <p>
-                              {entry.agent.workloads[0].title} · {getWorkloadSourceLabel(entry.agent.workloads[0].sourceKind, copy)}
-                            </p>
-                            <span>{getWorkloadConfidenceLabel(entry.agent.workloads[0].confidence, copy)}</span>
+                            <strong>{copy.mappingLabel}</strong>
+                            <p>{getMissionMappingHeadline(entry.agent.missionMapping, copy)}</p>
+                            <span>{getMissionMappingStateLabel(entry.agent.missionMapping, copy)}</span>
                           </div>
                         ) : null}
 
@@ -2303,26 +2393,31 @@ export function AgentsVirtualOfficePanel({
                 {activeWorkloadAgents.length ? (
                   <div className="virtualMissionList">
                     {activeWorkloadAgents.map((entry) => (
-                      <button
+                      <article
                         key={`active-workload:${entry.agent.id}`}
-                        type="button"
-                        className={`virtualMissionCard virtualMissionCardButton ${selectedAgent?.id === entry.agent.id ? "virtualDeskCardSelected" : ""}`}
-                        onClick={() => toggleAgentFocus(entry.agent)}
+                        className={`virtualMissionCard ${selectedAgent?.id === entry.agent.id ? "virtualDeskCardSelected" : ""}`}
                       >
-                        <div className="virtualMissionCardHead">
-                          <strong>{entry.agent.name}</strong>
-                          <span>{getWorkloadSourceLabel(entry.agent.workloads?.[0]?.sourceKind || "coordination", copy)}</span>
-                        </div>
-                        <p>{entry.agent.workloads?.[0]?.title || entry.taskLabel}</p>
-                        <p className="virtualMissionCardSummary">
-                          {entry.agent.workloads?.[0]?.summary || entry.agent.provenanceNote || copy.provenanceFallback}
-                        </p>
-                        <div className="virtualDeskCardMeta">
-                          <span>{copy.provenanceLabel}: {getWorkloadConfidenceLabel(entry.agent.workloads?.[0]?.confidence || "partial", copy)}</span>
-                          <span>{copy.missionOwnerRoom}: {entry.roomLabel}</span>
-                          <span>{entry.agent.workloads?.[0]?.threadLabel || entry.agent.workloads?.[0]?.channelLabel || common.na}</span>
-                        </div>
-                      </button>
+                        <button
+                          type="button"
+                          className="virtualMissionCardButton"
+                          onClick={() => toggleAgentFocus(entry.agent)}
+                        >
+                          <div className="virtualMissionCardHead">
+                            <strong>{entry.agent.name}</strong>
+                            <span>{getWorkloadSourceLabel(entry.agent.workloads?.[0]?.sourceKind || "coordination", copy)}</span>
+                          </div>
+                          <p>{entry.agent.workloads?.[0]?.title || entry.taskLabel}</p>
+                          <p className="virtualMissionCardSummary">
+                            {entry.agent.workloads?.[0]?.summary || entry.agent.provenanceNote || copy.provenanceFallback}
+                          </p>
+                          <div className="virtualDeskCardMeta">
+                            <span>{copy.provenanceLabel}: {getWorkloadConfidenceLabel(entry.agent.workloads?.[0]?.confidence || "partial", copy)}</span>
+                            <span>{copy.missionOwnerRoom}: {entry.roomLabel}</span>
+                            <span>{entry.agent.workloads?.[0]?.threadLabel || entry.agent.workloads?.[0]?.channelLabel || common.na}</span>
+                          </div>
+                        </button>
+                        {renderMissionMapping(entry.agent.missionMapping, true)}
+                      </article>
                     ))}
                   </div>
                 ) : (
@@ -2440,6 +2535,7 @@ export function AgentsVirtualOfficePanel({
                         </>
                       ) : null}
                     </dl>
+                    {selectedAgent ? renderMissionMapping(selectedAgent.missionMapping) : null}
                   </article>
 
                   <article className="virtualOfficeDrawerPanel">
@@ -2770,6 +2866,9 @@ export function AgentsVirtualOfficePanel({
                           {agent.workloads?.[0]
                             ? `${agent.workloads[0].title} · ${getWorkloadSourceLabel(agent.workloads[0].sourceKind, copy)}`
                             : agent.provenanceNote || copy.provenanceFallback}
+                        </p>
+                        <p className="virtualMissionCardSummary">
+                          {copy.mappingLabel}: {getMissionMappingStateLabel(agent.missionMapping, copy)} · {getMissionMappingHeadline(agent.missionMapping, copy)}
                         </p>
                         <div className="virtualDeskCardMeta">
                           <span>

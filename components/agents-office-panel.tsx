@@ -4,6 +4,7 @@ import { formatMessage, type Locale } from "@/lib/i18n";
 import type {
   AgentsSnapshot,
   AgentActivitySnapshot,
+  AgentMissionMappingSnapshot,
   AgentQueueSnapshot,
   AgentRoomSnapshot,
   AgentSnapshot,
@@ -79,6 +80,16 @@ type AgentsMessages = {
   roomOccupancy: string;
   provenanceLabel: string;
   provenanceFallback: string;
+  mappingLabel: string;
+  mappingExact: string;
+  mappingPartial: string;
+  mappingUnavailable: string;
+  mappingExactHint: string;
+  mappingPartialHint: string;
+  mappingUnavailableHint: string;
+  mappingSystemRecord: string;
+  mappingAction: string;
+  mappingNoAction: string;
   workloadSourceRepoWork: string;
   workloadSourcePersonalResearch: string;
   workloadSourceCoordination: string;
@@ -175,6 +186,53 @@ const getWorkloadSourceLabel = (sourceKind: AgentWorkloadSourceKind, copy: Agent
   }
 };
 
+const getMissionMappingStateLabel = (mapping: AgentMissionMappingSnapshot | undefined, copy: AgentsMessages) => {
+  switch (mapping?.state) {
+    case "exact":
+      return copy.mappingExact;
+    case "partial":
+      return copy.mappingPartial;
+    case "unavailable":
+    default:
+      return copy.mappingUnavailable;
+  }
+};
+
+const getMissionMappingHeadline = (mapping: AgentMissionMappingSnapshot | undefined, copy: AgentsMessages) => {
+  if (!mapping) return copy.mappingUnavailable;
+  return mapping.taskTitle || mapping.featureTitle || copy.mappingUnavailable;
+};
+
+const getMissionMappingHint = (mapping: AgentMissionMappingSnapshot | undefined, copy: AgentsMessages) => {
+  switch (mapping?.state) {
+    case "exact":
+      return copy.mappingExactHint;
+    case "partial":
+      return copy.mappingPartialHint;
+    case "unavailable":
+    default:
+      return copy.mappingUnavailableHint;
+  }
+};
+
+const getMissionControlHref = (mapping: AgentMissionMappingSnapshot | undefined, locale: Locale) => {
+  if (!mapping?.destination) return null;
+
+  const search = new URLSearchParams();
+  if (locale === "zh") {
+    search.set("lang", "zh");
+  }
+  search.set("view", "mission-control");
+  search.set("panel", mapping.destination.panel);
+  search.set("missionMapping", mapping.state);
+  if (mapping.destination.taskId) search.set("missionTask", mapping.destination.taskId);
+  if (mapping.destination.featureId) search.set("missionFeature", mapping.destination.featureId);
+  if (mapping.destination.queue) search.set("missionQueue", mapping.destination.queue);
+  if (mapping.destination.lane) search.set("missionLane", mapping.destination.lane);
+
+  return `/?${search.toString()}`;
+};
+
 const sortByLoad = (left: AgentSnapshot, right: AgentSnapshot) => {
   const leftScore = (left.status === "blocked" ? 300 : left.status === "active" ? 200 : 0) + (left.queueCount || 0) * 10;
   const rightScore =
@@ -212,6 +270,36 @@ export function AgentsOfficePanel({
   const updatedLabel = formatDateTimeLabel(parseTimestampMs(agents.updatedAt), locale, common.na);
   const latestEventLabel = formatDateTimeLabel(parseTimestampMs(recentEvents[0]?.at), locale, common.na);
   const floorStatusValue = blockedAgents.length > 0 ? copy.floorAttention : copy.floorHealthy;
+  const renderMissionMapping = (agent: AgentSnapshot) => {
+    const mapping = agent.missionMapping;
+    const mappingHref = getMissionControlHref(mapping, locale);
+    const mappingState = mapping?.state || "unavailable";
+    const mappingReference = mapping?.taskId || mapping?.featureId;
+
+    return (
+      <div className={`missionMappingCard missionMappingCard${mappingState.charAt(0).toUpperCase()}${mappingState.slice(1)}`}>
+        <div className="missionMappingHead">
+          <span className="missionMappingLabel">{copy.mappingLabel}</span>
+          <span className={`missionMappingChip missionMappingChip${mappingState.charAt(0).toUpperCase()}${mappingState.slice(1)}`}>
+            {getMissionMappingStateLabel(mapping, copy)}
+          </span>
+        </div>
+        <strong className="missionMappingTitle">{getMissionMappingHeadline(mapping, copy)}</strong>
+        <p className="missionMappingCopy">{getMissionMappingHint(mapping, copy)}</p>
+        <div className="missionMappingMeta">
+          <span>{copy.mappingSystemRecord}</span>
+          {mappingReference ? <span>{mappingReference}</span> : null}
+        </div>
+        {mappingHref ? (
+          <a className="missionMappingAction" href={mappingHref}>
+            {copy.mappingAction}
+          </a>
+        ) : (
+          <span className="missionMappingAction missionMappingActionDisabled">{copy.mappingNoAction}</span>
+        )}
+      </div>
+    );
+  };
 
   const summaryCards = [
     { label: copy.summaryAgents, value: String(onlineAgents.length) },
@@ -548,6 +636,7 @@ export function AgentsOfficePanel({
                           : agent.provenanceNote || copy.provenanceFallback}
                       </p>
                       {agent.workloads?.[0]?.sourceNote ? <p className="virtualMissionCardSummary">{agent.workloads[0].sourceNote}</p> : null}
+                      {renderMissionMapping(agent)}
 
                       <div className="agentDeskFacts">
                         <span>

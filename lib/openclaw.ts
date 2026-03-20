@@ -8,9 +8,17 @@ import {
   finalizeAgentsSnapshot,
   readAgentsSnapshot,
   type AgentAdvisorySuggestionSnapshot,
+  type AgentMissionMappingSnapshot,
+  type AgentSnapshot,
+  type AgentWorkloadSnapshot,
   type AgentsSnapshot
 } from "@/lib/agents";
-import { readMissionControlSnapshot, type MissionControlSnapshot } from "@/lib/mission-control";
+import {
+  readMissionControlSnapshot,
+  type MissionControlFeatureSnapshot,
+  type MissionControlSnapshot,
+  type MissionControlTaskSnapshot
+} from "@/lib/mission-control";
 import { buildPressureSignalsModel, type PressureSignalsModel } from "@/lib/pressure-signals";
 
 type TableRow = Record<string, string>;
@@ -1152,6 +1160,402 @@ const buildAdvisorySuggestions = async (
   return [...repoSuggestions, ...researchSuggestions];
 };
 
+const TASK_ID_PATTERN = /\bTQ-\d+\b/gi;
+const TEXT_TOKEN_STOP_WORDS = new Set([
+  "after",
+  "agent",
+  "agents",
+  "archive",
+  "build",
+  "desk",
+  "does",
+  "from",
+  "have",
+  "into",
+  "just",
+  "keep",
+  "lane",
+  "live",
+  "local",
+  "mission",
+  "notes",
+  "only",
+  "openclaw",
+  "repo",
+  "room",
+  "ship",
+  "show",
+  "stay",
+  "task",
+  "tasks",
+  "that",
+  "their",
+  "there",
+  "they",
+  "this",
+  "view",
+  "waiting",
+  "work",
+  "workload"
+]);
+
+const getMissionTaskDestination = (task: MissionControlTaskSnapshot): NonNullable<AgentMissionMappingSnapshot["destination"]> => {
+  const queue = task.status === "done" ? undefined : task.status;
+
+  if (task.status === "review") {
+    return {
+      panel: "reviews",
+      taskId: task.tqId,
+      featureId: task.featureId,
+      queue: "review",
+      lane: task.lane
+    };
+  }
+
+  if (task.lane === "release" || task.featureStatus === "ready-to-release") {
+    return {
+      panel: "release",
+      taskId: task.tqId,
+      featureId: task.featureId,
+      queue,
+      lane: task.lane
+    };
+  }
+
+  return {
+    panel: "queue",
+    taskId: task.tqId,
+    featureId: task.featureId,
+    queue,
+    lane: task.lane
+  };
+};
+
+const getMissionFeatureDestination = (
+  feature: MissionControlFeatureSnapshot
+): NonNullable<AgentMissionMappingSnapshot["destination"]> => ({
+  panel: feature.status === "ready-to-release" || feature.currentLane === "release" ? "release" : "missions",
+  featureId: feature.featureId,
+  lane: feature.currentLane
+});
+
+const normalizeSearchText = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+const tokenizeText = (value: string) =>
+  normalizeSearchText(value)
+    .split(/\s+/)
+    .filter((token) => token.length >= 3 && !TEXT_TOKEN_STOP_WORDS.has(token));
+
+const tokenizeTexts = (values: Array<string | undefined>) =>
+  new Set(values.flatMap((value) => (value ? tokenizeText(value) : [])));
+
+const countTokenOverlap = (left: Set<string>, right: Set<string>) => {
+  let overlap = 0;
+
+  for (const token of left) {
+    if (right.has(token)) overlap += 1;
+  }
+
+  return overlap;
+};
+
+const uniqueValues = (values: Array<string | undefined>) => [...new Set(values.filter((value): value is string => Boolean(value)))];
+
+const extractTaskIds = (values: Array<string | undefined>) => {
+  const taskIds = new Set<string>();
+
+  for (const value of values) {
+    if (!value) continue;
+    for (const match of value.matchAll(TASK_ID_PATTERN)) {
+      const taskId = match[0]?.toUpperCase();
+      if (taskId) taskIds.add(taskId);
+    }
+  }
+
+  return [...taskIds];
+};
+
+const getAgentWorkloadTexts = (workloads: AgentWorkloadSnapshot[] | undefined) =>
+  workloads?.flatMap((workload) =>
+    [workload.title, workload.summary, workload.taskLabel, workload.threadLabel, workload.channelLabel, workload.sourceNote].filter(Boolean)
+  ) || [];
+
+const getAgentEvidenceTexts = (agent: AgentSnapshot) => [
+  agent.currentTask,
+  agent.focus,
+  agent.provenanceNote,
+  ...getAgentWorkloadTexts(agent.workloads)
+];
+
+const getTaskSearchTokens = (task: MissionControlTaskSnapshot) =>
+  tokenizeTexts([
+    task.tqId,
+    task.title,
+    task.summary,
+    task.nextPlannedStep,
+    task.waitingOn,
+    task.blockedReason,
+    task.featureTitle,
+    task.repo
+  ]);
+
+const getFeatureSearchTokens = (feature: MissionControlFeatureSnapshot) =>
+  tokenizeTexts([feature.featureId, feature.title, feature.summary, feature.repo]);
+
+const getTaskRoomId = (task: MissionControlTaskSnapshot) => {
+  if (task.status === "review" || task.lane === "qa") return "review";
+  if (task.lane === "release") return "release";
+  if (task.lane === "build") return "build";
+  return "research";
+};
+
+const buildExactTaskMapping = (
+  task: MissionControlTaskSnapshot,
+  evidence: NonNullable<AgentMissionMappingSnapshot["evidence"]>,
+  sourceNote: string
+): AgentMissionMappingSnapshot => ({
+  state: "exact",
+  evidence,
+  taskId: task.tqId,
+  taskTitle: task.title,
+  featureId: task.featureId,
+  featureTitle: task.featureTitle,
+  lane: task.lane,
+  taskStatus: task.status,
+  featureStatus: task.featureStatus,
+  sourceNote,
+  destination: getMissionTaskDestination(task)
+});
+
+const buildPartialTaskMapping = (
+  task: MissionControlTaskSnapshot,
+  evidence: NonNullable<AgentMissionMappingSnapshot["evidence"]>,
+  sourceNote: string
+): AgentMissionMappingSnapshot => ({
+  state: "partial",
+  evidence,
+  taskId: task.tqId,
+  taskTitle: task.title,
+  featureId: task.featureId,
+  featureTitle: task.featureTitle,
+  lane: task.lane,
+  taskStatus: task.status,
+  featureStatus: task.featureStatus,
+  sourceNote,
+  destination: getMissionTaskDestination(task)
+});
+
+const buildPartialFeatureMapping = (
+  feature: MissionControlFeatureSnapshot,
+  sourceNote: string
+): AgentMissionMappingSnapshot => ({
+  state: "partial",
+  evidence: "feature-text",
+  featureId: feature.featureId,
+  featureTitle: feature.title,
+  lane: feature.currentLane,
+  featureStatus: feature.status,
+  sourceNote,
+  destination: getMissionFeatureDestination(feature)
+});
+
+const buildUnavailableMapping = (agent: AgentSnapshot, missionControlAvailable: boolean): AgentMissionMappingSnapshot => {
+  if (!missionControlAvailable) {
+    return {
+      state: "unavailable",
+      evidence: "none",
+      sourceNote: "Mission Control is unavailable, so Agents cannot resolve live mapping context right now."
+    };
+  }
+
+  const repoScopedWorkload = agent.workloads?.find((workload) => workload.repo === repoName);
+  return {
+    state: "unavailable",
+    evidence: "none",
+    sourceNote: repoScopedWorkload
+      ? "No trustworthy live Mission Control match is available for this repo-work desk right now."
+      : "No trustworthy live Mission Control match is available for this agent right now."
+  };
+};
+
+const scoreTaskCandidate = (
+  agent: AgentSnapshot,
+  agentTokens: Set<string>,
+  agentEvidenceText: string,
+  task: MissionControlTaskSnapshot
+) => {
+  let score = 0;
+  let evidence: NonNullable<AgentMissionMappingSnapshot["evidence"]> = "room-context";
+
+  if (task.ownerAgentId === agent.id) {
+    score += 5;
+    evidence = "owned-task";
+  }
+
+  if (task.ownerRoomId === agent.roomId || getTaskRoomId(task) === agent.roomId) {
+    score += 2;
+  }
+
+  if (agent.roomId === "review" && task.status === "review") {
+    score += 3;
+  }
+
+  if (agent.roomId === "build" && task.lane === "build") {
+    score += 2;
+  }
+
+  if (agent.status === "waiting" && task.status === "review") {
+    score += 1;
+  }
+
+  const lowerEvidenceText = agentEvidenceText.toLowerCase();
+  if (task.waitingOn && lowerEvidenceText.includes("human") && lowerEvidenceText.includes("confirm")) {
+    score += 2;
+  }
+
+  if (agent.workloads?.some((workload) => workload.repo && workload.repo === task.repo)) {
+    score += 2;
+  }
+
+  const overlap = countTokenOverlap(agentTokens, getTaskSearchTokens(task));
+  if (overlap > 0) {
+    score += Math.min(6, overlap);
+    evidence = "task-text";
+  }
+
+  return { score, evidence };
+};
+
+const scoreFeatureCandidate = (agent: AgentSnapshot, agentTokens: Set<string>, feature: MissionControlFeatureSnapshot) => {
+  let score = 0;
+
+  if (agent.workloads?.some((workload) => workload.repo && workload.repo === feature.repo)) {
+    score += 2;
+  }
+
+  if (agent.roomId === "release" && feature.currentLane === "release") {
+    score += 2;
+  }
+
+  if (agent.roomId === "research" && feature.currentLane === "research") {
+    score += 1;
+  }
+
+  const overlap = countTokenOverlap(agentTokens, getFeatureSearchTokens(feature));
+  if (overlap > 0) {
+    score += Math.min(5, overlap);
+  }
+
+  return score;
+};
+
+const buildMissionMappings = (agentsSnapshot: AgentsSnapshot, missionControl: MissionControlSnapshot) => {
+  const tasks = missionControl.features.flatMap((feature) => feature.tasks).filter((task) => task.status !== "done");
+  const taskById = new Map(tasks.map((task) => [task.tqId.toUpperCase(), task]));
+
+  return Object.fromEntries(
+    agentsSnapshot.agents.map((agent) => {
+      if (agent.missionMapping) {
+        return [agent.id, agent.missionMapping] as const;
+      }
+
+      if (!missionControl.available) {
+        return [agent.id, buildUnavailableMapping(agent, false)] as const;
+      }
+
+      const exactTaskIds = uniqueValues([
+        agent.currentTaskId?.toUpperCase(),
+        ...extractTaskIds([agent.currentTask, agent.focus]),
+        ...(agent.workloads
+          ?.map((workload) => workload.taskLabel?.toUpperCase())
+          .filter((taskLabel): taskLabel is string => Boolean(taskLabel && taskLabel.startsWith("TQ-"))) || [])
+      ]);
+
+      for (const taskId of exactTaskIds) {
+        const task = taskById.get(taskId);
+        if (!task) continue;
+
+        const evidence =
+          taskId === agent.currentTaskId?.toUpperCase() || extractTaskIds([agent.currentTask, agent.focus]).includes(taskId)
+            ? "current-task-id"
+            : "workload-task-label";
+        const sourceNote =
+          evidence === "current-task-id"
+            ? "Exact Mission Control task match from the agent's live task reference."
+            : "Exact Mission Control task match from workload metadata.";
+        return [agent.id, buildExactTaskMapping(task, evidence, sourceNote)] as const;
+      }
+
+      const ownedTasks = tasks.filter((task) => task.ownerAgentId === agent.id);
+      if (ownedTasks.length === 1) {
+        return [
+          agent.id,
+          buildExactTaskMapping(
+            ownedTasks[0],
+            "owned-task",
+            "Exact Mission Control task match from the only live task owned by this agent."
+          )
+        ] as const;
+      }
+
+      const historicalTaskIds = uniqueValues([agent.lastTaskId?.toUpperCase(), agent.nextTaskId?.toUpperCase()]);
+      for (const taskId of historicalTaskIds) {
+        const task = taskById.get(taskId);
+        if (!task) continue;
+        return [
+          agent.id,
+          buildPartialTaskMapping(
+            task,
+            "last-task-id",
+            "Closest Mission Control context comes from a previous task reference, not a live current task id."
+          )
+        ] as const;
+      }
+
+      const agentEvidenceTexts = getAgentEvidenceTexts(agent);
+      const agentEvidenceText = agentEvidenceTexts.join(" ");
+      const agentTokens = tokenizeTexts(agentEvidenceTexts);
+
+      const bestTaskMatch = tasks
+        .map((task) => {
+          const scored = scoreTaskCandidate(agent, agentTokens, agentEvidenceText, task);
+          return { task, ...scored };
+        })
+        .sort((left, right) => right.score - left.score)[0];
+
+      if (bestTaskMatch && bestTaskMatch.score >= 5) {
+        const sourceNote =
+          bestTaskMatch.evidence === "owned-task"
+            ? "Mission Control found nearby owned task context for this agent, but the current desk still lacks an exact live task id."
+            : bestTaskMatch.evidence === "room-context"
+              ? "Mission Control found nearby queue context for this room, but the current desk still lacks an exact live task id."
+              : "Mission Control found nearby live task context that matches the agent workload text, but the link remains advisory.";
+
+        return [agent.id, buildPartialTaskMapping(bestTaskMatch.task, bestTaskMatch.evidence, sourceNote)] as const;
+      }
+
+      const bestFeatureMatch = missionControl.features
+        .map((feature) => ({
+          feature,
+          score: scoreFeatureCandidate(agent, agentTokens, feature)
+        }))
+        .sort((left, right) => right.score - left.score)[0];
+
+      if (bestFeatureMatch && bestFeatureMatch.score >= 4) {
+        return [
+          agent.id,
+          buildPartialFeatureMapping(
+            bestFeatureMatch.feature,
+            "Mission Control found nearby feature context that matches the agent workload text, but the link remains advisory."
+          )
+        ] as const;
+      }
+
+      return [agent.id, buildUnavailableMapping(agent, true)] as const;
+    })
+  );
+};
+
 const getLiveUsageBreakdown = async (
   openclawHome: ResolvedOpenClawHome
 ): Promise<LiveUsageBreakdown | null> => {
@@ -1585,10 +1989,12 @@ export const getDashboardSnapshot = async (): Promise<DashboardSnapshot> => {
   const baseAgents = await readAgentsSnapshot(openclawHome);
   const missionControl = await readMissionControlSnapshot();
   const advisorySuggestions = await buildAdvisorySuggestions(missionControl);
+  const missionMappings = buildMissionMappings(baseAgents, missionControl);
   const agents = finalizeAgentsSnapshot(baseAgents, {
     advisorySuggestions,
+    missionMappings,
     coordinationHeadline:
-      "Live workloads show repo-work and intake-research provenance when available. Suggestions stay advisory and never recreate archived repo-task ownership."
+      "Mission Control links now read as exact, partial, or unavailable from the Agents snapshot itself, while Mission Control remains the ownership source of truth."
   });
 
   return {

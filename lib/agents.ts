@@ -9,6 +9,18 @@ export type AgentQueueTone = "default" | "active" | "warning";
 export type AgentActivityTone = "default" | "warning" | "success";
 export type AgentWorkloadSourceKind = "repo-work" | "personal-research" | "coordination" | "support";
 export type AgentWorkloadConfidence = "exact" | "partial";
+export type AgentMissionMappingState = "exact" | "partial" | "unavailable";
+export type AgentMissionMappingEvidence =
+  | "current-task-id"
+  | "workload-task-label"
+  | "owned-task"
+  | "last-task-id"
+  | "task-text"
+  | "feature-text"
+  | "room-context"
+  | "none";
+export type AgentMissionMappingPanel = "missions" | "queue" | "reviews" | "release";
+export type AgentMissionMappingQueue = "ready" | "running" | "review" | "blocked";
 
 export type AgentRoomSnapshot = {
   id: string;
@@ -67,6 +79,28 @@ export type AgentAdvisorySuggestionSnapshot = {
   sourceLabel: string;
 };
 
+export type AgentMissionMappingDestination = {
+  panel: AgentMissionMappingPanel;
+  taskId?: string;
+  featureId?: string;
+  queue?: AgentMissionMappingQueue;
+  lane?: string;
+};
+
+export type AgentMissionMappingSnapshot = {
+  state: AgentMissionMappingState;
+  evidence?: AgentMissionMappingEvidence;
+  taskId?: string;
+  taskTitle?: string;
+  featureId?: string;
+  featureTitle?: string;
+  lane?: string;
+  taskStatus?: string;
+  featureStatus?: string;
+  sourceNote?: string;
+  destination?: AgentMissionMappingDestination;
+};
+
 export type AgentSnapshot = {
   id: string;
   name: string;
@@ -88,6 +122,7 @@ export type AgentSnapshot = {
   latestToolName?: string;
   workloads?: AgentWorkloadSnapshot[];
   provenanceNote?: string;
+  missionMapping?: AgentMissionMappingSnapshot;
 };
 
 export type AgentsSnapshot = {
@@ -327,6 +362,57 @@ const normalizeWorkloadConfidence = (value?: string): AgentWorkloadConfidence | 
   switch (value) {
     case "exact":
     case "partial":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeMissionMappingState = (value?: string): AgentMissionMappingState | undefined => {
+  switch (value) {
+    case "exact":
+    case "partial":
+    case "unavailable":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeMissionMappingEvidence = (value?: string): AgentMissionMappingEvidence | undefined => {
+  switch (value) {
+    case "current-task-id":
+    case "workload-task-label":
+    case "owned-task":
+    case "last-task-id":
+    case "task-text":
+    case "feature-text":
+    case "room-context":
+    case "none":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeMissionMappingPanel = (value?: string): AgentMissionMappingPanel | undefined => {
+  switch (value) {
+    case "missions":
+    case "queue":
+    case "reviews":
+    case "release":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeMissionMappingQueue = (value?: string): AgentMissionMappingQueue | undefined => {
+  switch (value) {
+    case "ready":
+    case "running":
+    case "review":
+    case "blocked":
       return value;
     default:
       return undefined;
@@ -603,6 +689,37 @@ const normalizeAdvisorySuggestion = (value: unknown, fallbackId: string): AgentA
   };
 };
 
+const normalizeMissionMapping = (value: unknown): AgentMissionMappingSnapshot | null => {
+  const entry = asObject(value);
+  const state = normalizeMissionMappingState(asString(entry?.state));
+  if (!state) return null;
+
+  const destination = asObject(entry?.destination);
+  const panel = normalizeMissionMappingPanel(asString(destination?.panel));
+
+  return {
+    state,
+    evidence: normalizeMissionMappingEvidence(asString(entry?.evidence)),
+    taskId: asString(entry?.taskId),
+    taskTitle: asString(entry?.taskTitle),
+    featureId: asString(entry?.featureId),
+    featureTitle: asString(entry?.featureTitle),
+    lane: asString(entry?.lane),
+    taskStatus: asString(entry?.taskStatus),
+    featureStatus: asString(entry?.featureStatus),
+    sourceNote: asString(entry?.sourceNote),
+    destination: panel
+      ? {
+          panel,
+          taskId: asString(destination?.taskId),
+          featureId: asString(destination?.featureId),
+          queue: normalizeMissionMappingQueue(asString(destination?.queue)),
+          lane: asString(destination?.lane)
+        }
+      : undefined
+  };
+};
+
 const deriveFallbackWorkloads = (agent: AgentSnapshot): AgentWorkloadSnapshot[] | undefined => {
   if (agent.workloads?.length || agent.status === "idle" || agent.status === "offline") return agent.workloads;
 
@@ -642,6 +759,7 @@ export const finalizeAgentsSnapshot = (
   options?: {
     advisorySuggestions?: AgentAdvisorySuggestionSnapshot[];
     coordinationHeadline?: string;
+    missionMappings?: Record<string, AgentMissionMappingSnapshot>;
     notes?: string[];
   }
 ): AgentsSnapshot => {
@@ -654,7 +772,8 @@ export const finalizeAgentsSnapshot = (
         agent.provenanceNote ||
         (workloads?.some((workload) => workload.confidence === "partial")
           ? "Showing a partial provenance view until richer session metadata is available."
-          : undefined)
+          : undefined),
+      missionMapping: agent.missionMapping || options?.missionMappings?.[agent.id]
     };
   });
 
@@ -733,7 +852,8 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
                 .map((workload, index) => normalizeWorkload(workload, `${agentId}:workload:${index + 1}`))
                 .filter((workload): workload is AgentWorkloadSnapshot => Boolean(workload))
             : undefined,
-          provenanceNote: asString(entry?.provenanceNote)
+          provenanceNote: asString(entry?.provenanceNote),
+          missionMapping: normalizeMissionMapping(entry?.missionMapping) || undefined
         });
       }
     }

@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { AgentsOfficePanel } from "@/components/agents-office-panel";
 import { AgentsVirtualOfficePanel } from "@/components/agents-virtual-office-panel";
 import { LiveRefresh } from "@/components/live-refresh";
-import { MissionControlPanel } from "@/components/mission-control-panel";
+import { MissionControlPanel, type MissionControlHandoff } from "@/components/mission-control-panel";
 import { SectionShell } from "@/components/section-shell";
 import { ProviderLimitWindows } from "@/components/provider-limit-windows";
 import { UsageHistoryPanel } from "@/components/usage-history-panel";
@@ -63,8 +63,26 @@ const DASHBOARD_PANELS: Record<DashboardView, DashboardPanel[]> = {
 
 type HomePageProps = {
   searchParams?:
-    | Promise<{ lang?: string; view?: string; panel?: string }>
-    | { lang?: string; view?: string; panel?: string };
+    | Promise<{
+        lang?: string;
+        view?: string;
+        panel?: string;
+        missionTask?: string;
+        missionFeature?: string;
+        missionQueue?: string;
+        missionLane?: string;
+        missionMapping?: string;
+      }>
+    | {
+        lang?: string;
+        view?: string;
+        panel?: string;
+        missionTask?: string;
+        missionFeature?: string;
+        missionQueue?: string;
+        missionLane?: string;
+        missionMapping?: string;
+      };
 };
 
 const resolveView = (raw?: string): DashboardView =>
@@ -550,6 +568,41 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const contextualSummary = contextualSummaryByView[activeView];
   const contextualFacts = contextualFactsByView[activeView];
   const historyFocus = activePanel === "requests" ? "requests" : activePanel === "tokens" ? "tokens" : "all";
+  const missionQueue: MissionControlHandoff["queue"] =
+    params?.missionQueue === "ready"
+      ? "ready"
+      : params?.missionQueue === "running"
+        ? "running"
+        : params?.missionQueue === "review"
+          ? "review"
+          : params?.missionQueue === "blocked"
+            ? "blocked"
+            : undefined;
+  const missionLane: MissionControlHandoff["lane"] =
+    params?.missionLane === "research"
+      ? "research"
+      : params?.missionLane === "build"
+        ? "build"
+        : params?.missionLane === "qa"
+          ? "qa"
+          : params?.missionLane === "release"
+            ? "release"
+            : undefined;
+  const missionMappingState: MissionControlHandoff["mapping"] =
+    params?.missionMapping === "exact"
+      ? "exact"
+      : params?.missionMapping === "partial"
+        ? "partial"
+        : params?.missionMapping === "unavailable"
+          ? "unavailable"
+          : undefined;
+  const missionHandoff: MissionControlHandoff = {
+    taskId: params?.missionTask?.trim() || undefined,
+    featureId: params?.missionFeature?.trim() || undefined,
+    queue: missionQueue,
+    lane: missionLane,
+    mapping: missionMappingState
+  };
 
   const providerRosterContent = providerRoster.length ? (
     <div className="providerRoster" aria-label={t.hero.providerMetaLabel}>
@@ -796,6 +849,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           copy={t.missionControl}
           common={t.common}
           focus={missionFocus}
+          handoff={missionHandoff}
         />
       );
     }

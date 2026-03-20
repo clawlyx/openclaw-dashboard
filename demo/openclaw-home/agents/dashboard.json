@@ -1,7 +1,7 @@
 {
   "officeName": "OpenClaw Studio",
   "updatedAt": "2026-03-15T13:30:15.281Z",
-  "coordinationHeadline": "Phase 10 demo data shows exact repo-work and intake provenance, plus advisory next steps sourced from repo plans and personal research.",
+  "coordinationHeadline": "Demo data now shows exact, partial, and unavailable Mission Control mapping states alongside the Phase 10 provenance and advisory context.",
   "rooms": [
     {
       "id": "dispatch",
@@ -35,8 +35,8 @@
       "role": "Dispatcher",
       "roomId": "dispatch",
       "status": "active",
-      "currentTask": "Keeping the post-archive office summary coherent after repo-task retirement.",
-      "focus": "Archive boundary",
+      "currentTask": "Coordinating the concierge research review handoff without moving ownership out of Mission Control.",
+      "focus": "Mission handoff",
       "model": "openai/gpt-5",
       "queueCount": 3,
       "sessionCount": 44,
@@ -57,7 +57,26 @@
           "channelLabel": "Dispatch",
           "sourceNote": "Derived from the live execution thread metadata."
         }
-      ]
+      ],
+      "missionMapping": {
+        "state": "partial",
+        "evidence": "room-context",
+        "taskId": "TQ-101",
+        "taskTitle": "Research concierge archive notes",
+        "featureId": "F-0004-concierge-research-notebook",
+        "featureTitle": "Concierge research notebook",
+        "lane": "research",
+        "taskStatus": "review",
+        "featureStatus": "researching",
+        "sourceNote": "Dispatch only has nearby review-queue context from Mission Control; there is no exact live task id attached to this desk.",
+        "destination": {
+          "panel": "reviews",
+          "taskId": "TQ-101",
+          "featureId": "F-0004-concierge-research-notebook",
+          "queue": "review",
+          "lane": "research"
+        }
+      }
     },
     {
       "id": "intake-agent",
@@ -105,7 +124,26 @@
           "taskLabel": "TQ-101",
           "sourceNote": "Sourced from intake-thread session metadata."
         }
-      ]
+      ],
+      "missionMapping": {
+        "state": "exact",
+        "evidence": "current-task-id",
+        "taskId": "TQ-101",
+        "taskTitle": "Research concierge archive notes",
+        "featureId": "F-0004-concierge-research-notebook",
+        "featureTitle": "Concierge research notebook",
+        "lane": "research",
+        "taskStatus": "review",
+        "featureStatus": "researching",
+        "sourceNote": "Exact Mission Control task match from the agent's live task reference.",
+        "destination": {
+          "panel": "reviews",
+          "taskId": "TQ-101",
+          "featureId": "F-0004-concierge-research-notebook",
+          "queue": "review",
+          "lane": "research"
+        }
+      }
     },
     {
       "id": "product-agent",
@@ -164,7 +202,12 @@
           "taskLabel": "10-03",
           "sourceNote": "Second active coding session mapped from the same repo-work surface."
         }
-      ]
+      ],
+      "missionMapping": {
+        "state": "unavailable",
+        "evidence": "none",
+        "sourceNote": "No trustworthy live Mission Control match is available for this repo-work desk right now."
+      }
     },
     {
       "id": "local-agent",

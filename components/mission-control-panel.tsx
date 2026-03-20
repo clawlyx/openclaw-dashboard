@@ -117,6 +117,24 @@ type MissionControlMessages = {
   actionBlock: string;
   actionUpdating: string;
   actionError: string;
+  handoffTitle: string;
+  handoffFromAgents: string;
+  handoffExact: string;
+  handoffPartial: string;
+  handoffUnavailable: string;
+  handoffExactHint: string;
+  handoffPartialHint: string;
+  handoffUnavailableHint: string;
+  handoffTask: string;
+  handoffFeature: string;
+};
+
+export type MissionControlHandoff = {
+  taskId?: string;
+  featureId?: string;
+  queue?: "ready" | "running" | "review" | "blocked";
+  lane?: "research" | "build" | "qa" | "release";
+  mapping?: "exact" | "partial" | "unavailable";
 };
 
 type MissionControlPanelProps = {
@@ -128,6 +146,7 @@ type MissionControlPanelProps = {
     na: string;
   };
   focus: "missions" | "queue" | "reviews" | "release";
+  handoff?: MissionControlHandoff;
 };
 
 const labelLane = (lane: MissionControlTaskLane, copy: MissionControlMessages) => {
@@ -194,23 +213,52 @@ const labelDeliveryMode = (mode: MissionControlDeliveryMode, copy: MissionContro
   }
 };
 
+const labelHandoffState = (state: MissionControlHandoff["mapping"], copy: MissionControlMessages) => {
+  switch (state) {
+    case "exact":
+      return copy.handoffExact;
+    case "partial":
+      return copy.handoffPartial;
+    case "unavailable":
+    default:
+      return copy.handoffUnavailable;
+  }
+};
+
+const getHandoffHint = (state: MissionControlHandoff["mapping"], copy: MissionControlMessages) => {
+  switch (state) {
+    case "exact":
+      return copy.handoffExactHint;
+    case "partial":
+      return copy.handoffPartialHint;
+    case "unavailable":
+    default:
+      return copy.handoffUnavailableHint;
+  }
+};
+
 const TaskCard = ({
   task,
   copy,
   common,
   locale,
-  mutationMode
+  mutationMode,
+  highlighted = false
 }: {
   task: MissionControlTaskSnapshot;
   copy: MissionControlMessages;
   common: { na: string };
   locale: Locale;
   mutationMode: "local" | "remote";
+  highlighted?: boolean;
 }) => (
-  <article className="missionTaskCard">
+  <article className={`missionTaskCard ${highlighted ? "missionTaskCardHighlighted" : ""}`}>
     <div className="missionTaskTop">
       <span className="missionTiny">{task.tqId}</span>
-      <span className={`missionBadge missionBadgeStatus missionStatus-${task.status}`}>{labelTaskStatus(task.status, copy)}</span>
+      <div className="missionBadgeRow missionBadgeRowTight">
+        {highlighted ? <span className="missionBadge missionBadgeAccent">{copy.handoffFromAgents}</span> : null}
+        <span className={`missionBadge missionBadgeStatus missionStatus-${task.status}`}>{labelTaskStatus(task.status, copy)}</span>
+      </div>
     </div>
     <strong className="missionTaskTitle">{task.title}</strong>
     <p className="missionTaskSummary">{task.summary || common.na}</p>
@@ -232,7 +280,8 @@ const QueueColumn = ({
   copy,
   common,
   locale,
-  mutationMode
+  mutationMode,
+  highlightedTaskId
 }: {
   title: string;
   tasks: MissionControlTaskSnapshot[];
@@ -240,6 +289,7 @@ const QueueColumn = ({
   common: { na: string };
   locale: Locale;
   mutationMode: "local" | "remote";
+  highlightedTaskId?: string;
 }) => (
   <article className="missionLaneCard">
     <div className="missionLaneHead">
@@ -249,7 +299,15 @@ const QueueColumn = ({
     {tasks.length ? (
       <div className="missionLaneList">
         {tasks.map((task) => (
-          <TaskCard key={task.tqId} task={task} copy={copy} common={common} locale={locale} mutationMode={mutationMode} />
+          <TaskCard
+            key={task.tqId}
+            task={task}
+            copy={copy}
+            common={common}
+            locale={locale}
+            mutationMode={mutationMode}
+            highlighted={highlightedTaskId === task.tqId}
+          />
         ))}
       </div>
     ) : (
@@ -265,27 +323,32 @@ const FeatureCard = ({
   copy,
   common,
   locale,
-  compact = false
+  compact = false,
+  highlighted = false
 }: {
   feature: MissionControlFeatureSnapshot;
   copy: MissionControlMessages;
   common: { na: string };
   locale: Locale;
   compact?: boolean;
+  highlighted?: boolean;
 }) => {
   const openTaskCount = feature.tasks.filter((task) => task.status !== "done").length;
   const latestTask = feature.tasks[0];
 
   return (
-    <article className={`missionFeatureCard ${compact ? "missionFeatureCardCompact" : ""}`}>
+    <article className={`missionFeatureCard ${compact ? "missionFeatureCardCompact" : ""} ${highlighted ? "missionFeatureCardHighlighted" : ""}`}>
       <div className="missionFeatureHead">
         <div>
           <p className="missionTiny">{feature.featureId}</p>
           <h3>{feature.title}</h3>
         </div>
-        <span className={`missionBadge missionBadgeFeature missionFeature-${feature.status}`}>
-          {labelFeatureStatus(feature.status, copy)}
-        </span>
+        <div className="missionBadgeRow missionBadgeRowTight">
+          {highlighted ? <span className="missionBadge missionBadgeAccent">{copy.handoffFromAgents}</span> : null}
+          <span className={`missionBadge missionBadgeFeature missionFeature-${feature.status}`}>
+            {labelFeatureStatus(feature.status, copy)}
+          </span>
+        </div>
       </div>
 
       <p className="missionFeatureSummary">{feature.summary || common.na}</p>
@@ -357,7 +420,7 @@ const FeatureCard = ({
   );
 };
 
-export function MissionControlPanel({ id, missionControl, locale, copy, common, focus }: MissionControlPanelProps) {
+export function MissionControlPanel({ id, missionControl, locale, copy, common, focus, handoff }: MissionControlPanelProps) {
   const workerLabel = missionControl.worker.connected ? copy.workerConnected : copy.workerDisconnected;
   const workerHint = missionControl.worker.lastHeartbeatAt
     ? copy.workerHint.replace("{value}", formatDateTimeLabel(Date.parse(missionControl.worker.lastHeartbeatAt), locale, common.na))
@@ -391,6 +454,36 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
     { label: copy.summaryIdeas, value: String(missionControl.stats.awaitingIdeas) },
     { label: copy.summaryRepos, value: String(missionControl.stats.repos) }
   ];
+  const allTasks = missionControl.features.flatMap((feature) => feature.tasks);
+  const handoffTask = handoff?.taskId ? allTasks.find((task) => task.tqId === handoff.taskId) || null : null;
+  const handoffFeature =
+    (handoff?.featureId ? missionControl.features.find((feature) => feature.featureId === handoff.featureId) || null : null) ||
+    (handoffTask ? missionControl.features.find((feature) => feature.featureId === handoffTask.featureId) || null : null);
+  const handoffActive = Boolean(
+    handoff?.mapping || handoff?.taskId || handoff?.featureId || handoff?.queue || handoff?.lane
+  );
+  const handoffState = handoff?.mapping || (handoffTask || handoffFeature ? "partial" : "unavailable");
+  const handoffBanner = handoffActive ? (
+    <div className={`missionHandoffBanner missionHandoffBanner${handoffState.charAt(0).toUpperCase()}${handoffState.slice(1)}`}>
+      <div className="missionHandoffHead">
+        <div>
+          <p className="eyebrow">{copy.handoffTitle}</p>
+          <strong>{copy.handoffFromAgents}</strong>
+        </div>
+        <span className="missionBadge missionBadgeAccent">{labelHandoffState(handoffState, copy)}</span>
+      </div>
+      {handoffTask ? (
+        <p className="missionHandoffCopy">
+          {copy.handoffTask}: <strong>{handoffTask.title}</strong>
+        </p>
+      ) : handoffFeature ? (
+        <p className="missionHandoffCopy">
+          {copy.handoffFeature}: <strong>{handoffFeature.title}</strong>
+        </p>
+      ) : null}
+      <p className="missionHandoffCopy">{getHandoffHint(handoffState, copy)}</p>
+    </div>
+  ) : null;
 
   if (focus === "queue") {
     return (
@@ -404,6 +497,8 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
           ))}
         </div>
 
+        {handoffBanner}
+
         <div className="missionLaneGrid">
           <QueueColumn
             title={copy.queueReady}
@@ -412,6 +507,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
             common={common}
             locale={locale}
             mutationMode={mutationMode}
+            highlightedTaskId={handoffTask?.tqId}
           />
           <QueueColumn
             title={copy.queueRunning}
@@ -420,6 +516,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
             common={common}
             locale={locale}
             mutationMode={mutationMode}
+            highlightedTaskId={handoffTask?.tqId}
           />
           <QueueColumn
             title={copy.queueReview}
@@ -428,6 +525,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
             common={common}
             locale={locale}
             mutationMode={mutationMode}
+            highlightedTaskId={handoffTask?.tqId}
           />
           <QueueColumn
             title={copy.queueBlocked}
@@ -436,6 +534,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
             common={common}
             locale={locale}
             mutationMode={mutationMode}
+            highlightedTaskId={handoffTask?.tqId}
           />
         </div>
       </SectionShell>
@@ -445,6 +544,8 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
   if (focus === "reviews") {
     return (
       <SectionShell id={id} eyebrow={copy.section} title={copy.reviewTitle} description={copy.reviewDescription}>
+        {handoffBanner}
+
         <div className="missionReviewGrid">
           <article className="missionReviewCard">
             <div className="missionLaneHead">
@@ -478,7 +579,15 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
             {missionControl.review.featuresAwaitingPr.length ? (
               <div className="missionReviewStack">
                 {missionControl.review.featuresAwaitingPr.map((feature) => (
-                  <FeatureCard key={feature.featureId} feature={feature} copy={copy} common={common} locale={locale} compact />
+                  <FeatureCard
+                    key={feature.featureId}
+                    feature={feature}
+                    copy={copy}
+                    common={common}
+                    locale={locale}
+                    compact
+                    highlighted={handoffFeature?.featureId === feature.featureId}
+                  />
                 ))}
               </div>
             ) : (
@@ -496,7 +605,15 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
             {missionControl.review.featuresAwaitingMerge.length ? (
               <div className="missionReviewStack">
                 {missionControl.review.featuresAwaitingMerge.map((feature) => (
-                  <FeatureCard key={feature.featureId} feature={feature} copy={copy} common={common} locale={locale} compact />
+                  <FeatureCard
+                    key={feature.featureId}
+                    feature={feature}
+                    copy={copy}
+                    common={common}
+                    locale={locale}
+                    compact
+                    highlighted={handoffFeature?.featureId === feature.featureId}
+                  />
                 ))}
               </div>
             ) : (
@@ -521,6 +638,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
                     common={common}
                     locale={locale}
                     mutationMode={mutationMode}
+                    highlighted={handoffTask?.tqId === task.tqId}
                   />
                 ))}
               </div>
@@ -559,10 +677,19 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
           ))}
         </div>
 
+        {handoffBanner}
+
         {releaseFeatures.length ? (
           <div className="missionFeatureStack">
             {releaseFeatures.map((feature) => (
-              <FeatureCard key={feature.featureId} feature={feature} copy={copy} common={common} locale={locale} />
+              <FeatureCard
+                key={feature.featureId}
+                feature={feature}
+                copy={copy}
+                common={common}
+                locale={locale}
+                highlighted={handoffFeature?.featureId === feature.featureId}
+              />
             ))}
           </div>
         ) : (
@@ -585,10 +712,19 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
         ))}
       </div>
 
+      {handoffBanner}
+
       <div className="missionOverviewGrid">
         <div className="missionFeatureStack">
           {missionControl.features.map((feature) => (
-            <FeatureCard key={feature.featureId} feature={feature} copy={copy} common={common} locale={locale} />
+            <FeatureCard
+              key={feature.featureId}
+              feature={feature}
+              copy={copy}
+              common={common}
+              locale={locale}
+              highlighted={handoffFeature?.featureId === feature.featureId}
+            />
           ))}
         </div>
 
