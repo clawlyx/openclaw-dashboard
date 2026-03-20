@@ -72,6 +72,8 @@ type HomePageProps = {
         missionQueue?: string;
         missionLane?: string;
         missionMapping?: string;
+        missionGroup?: string;
+        missionAgent?: string;
       }>
     | {
         lang?: string;
@@ -82,6 +84,8 @@ type HomePageProps = {
         missionQueue?: string;
         missionLane?: string;
         missionMapping?: string;
+        missionGroup?: string;
+        missionAgent?: string;
       };
 };
 
@@ -139,6 +143,15 @@ const formatMissionLaneLabel = (lane: "research" | "build" | "qa" | "release", c
       return copy.laneRelease;
   }
 };
+
+const resolveMissionQueue = (value?: string): MissionControlHandoff["queue"] =>
+  value === "ready" || value === "running" || value === "review" || value === "blocked" ? value : undefined;
+
+const resolveMissionLane = (value?: string): MissionControlHandoff["lane"] =>
+  value === "research" || value === "build" || value === "qa" || value === "release" ? value : undefined;
+
+const resolveMissionMapping = (value?: string): MissionControlHandoff["mapping"] =>
+  value === "exact" || value === "partial" || value === "unavailable" ? value : undefined;
 
 export async function generateMetadata({ searchParams }: HomePageProps): Promise<Metadata> {
   const params = searchParams ? await searchParams : undefined;
@@ -568,40 +581,80 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const contextualSummary = contextualSummaryByView[activeView];
   const contextualFacts = contextualFactsByView[activeView];
   const historyFocus = activePanel === "requests" ? "requests" : activePanel === "tokens" ? "tokens" : "all";
-  const missionQueue: MissionControlHandoff["queue"] =
-    params?.missionQueue === "ready"
-      ? "ready"
-      : params?.missionQueue === "running"
-        ? "running"
-        : params?.missionQueue === "review"
-          ? "review"
-          : params?.missionQueue === "blocked"
-            ? "blocked"
-            : undefined;
-  const missionLane: MissionControlHandoff["lane"] =
-    params?.missionLane === "research"
-      ? "research"
-      : params?.missionLane === "build"
-        ? "build"
-        : params?.missionLane === "qa"
-          ? "qa"
-          : params?.missionLane === "release"
-            ? "release"
-            : undefined;
-  const missionMappingState: MissionControlHandoff["mapping"] =
-    params?.missionMapping === "exact"
-      ? "exact"
-      : params?.missionMapping === "partial"
-        ? "partial"
-        : params?.missionMapping === "unavailable"
-          ? "unavailable"
-          : undefined;
+  const overlapGroups = agents.overlapGroups || [];
+  const agentById = new Map(agents.agents.map((agent) => [agent.id, agent] as const));
+  const roomLabelById = new Map(agents.rooms.map((room) => [room.id, room.label] as const));
+  const overlapGroupById = new Map(overlapGroups.map((group) => [group.id, group] as const));
+  const requestedAgentId = params?.missionAgent?.trim().toLowerCase();
+  const requestedGroupId = params?.missionGroup?.trim();
+  const missionAgent = requestedAgentId ? agentById.get(requestedAgentId) : undefined;
+  const missionGroup =
+    (requestedGroupId ? overlapGroupById.get(requestedGroupId) : undefined) ||
+    (missionAgent?.coordination?.primaryGroupId ? overlapGroupById.get(missionAgent.coordination.primaryGroupId) : undefined) ||
+    overlapGroups.find(
+      (group) =>
+        group.taskId === params?.missionTask?.trim() ||
+        group.featureId === params?.missionFeature?.trim()
+    );
+  const missionCoordinationPriority =
+    missionAgent?.coordination?.priority ||
+    missionGroup?.priority ||
+    (missionAgent?.coordination?.handoff?.state === "stalled"
+      ? "intervene"
+      : missionAgent?.coordination?.handoff?.state === "active"
+        ? "watch"
+        : undefined);
+  const missionCoordinationHandoff = missionAgent?.coordination?.handoff;
+  const missionQueue =
+    resolveMissionQueue(params?.missionQueue) ||
+    resolveMissionQueue(missionCoordinationHandoff?.nextQueue) ||
+    resolveMissionQueue(missionGroup?.destination?.queue);
+  const missionLane =
+    resolveMissionLane(params?.missionLane) ||
+    resolveMissionLane(missionCoordinationHandoff?.nextLane) ||
+    resolveMissionLane(missionGroup?.lane) ||
+    resolveMissionLane(missionGroup?.destination?.lane);
+  const missionMappingState =
+    resolveMissionMapping(params?.missionMapping) ||
+    resolveMissionMapping(missionAgent?.missionMapping?.state);
   const missionHandoff: MissionControlHandoff = {
-    taskId: params?.missionTask?.trim() || undefined,
-    featureId: params?.missionFeature?.trim() || undefined,
+    taskId: params?.missionTask?.trim() || missionCoordinationHandoff?.taskId || missionGroup?.taskId || undefined,
+    featureId: params?.missionFeature?.trim() || missionCoordinationHandoff?.featureId || missionGroup?.featureId || undefined,
     queue: missionQueue,
     lane: missionLane,
-    mapping: missionMappingState
+    mapping: missionMappingState,
+    coordination:
+      missionAgent || missionGroup || missionCoordinationHandoff
+        ? {
+            agentId: missionAgent?.id,
+            agentName: missionAgent?.name,
+            priority: missionCoordinationPriority,
+            group: missionGroup
+              ? {
+                  id: missionGroup.id,
+                  label: missionGroup.label,
+                  state: missionGroup.state,
+                  priority: missionGroup.priority,
+                  peerAgentNames: missionGroup.agentIds
+                    .filter((agentId) => agentId !== missionAgent?.id)
+                    .map((agentId) => agentById.get(agentId)?.name || agentId),
+                  evidence: missionGroup.evidence
+                }
+              : undefined,
+            handoff: missionCoordinationHandoff
+              ? {
+                  state: missionCoordinationHandoff.state,
+                  lastAgentName: missionCoordinationHandoff.lastAgentName,
+                  nextAgentName: missionCoordinationHandoff.nextAgentName,
+                  nextRoomLabel: missionCoordinationHandoff.nextRoomId
+                    ? roomLabelById.get(missionCoordinationHandoff.nextRoomId) || missionCoordinationHandoff.nextRoomId
+                    : undefined,
+                  nextLane: resolveMissionLane(missionCoordinationHandoff.nextLane),
+                  nextQueue: resolveMissionQueue(missionCoordinationHandoff.nextQueue)
+                }
+              : undefined
+          }
+        : undefined
   };
 
   const providerRosterContent = providerRoster.length ? (

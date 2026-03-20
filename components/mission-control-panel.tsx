@@ -1,5 +1,6 @@
 import { formatDateTimeLabel } from "@/lib/dashboard-presenters";
 import type { Locale } from "@/lib/i18n";
+import type { AgentCoordinationPriority, AgentHandoffState, AgentOverlapEvidence, AgentOverlapState } from "@/lib/agents";
 import type {
   MissionControlDeliveryMode,
   MissionControlFeatureSnapshot,
@@ -127,6 +128,50 @@ type MissionControlMessages = {
   handoffUnavailableHint: string;
   handoffTask: string;
   handoffFeature: string;
+  coordinationTitle: string;
+  coordinationFocusAgent: string;
+  coordinationParallel: string;
+  coordinationAmbiguous: string;
+  coordinationPriority: string;
+  coordinationPriorityRoutine: string;
+  coordinationPriorityWatch: string;
+  coordinationPriorityIntervene: string;
+  coordinationSharedWith: string;
+  coordinationEvidence: string;
+  coordinationEvidenceSharedTask: string;
+  coordinationEvidenceSharedFeature: string;
+  coordinationEvidenceSharedThread: string;
+  coordinationEvidenceSharedRepo: string;
+  coordinationEvidenceExactMapping: string;
+  coordinationEvidencePartialMapping: string;
+  coordinationEvidenceRoomSplit: string;
+  coordinationEvidenceSameRoom: string;
+  coordinationEvidenceUnknownOwner: string;
+  coordinationLastAgent: string;
+  coordinationNext: string;
+  coordinationTruthHint: string;
+};
+
+export type MissionControlCoordinationFocus = {
+  agentId?: string;
+  agentName?: string;
+  priority?: AgentCoordinationPriority;
+  group?: {
+    id: string;
+    label: string;
+    state: AgentOverlapState;
+    priority: AgentCoordinationPriority;
+    peerAgentNames: string[];
+    evidence: AgentOverlapEvidence[];
+  };
+  handoff?: {
+    state: AgentHandoffState;
+    lastAgentName?: string;
+    nextAgentName?: string;
+    nextRoomLabel?: string;
+    nextLane?: MissionControlTaskLane;
+    nextQueue?: "ready" | "running" | "review" | "blocked";
+  };
 };
 
 export type MissionControlHandoff = {
@@ -135,6 +180,7 @@ export type MissionControlHandoff = {
   queue?: "ready" | "running" | "review" | "blocked";
   lane?: "research" | "build" | "qa" | "release";
   mapping?: "exact" | "partial" | "unavailable";
+  coordination?: MissionControlCoordinationFocus;
 };
 
 type MissionControlPanelProps = {
@@ -177,6 +223,19 @@ const labelTaskStatus = (status: MissionControlTaskStatus, copy: MissionControlM
   }
 };
 
+const labelQueue = (queue: NonNullable<MissionControlHandoff["queue"]>, copy: MissionControlMessages) => {
+  switch (queue) {
+    case "ready":
+      return copy.queueReady;
+    case "running":
+      return copy.queueRunning;
+    case "review":
+      return copy.queueReview;
+    case "blocked":
+      return copy.queueBlocked;
+  }
+};
+
 const labelFeatureStatus = (status: MissionControlFeatureStatus, copy: MissionControlMessages) => {
   switch (status) {
     case "intake":
@@ -213,6 +272,51 @@ const labelDeliveryMode = (mode: MissionControlDeliveryMode, copy: MissionContro
   }
 };
 
+const labelCoordinationState = (state: AgentOverlapState, copy: MissionControlMessages) =>
+  state === "parallel" ? copy.coordinationParallel : copy.coordinationAmbiguous;
+
+const labelCoordinationPriority = (priority: AgentCoordinationPriority | undefined, copy: MissionControlMessages) => {
+  switch (priority) {
+    case "intervene":
+      return copy.coordinationPriorityIntervene;
+    case "watch":
+      return copy.coordinationPriorityWatch;
+    case "routine":
+    default:
+      return copy.coordinationPriorityRoutine;
+  }
+};
+
+const labelCoordinationEvidence = (evidence: AgentOverlapEvidence, copy: MissionControlMessages) => {
+  switch (evidence) {
+    case "shared-task":
+      return copy.coordinationEvidenceSharedTask;
+    case "shared-feature":
+      return copy.coordinationEvidenceSharedFeature;
+    case "shared-thread":
+      return copy.coordinationEvidenceSharedThread;
+    case "shared-repo":
+      return copy.coordinationEvidenceSharedRepo;
+    case "exact-mapping":
+      return copy.coordinationEvidenceExactMapping;
+    case "partial-mapping":
+      return copy.coordinationEvidencePartialMapping;
+    case "room-split":
+      return copy.coordinationEvidenceRoomSplit;
+    case "same-room":
+      return copy.coordinationEvidenceSameRoom;
+    case "unknown-owner":
+    default:
+      return copy.coordinationEvidenceUnknownOwner;
+  }
+};
+
+const getCoordinationBannerTone = (coordination: MissionControlCoordinationFocus | undefined) => {
+  if (coordination?.priority === "intervene" || coordination?.handoff?.state === "stalled") return "Intervene";
+  if (coordination?.priority === "watch" || coordination?.handoff?.state === "active") return "Watch";
+  return "Routine";
+};
+
 const labelHandoffState = (state: MissionControlHandoff["mapping"], copy: MissionControlMessages) => {
   switch (state) {
     case "exact":
@@ -235,6 +339,17 @@ const getHandoffHint = (state: MissionControlHandoff["mapping"], copy: MissionCo
     default:
       return copy.handoffUnavailableHint;
   }
+};
+
+const getNextCoordinationTarget = (
+  handoff: NonNullable<MissionControlCoordinationFocus["handoff"]>,
+  copy: MissionControlMessages
+) => {
+  if (handoff.nextAgentName) return handoff.nextAgentName;
+  if (handoff.nextRoomLabel) return handoff.nextRoomLabel;
+  if (handoff.nextLane) return labelLane(handoff.nextLane, copy);
+  if (handoff.nextQueue) return labelQueue(handoff.nextQueue, copy);
+  return undefined;
 };
 
 const TaskCard = ({
@@ -459,19 +574,50 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
   const handoffFeature =
     (handoff?.featureId ? missionControl.features.find((feature) => feature.featureId === handoff.featureId) || null : null) ||
     (handoffTask ? missionControl.features.find((feature) => feature.featureId === handoffTask.featureId) || null : null);
+  const coordination = handoff?.coordination;
   const handoffActive = Boolean(
-    handoff?.mapping || handoff?.taskId || handoff?.featureId || handoff?.queue || handoff?.lane
+    handoff?.mapping || handoff?.taskId || handoff?.featureId || handoff?.queue || handoff?.lane || coordination
   );
   const handoffState = handoff?.mapping || (handoffTask || handoffFeature ? "partial" : "unavailable");
+  const coordinationTone = getCoordinationBannerTone(coordination);
+  const coordinationEvidence = coordination?.group?.evidence.map((evidence) => labelCoordinationEvidence(evidence, copy)) || [];
+  const nextCoordinationTarget = coordination?.handoff ? getNextCoordinationTarget(coordination.handoff, copy) : undefined;
   const handoffBanner = handoffActive ? (
-    <div className={`missionHandoffBanner missionHandoffBanner${handoffState.charAt(0).toUpperCase()}${handoffState.slice(1)}`}>
+    <div
+      className={`missionHandoffBanner missionHandoffBanner${handoffState.charAt(0).toUpperCase()}${handoffState.slice(1)} missionHandoffBanner${coordinationTone}`}
+    >
       <div className="missionHandoffHead">
         <div>
-          <p className="eyebrow">{copy.handoffTitle}</p>
+          <p className="eyebrow">{coordination ? copy.coordinationTitle : copy.handoffTitle}</p>
           <strong>{copy.handoffFromAgents}</strong>
         </div>
-        <span className="missionBadge missionBadgeAccent">{labelHandoffState(handoffState, copy)}</span>
+        <div className="missionBadgeRow missionBadgeRowTight">
+          <span className="missionBadge missionBadgeAccent">{labelHandoffState(handoffState, copy)}</span>
+          {coordination?.group ? (
+            <span className={`missionBadge ${coordination.group.state === "ambiguous" ? "missionStatus-blocked" : "missionStatus-running"}`}>
+              {labelCoordinationState(coordination.group.state, copy)}
+            </span>
+          ) : null}
+          {coordination?.priority ? (
+            <span
+              className={`missionBadge ${
+                coordination.priority === "intervene"
+                  ? "missionStatus-blocked"
+                  : coordination.priority === "watch"
+                    ? "missionStatus-review"
+                    : "missionStatus-ready"
+              }`}
+            >
+              {copy.coordinationPriority}: {labelCoordinationPriority(coordination.priority, copy)}
+            </span>
+          ) : null}
+        </div>
       </div>
+      {coordination?.agentName ? (
+        <p className="missionHandoffCopy">
+          {copy.coordinationFocusAgent}: <strong>{coordination.agentName}</strong>
+        </p>
+      ) : null}
       {handoffTask ? (
         <p className="missionHandoffCopy">
           {copy.handoffTask}: <strong>{handoffTask.title}</strong>
@@ -481,7 +627,24 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
           {copy.handoffFeature}: <strong>{handoffFeature.title}</strong>
         </p>
       ) : null}
+      {coordination?.group?.peerAgentNames.length ? (
+        <p className="missionHandoffCopy">
+          {copy.coordinationSharedWith}: <strong>{coordination.group.peerAgentNames.join(", ")}</strong>
+        </p>
+      ) : null}
+      {coordinationEvidence.length ? (
+        <p className="missionHandoffCopy">
+          {copy.coordinationEvidence}: <strong>{coordinationEvidence.join(" · ")}</strong>
+        </p>
+      ) : null}
+      {coordination?.handoff ? (
+        <p className="missionHandoffCopy">
+          {copy.coordinationLastAgent}: <strong>{coordination.handoff.lastAgentName || common.na}</strong> · {copy.coordinationNext}:{" "}
+          <strong>{nextCoordinationTarget || common.na}</strong>
+        </p>
+      ) : null}
       <p className="missionHandoffCopy">{getHandoffHint(handoffState, copy)}</p>
+      {coordination ? <p className="missionHandoffCopy">{copy.coordinationTruthHint}</p> : null}
     </div>
   ) : null;
 

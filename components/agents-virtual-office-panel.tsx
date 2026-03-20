@@ -841,7 +841,11 @@ const getHandoffStateLabel = (handoff: AgentHandoffSnapshot | undefined, copy: A
   }
 };
 
-const getMissionControlHref = (mapping: AgentMissionMappingSnapshot | undefined, locale: Locale) => {
+const getMissionControlHref = (
+  mapping: AgentMissionMappingSnapshot | undefined,
+  locale: Locale,
+  options?: { agentId?: string; groupId?: string }
+) => {
   if (!mapping?.destination) return null;
 
   const search = new URLSearchParams();
@@ -855,6 +859,8 @@ const getMissionControlHref = (mapping: AgentMissionMappingSnapshot | undefined,
   if (mapping.destination.featureId) search.set("missionFeature", mapping.destination.featureId);
   if (mapping.destination.queue) search.set("missionQueue", mapping.destination.queue);
   if (mapping.destination.lane) search.set("missionLane", mapping.destination.lane);
+  if (options?.agentId) search.set("missionAgent", options.agentId);
+  if (options?.groupId) search.set("missionGroup", options.groupId);
 
   return `/?${search.toString()}`;
 };
@@ -1917,8 +1923,12 @@ export function AgentsVirtualOfficePanel({
       return copy.triageSuggestionNone;
     }
   };
-  const renderMissionMapping = (mapping: AgentMissionMappingSnapshot | undefined, compact = false) => {
-    const mappingHref = getMissionControlHref(mapping, locale);
+  const renderMissionMapping = (agent: AgentSnapshot, compact = false) => {
+    const mapping = agent.missionMapping;
+    const mappingHref = getMissionControlHref(mapping, locale, {
+      agentId: agent.id,
+      groupId: agent.coordination?.primaryGroupId
+    });
     const mappingReference = mapping?.taskId || mapping?.featureId;
     const mappingClassName = getMissionMappingClassName(mapping);
 
@@ -2606,7 +2616,7 @@ export function AgentsVirtualOfficePanel({
                           </div>
                         </button>
                         {renderCoordinationSnippet(entry.agent, true)}
-                        {renderMissionMapping(entry.agent.missionMapping, true)}
+                        {renderMissionMapping(entry.agent, true)}
                       </article>
                     ))}
                   </div>
@@ -2725,7 +2735,7 @@ export function AgentsVirtualOfficePanel({
                         </>
                       ) : null}
                     </dl>
-                    {selectedAgent ? renderMissionMapping(selectedAgent.missionMapping) : null}
+                    {selectedAgent ? renderMissionMapping(selectedAgent) : null}
                     {selectedAgent ? renderCoordinationSnippet(selectedAgent) : null}
                   </article>
 
