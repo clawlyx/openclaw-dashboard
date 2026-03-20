@@ -14,9 +14,9 @@
 
 ### Overlap and Handoffs
 
-- [ ] **HAND-01**: Operator can see when multiple agents are serving the same mission or closely related work so intentional parallelism and accidental overlap are distinguishable.
-- [ ] **HAND-02**: Operator can see recent handoff state for active work, including the last agent involved and the expected next owner or lane when that data exists.
-- [ ] **HAND-03**: Operator can tell when overlap or handoff ambiguity needs intervention more urgently than routine parallel work.
+- [x] **HAND-01**: Operator can see when multiple agents are serving the same mission or closely related work so intentional parallelism and accidental overlap are distinguishable.
+- [x] **HAND-02**: Operator can see recent handoff state for active work, including the last agent involved and the expected next owner or lane when that data exists.
+- [x] **HAND-03**: Operator can tell when overlap or handoff ambiguity needs intervention more urgently than routine parallel work.
 
 ### Operator Next Actions
 
@@ -57,9 +57,9 @@
 | MAP-01 | Phase 11 | Complete |
 | MAP-02 | Phase 11 | Complete |
 | MAP-03 | Phase 11 | Complete |
-| HAND-01 | Phase 12 | Pending |
-| HAND-02 | Phase 12 | Pending |
-| HAND-03 | Phase 12 | Pending |
+| HAND-01 | Phase 12 | Complete |
+| HAND-02 | Phase 12 | Complete |
+| HAND-03 | Phase 12 | Complete |
 | NEXT-01 | Phase 13 | Pending |
 | NEXT-02 | Phase 13 | Pending |
 | NEXT-03 | Phase 13 | Pending |
@@ -71,4 +71,4 @@
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-17 after Phase 11 completion*
+*Last updated: 2026-03-19 after Phase 12 completion*

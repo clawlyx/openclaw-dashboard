@@ -4,7 +4,7 @@
 
 **Version:** `v1.5.0`
 **Name:** `Coordination Clarity`
-**Status:** In progress as of 2026-03-17
+**Status:** In progress as of 2026-03-19
 **Phases:** `11-13`
 **Requirements:** `9`
 
@@ -17,7 +17,7 @@
 | Phase | Name | Goal | Requirements | Success Criteria |
 |-------|------|------|--------------|------------------|
 | 11 | Mission-to-Agent Mapping Clarity | Operators can anchor working agents to the right Mission Control task context and move between surfaces without ownership confusion | MAP-01, MAP-02, MAP-03 | Complete 2026-03-17 |
-| 12 | Overlap and Handoff Visibility | Distinguish healthy parallel work from coordination ambiguity and expose active handoff state | HAND-01, HAND-02, HAND-03 | 4 |
+| 12 | Overlap and Handoff Visibility | Distinguish healthy parallel work from coordination ambiguity and expose active handoff state | HAND-01, HAND-02, HAND-03 | Complete 2026-03-19 |
 | 13 | Default Coordination Guidance | Make the next trustworthy operator action obvious from the default Agents scan path | NEXT-01, NEXT-02, NEXT-03 | 4 |
 
 ## Phases
@@ -72,4 +72,4 @@ Success criteria:
 
 ## Next Step
 
-Run `$gsd-plan-phase 12` to start execution planning for `v1.5.0 Coordination Clarity`.
+Run `$gsd-plan-phase 13` to continue `v1.5.0 Coordination Clarity`.
