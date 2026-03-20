@@ -4,7 +4,11 @@ import { formatMessage, type Locale } from "@/lib/i18n";
 import type {
   AgentsSnapshot,
   AgentActivitySnapshot,
+  AgentCoordinationPriority,
+  AgentHandoffSnapshot,
   AgentMissionMappingSnapshot,
+  AgentOverlapEvidence,
+  AgentOverlapGroupSnapshot,
   AgentQueueSnapshot,
   AgentRoomSnapshot,
   AgentSnapshot,
@@ -90,6 +94,29 @@ type AgentsMessages = {
   mappingSystemRecord: string;
   mappingAction: string;
   mappingNoAction: string;
+  coordinationStatusLabel: string;
+  coordinationParallel: string;
+  coordinationAmbiguous: string;
+  coordinationPriorityLabel: string;
+  coordinationPriorityRoutine: string;
+  coordinationPriorityWatch: string;
+  coordinationPriorityIntervene: string;
+  coordinationSharedWith: string;
+  coordinationEvidenceLabel: string;
+  coordinationEvidenceSharedTask: string;
+  coordinationEvidenceSharedFeature: string;
+  coordinationEvidenceSharedThread: string;
+  coordinationEvidenceSharedRepo: string;
+  coordinationEvidenceExactMapping: string;
+  coordinationEvidencePartialMapping: string;
+  coordinationEvidenceRoomSplit: string;
+  coordinationEvidenceSameRoom: string;
+  coordinationEvidenceUnknownOwner: string;
+  handoffActive: string;
+  handoffStalled: string;
+  handoffUnknown: string;
+  handoffLastAgent: string;
+  handoffNext: string;
   workloadSourceRepoWork: string;
   workloadSourcePersonalResearch: string;
   workloadSourceCoordination: string;
@@ -215,6 +242,62 @@ const getMissionMappingHint = (mapping: AgentMissionMappingSnapshot | undefined,
   }
 };
 
+const getCoordinationPriorityClassName = (priority: AgentCoordinationPriority | undefined) => {
+  const resolved = priority || "routine";
+  return `${resolved.charAt(0).toUpperCase()}${resolved.slice(1)}`;
+};
+
+const getCoordinationPriorityLabel = (priority: AgentCoordinationPriority | undefined, copy: AgentsMessages) => {
+  switch (priority) {
+    case "intervene":
+      return copy.coordinationPriorityIntervene;
+    case "watch":
+      return copy.coordinationPriorityWatch;
+    case "routine":
+    default:
+      return copy.coordinationPriorityRoutine;
+  }
+};
+
+const getCoordinationStateLabel = (group: AgentOverlapGroupSnapshot | undefined, copy: AgentsMessages) =>
+  group?.state === "parallel" ? copy.coordinationParallel : copy.coordinationAmbiguous;
+
+const getCoordinationEvidenceLabel = (evidence: AgentOverlapEvidence, copy: AgentsMessages) => {
+  switch (evidence) {
+    case "shared-task":
+      return copy.coordinationEvidenceSharedTask;
+    case "shared-feature":
+      return copy.coordinationEvidenceSharedFeature;
+    case "shared-thread":
+      return copy.coordinationEvidenceSharedThread;
+    case "shared-repo":
+      return copy.coordinationEvidenceSharedRepo;
+    case "exact-mapping":
+      return copy.coordinationEvidenceExactMapping;
+    case "partial-mapping":
+      return copy.coordinationEvidencePartialMapping;
+    case "room-split":
+      return copy.coordinationEvidenceRoomSplit;
+    case "same-room":
+      return copy.coordinationEvidenceSameRoom;
+    case "unknown-owner":
+    default:
+      return copy.coordinationEvidenceUnknownOwner;
+  }
+};
+
+const getHandoffStateLabel = (handoff: AgentHandoffSnapshot | undefined, copy: AgentsMessages) => {
+  switch (handoff?.state) {
+    case "active":
+      return copy.handoffActive;
+    case "stalled":
+      return copy.handoffStalled;
+    case "unknown":
+    default:
+      return copy.handoffUnknown;
+  }
+};
+
 const getMissionControlHref = (mapping: AgentMissionMappingSnapshot | undefined, locale: Locale) => {
   if (!mapping?.destination) return null;
 
@@ -270,6 +353,9 @@ export function AgentsOfficePanel({
   const updatedLabel = formatDateTimeLabel(parseTimestampMs(agents.updatedAt), locale, common.na);
   const latestEventLabel = formatDateTimeLabel(parseTimestampMs(recentEvents[0]?.at), locale, common.na);
   const floorStatusValue = blockedAgents.length > 0 ? copy.floorAttention : copy.floorHealthy;
+  const agentNameById = new Map(agents.agents.map((agent) => [agent.id, agent.name] as const));
+  const roomLabelById = new Map(agents.rooms.map((room) => [room.id, room.label] as const));
+  const overlapGroupById = new Map((agents.overlapGroups || []).map((group) => [group.id, group] as const));
   const renderMissionMapping = (agent: AgentSnapshot) => {
     const mapping = agent.missionMapping;
     const mappingHref = getMissionControlHref(mapping, locale);
@@ -297,6 +383,64 @@ export function AgentsOfficePanel({
         ) : (
           <span className="missionMappingAction missionMappingActionDisabled">{copy.mappingNoAction}</span>
         )}
+      </div>
+    );
+  };
+  const renderCoordinationSnippet = (agent: AgentSnapshot) => {
+    const coordination = agent.coordination;
+    const group = coordination?.primaryGroupId ? overlapGroupById.get(coordination.primaryGroupId) : undefined;
+    const handoff = coordination?.handoff;
+
+    if (!group && !handoff) return null;
+
+    const peerNames = group
+      ? group.agentIds
+          .filter((agentId) => agentId !== agent.id)
+          .map((agentId) => agentNameById.get(agentId) || agentId)
+          .filter(Boolean)
+      : [];
+    const evidenceLabels = group?.evidence.map((evidence) => getCoordinationEvidenceLabel(evidence, copy)) || [];
+    const nextTarget = handoff?.nextAgentName || (handoff?.nextRoomId ? roomLabelById.get(handoff.nextRoomId) || handoff.nextRoomId : undefined);
+    const priorityClassName = getCoordinationPriorityClassName(coordination?.priority);
+
+    return (
+      <div className={`coordinationSnippet coordinationSnippet${priorityClassName}`}>
+        <div className="coordinationSnippetHead">
+          {group ? (
+            <span className={`coordinationSnippetBadge coordinationSnippetBadge${group.state === "parallel" ? "Parallel" : "Ambiguous"}`}>
+              {getCoordinationStateLabel(group, copy)}
+            </span>
+          ) : null}
+          <span className={`coordinationSnippetBadge coordinationSnippetBadge${priorityClassName}`}>
+            {getCoordinationPriorityLabel(coordination?.priority, copy)}
+          </span>
+          {handoff ? (
+            <span className={`coordinationSnippetBadge coordinationSnippetBadge${handoff.state === "active" ? "Watch" : handoff.state === "stalled" ? "Intervene" : "Routine"}`}>
+              {getHandoffStateLabel(handoff, copy)}
+            </span>
+          ) : null}
+        </div>
+        {group ? <p className="coordinationSnippetTitle">{group.taskTitle || group.featureTitle || group.label}</p> : null}
+        {group && peerNames.length ? (
+          <p className="coordinationSnippetCopy">
+            {copy.coordinationSharedWith}: {peerNames.join(", ")}
+          </p>
+        ) : null}
+        {group && evidenceLabels.length ? (
+          <p className="coordinationSnippetCopy">
+            {copy.coordinationEvidenceLabel}: {evidenceLabels.join(" · ")}
+          </p>
+        ) : null}
+        {handoff ? (
+          <div className="coordinationSnippetMeta">
+            <span>
+              {copy.handoffLastAgent}: {handoff.lastAgentName || common.na}
+            </span>
+            <span>
+              {copy.handoffNext}: {nextTarget || common.na}
+            </span>
+          </div>
+        ) : null}
       </div>
     );
   };
@@ -619,7 +763,10 @@ export function AgentsOfficePanel({
               {roomAgents.length ? (
                 <div className="agentDeskGrid">
                   {roomAgents.map((agent) => (
-                    <article key={agent.id} className={`agentDesk ${statusClass[agent.status]}`}>
+                    <article
+                      key={agent.id}
+                      className={`agentDesk ${statusClass[agent.status]} coordinationCard${getCoordinationPriorityClassName(agent.coordination?.priority)}`}
+                    >
                       <div className="agentDeskTop">
                         <span className="agentDeskStatus">{getStatusLabel(agent.status, copy)}</span>
                         <span className="agentDeskQueue">
@@ -636,6 +783,7 @@ export function AgentsOfficePanel({
                           : agent.provenanceNote || copy.provenanceFallback}
                       </p>
                       {agent.workloads?.[0]?.sourceNote ? <p className="virtualMissionCardSummary">{agent.workloads[0].sourceNote}</p> : null}
+                      {renderCoordinationSnippet(agent)}
                       {renderMissionMapping(agent)}
 
                       <div className="agentDeskFacts">
