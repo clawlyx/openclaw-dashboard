@@ -19,6 +19,7 @@ Phases 9 and 10 now define the operator contract. This checklist proves:
 - idle suggestions stay advisory while drawing from both repo plans and personal research
 - the default lower-half Agents surface is concise and action-oriented
 - exact and partial Agents mappings can hand off into the closest relevant Mission Control context
+- healthy parallel work, risky overlap, and active handoff state stay consistent between Agents and Mission Control
 
 ## Verification flow
 
@@ -79,7 +80,19 @@ Phases 9 and 10 now define the operator contract. This checklist proves:
   - advisory cards explain source and ranking reason
   - the language stays suggestive and does not imply automatic staffing or restored ownership
 
-9. Confirm API behavior for local archive mutations and retired remote mutation paths.
+9. Confirm Phase 12 overlap and handoff clarity.
+- URL:
+  - `/?view=agents&panel=virtual`
+- Expected:
+  - the bundled demo shows one healthy shared-work group for `TQ-101`
+  - the bundled demo shows one overlap risk on the shared `openclaw-dashboard` thread between `Coding Agent` and `Build Agent`
+  - the bundled demo shows an active handoff on `TQ-101` with `Last agent: Research Agent` and `Next: QA Agent`
+  - the default Agents scan path labels routine parallel work separately from intervention-needed overlap
+  - opening the `Research Agent` Mission Control handoff carries `missionAgent=research-agent` and `missionGroup=task:TQ-101`
+  - the Mission Control landing banner repeats the focus agent, shared-work peers, evidence, and handoff summary while stating that Mission Control still owns task truth
+  - opening a direct Mission Control URL such as `/?view=mission-control&panel=queue&missionAgent=build-agent&missionGroup=thread:openclaw-dashboard:openclaw-discord-bridge` shows fallback overlap context with `Priority: Intervene`
+
+10. Confirm API behavior for local archive mutations and retired remote mutation paths.
 - Commands:
   - Start from a writable local archive state (not the bundled sample): `rm -rf /tmp/openclaw-dashboard-local && OPENCLAW_HOME=demo/openclaw-home MISSION_CONTROL_HOME=/tmp/openclaw-dashboard-local pnpm dev`
   - Seed a local task: `curl -s -X POST http://localhost:3000/api/mission-control/intake -H 'content-type: application/json' -d '{"title":"Test","details":"Archive check"}' > /tmp/openclaw-intake.json`
@@ -98,5 +111,6 @@ The shipped operator contract is valid when:
 - only intentional personal research `TQ-XXX` items remain visible in the surviving archive queue
 - Agents shows repo-work and intake provenance without guessing from room labels alone
 - Agents shows exact / partial / unavailable Mission Control mapping states and only links to Mission Control when the destination is trustworthy
+- Agents and Mission Control both reflect healthy parallel work, risky overlap, and recent handoff state without creating a third coordination workspace
 - advisory next moves remain non-owning and explain why they are being suggested
 - the concise coordination layer reduces the default scan path without hiding the pressure rail or detailed drawer

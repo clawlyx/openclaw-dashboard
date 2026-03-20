@@ -71,6 +71,15 @@
 - Mission Control should explain when a landing is partial fallback context instead of an exact task match
 - repo-bound execution work may remain visible as provenance in Agents even when Mission Control has no trustworthy live mapping for it
 
+## Phase 12 Coordination Reflection Contract
+
+- `agents.overlapGroups` describes active shared-work clusters that look either intentional (`parallel`) or risky (`ambiguous`)
+- `agents[].coordination` carries per-agent priority plus recent handoff context when the snapshot has trustworthy evidence
+- exact and partial Agents handoff URLs may add `missionAgent` and `missionGroup` so Mission Control can recover the same coordination focus
+- Mission Control may render that focus as banner context, but it must continue to treat Mission Control task data as the ownership truth
+- overlap cases with no exact Mission Control task must stay explicit fallback context rather than implying a hidden match
+- intervention-needed overlap should read as higher priority than routine parallel work across the existing Mission Control panels
+
 ## Manual verification
 
 Use [runbooks/openclaw-dashboard-v2-mission-control-e2e.md](runbooks/openclaw-dashboard-v2-mission-control-e2e.md) to confirm:
@@ -80,4 +89,5 @@ Use [runbooks/openclaw-dashboard-v2-mission-control-e2e.md](runbooks/openclaw-da
 - build/release repo-task lanes stay retired in both Mission Control and the demo office snapshot
 - Agents shows exact repo-work and intake provenance in demo mode, plus partial fallback wording where metadata is incomplete
 - Agents shows exact / partial / unavailable Mission Control mapping states and only exposes a handoff when the destination is trustworthy
+- Agents and Mission Control repeat the same overlap-group, handoff, and intervention-priority picture for the selected context
 - advisory next moves explain source and ranking reason without reviving archived ownership semantics
