@@ -8,9 +8,9 @@
 
 ### Task-to-Agent Mapping
 
-- [ ] **MAP-01**: Operator can see the current Mission Control task linked to a working agent when a live mapping exists.
-- [ ] **MAP-02**: Operator can tell whether a shown task-to-agent mapping is exact, partial, or unavailable without mistaking it for ownership reassignment.
-- [ ] **MAP-03**: Operator can open the relevant Mission Control context from the Agents coordination surface without manually searching for the task.
+- [x] **MAP-01**: Operator can see the current Mission Control task linked to a working agent when a live mapping exists.
+- [x] **MAP-02**: Operator can tell whether a shown task-to-agent mapping is exact, partial, or unavailable without mistaking it for ownership reassignment.
+- [x] **MAP-03**: Operator can open the relevant Mission Control context from the Agents coordination surface without manually searching for the task.
 
 ### Overlap and Handoffs
 
@@ -54,9 +54,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MAP-01 | Phase 11 | Pending |
-| MAP-02 | Phase 11 | Pending |
-| MAP-03 | Phase 11 | Pending |
+| MAP-01 | Phase 11 | Complete |
+| MAP-02 | Phase 11 | Complete |
+| MAP-03 | Phase 11 | Complete |
 | HAND-01 | Phase 12 | Pending |
 | HAND-02 | Phase 12 | Pending |
 | HAND-03 | Phase 12 | Pending |
@@ -71,4 +71,4 @@
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after roadmap creation*
+*Last updated: 2026-03-17 after Phase 11 completion*
