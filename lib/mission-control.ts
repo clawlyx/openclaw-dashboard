@@ -312,11 +312,11 @@ const SAMPLE_STATE: Required<MissionControlStateRecord> = {
           lane: "research",
           status: "review",
           startedAt: "2026-03-14T18:20:00.000Z",
-          lastWorkedAt: "2026-03-15T10:45:00.000Z",
-          updatedAt: "2026-03-09T12:15:00.000Z",
+          lastWorkedAt: "2026-03-19T20:18:00.000Z",
+          updatedAt: "2026-03-19T20:18:00.000Z",
           summary: "Reviewing whether the surviving notes cleanly separate personal research from archived repo work.",
-          nextPlannedStep: "Approve the archive summary and keep the notebook as advisory-only reference material.",
-          waitingOn: "human-confirmation",
+          nextPlannedStep: "Hand the notebook to qa-agent for review while keeping Mission Control as the task owner of record.",
+          waitingOn: "qa-agent review sign-off",
           ownerAgentId: "research-agent",
           ownerRoomId: "research",
           history: [
@@ -337,9 +337,9 @@ const SAMPLE_STATE: Required<MissionControlStateRecord> = {
               status: "review"
             },
             {
-              at: "2026-03-15T10:45:00.000Z",
+              at: "2026-03-19T20:18:00.000Z",
               action: "worked",
-              detail: "Research notes were updated for TQ-101 after repo-bound entries were removed.",
+              detail: "Research Agent updated TQ-101 and prepared the notebook for qa-agent review in the review booth.",
               taskId: "TQ-101",
               lane: "research",
               status: "review"
@@ -351,9 +351,9 @@ const SAMPLE_STATE: Required<MissionControlStateRecord> = {
         { at: "2026-03-14T18:20:00.000Z", action: "task", detail: "TQ-101 started from Mission Control." },
         { at: "2026-03-15T08:15:00.000Z", action: "task", detail: "TQ-101 paused for review." },
         {
-          at: "2026-03-15T10:45:00.000Z",
-          action: "archive",
-          detail: "Repo-bound clutter was removed and the remaining notebook stayed advisory-only."
+          at: "2026-03-19T20:18:00.000Z",
+          action: "handoff",
+          detail: "Research Agent prepared TQ-101 for qa-agent review while Mission Control retained ownership truth."
         }
       ]
     }
@@ -361,7 +361,7 @@ const SAMPLE_STATE: Required<MissionControlStateRecord> = {
 };
 
 const SAMPLE_HEARTBEAT: WorkerHeartbeatRecord = {
-  at: "2026-03-15T10:45:00.000Z",
+  at: "2026-03-19T20:18:00.000Z",
   pollMs: 15000,
   activeFeatures: 2,
   readyTasks: 0,

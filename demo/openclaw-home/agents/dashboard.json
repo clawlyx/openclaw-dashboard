@@ -1,7 +1,7 @@
 {
   "officeName": "OpenClaw Studio",
-  "updatedAt": "2026-03-15T13:30:15.281Z",
-  "coordinationHeadline": "Demo data now shows exact, partial, and unavailable Mission Control mapping states alongside the Phase 10 provenance and advisory context.",
+  "updatedAt": "2026-03-19T20:42:15.281Z",
+  "coordinationHeadline": "Demo data now covers healthy parallel work, risky overlap, and an active Mission Control handoff without introducing a new coordination workspace.",
   "rooms": [
     {
       "id": "dispatch",
@@ -35,27 +35,27 @@
       "role": "Dispatcher",
       "roomId": "dispatch",
       "status": "active",
-      "currentTask": "Coordinating the concierge research review handoff without moving ownership out of Mission Control.",
+      "currentTask": "Coordinating the concierge review handoff while checking whether Build Bay overlap still looks intentional.",
       "focus": "Mission handoff",
       "model": "openai/gpt-5",
       "queueCount": 3,
       "sessionCount": 44,
       "utilization": 94,
-      "nextHandoff": "Build Bay",
-      "lastEventAt": "2026-03-15T13:30:15.281Z",
+      "nextHandoff": "Review Booth",
+      "lastEventAt": "2026-03-19T20:42:15.281Z",
       "latestActivityKind": "tool",
       "latestToolName": "read",
       "workloads": [
         {
           "id": "main-coordination",
-          "title": "Coordinate Phase 10 execution handoffs",
-          "summary": "Dispatch is tracking repo-work progress and keeping the office summary aligned with the current phase.",
+          "title": "Coordinate concierge review handoff and overlap scan",
+          "summary": "Dispatch is keeping the concierge notebook handoff aligned while checking whether Build Bay is duplicating Phase 12 work.",
           "sourceKind": "coordination",
           "confidence": "exact",
           "repo": "openclaw-dashboard",
-          "threadLabel": "Phase 10 execution",
+          "threadLabel": "Phase 12 overlap visibility",
           "channelLabel": "Dispatch",
-          "sourceNote": "Derived from the live execution thread metadata."
+          "sourceNote": "Derived from the live execution thread metadata and the current Mission Control review context."
         }
       ],
       "missionMapping": {
@@ -102,27 +102,27 @@
       "status": "active",
       "currentTaskId": "TQ-101",
       "lastTaskId": "TQ-091",
-      "currentTask": "Reviewing the surviving concierge research notes after repo-task cleanup.",
-      "focus": "Personal research",
+      "currentTask": "Preparing the concierge archive notes for QA review without moving ownership out of Mission Control.",
+      "focus": "QA handoff",
       "model": "openai/gpt-5-mini",
       "queueCount": 2,
       "sessionCount": 1,
       "utilization": 78,
       "nextHandoff": "Review Booth",
-      "lastEventAt": "2026-03-15T10:45:51.004Z",
+      "lastEventAt": "2026-03-19T20:18:51.004Z",
       "latestActivityKind": "assistant",
       "workloads": [
         {
           "id": "research-intake",
           "title": "Concierge archive research notebook",
-          "summary": "Validating that the surviving TQ set stays personal-research-only.",
+          "summary": "Wrapping the surviving TQ notes so the QA review queue can confirm the archive boundary cleanly.",
           "sourceKind": "personal-research",
           "confidence": "exact",
           "repo": "personal-research",
           "threadLabel": "Concierge archive notes",
           "channelLabel": "#intake",
           "taskLabel": "TQ-101",
-          "sourceNote": "Sourced from intake-thread session metadata."
+          "sourceNote": "Sourced from intake-thread session metadata and the current Mission Control review task."
         }
       ],
       "missionMapping": {
@@ -167,40 +167,76 @@
       "role": "Builder",
       "roomId": "build",
       "status": "active",
-      "currentTask": "Implementing the provenance-driven roster and coordination layout for Phase 10.",
-      "focus": "Repo provenance",
+      "currentTask": "Implementing the Phase 12 overlap visibility cards without a live Mission Control owner.",
+      "focus": "Overlap visibility",
       "model": "openai/gpt-5-codex",
       "queueCount": 3,
       "sessionCount": 2,
       "utilization": 84,
       "nextHandoff": "Review Booth",
-      "lastEventAt": "2026-03-15T13:25:09.442Z",
+      "lastEventAt": "2026-03-19T20:31:09.442Z",
       "latestActivityKind": "tool",
       "latestToolName": "exec",
       "workloads": [
         {
           "id": "coding-repo-primary",
-          "title": "Phase 10 plan 10-02 UI implementation",
-          "summary": "Rendering explicit repo/thread provenance and a shorter coordination scan path in the Agents surface.",
+          "title": "Phase 12 overlap visibility cards",
+          "summary": "Rendering the shared-work evidence cards in Agents while Mission Control stays the ownership source of truth.",
           "sourceKind": "repo-work",
           "confidence": "exact",
           "repo": "openclaw-dashboard",
           "threadLabel": "OpenClaw Discord bridge",
           "channelLabel": "#repo-work",
-          "taskLabel": "10-02",
+          "taskLabel": "12-02",
           "sourceNote": "Captured from the active repo-work coding thread."
         },
         {
           "id": "coding-repo-secondary",
-          "title": "Phase 10 plan 10-03 docs alignment",
-          "summary": "Keeping README and runbook updates in sync with the final coordination surface.",
+          "title": "Phase 12 Mission Control coordination follow-through",
+          "summary": "Keeping the Mission Control reflection and docs follow-through aligned behind the UI work.",
           "sourceKind": "repo-work",
           "confidence": "exact",
           "repo": "openclaw-dashboard",
           "threadLabel": "Docs follow-up",
           "channelLabel": "#repo-work",
-          "taskLabel": "10-03",
+          "taskLabel": "12-03",
           "sourceNote": "Second active coding session mapped from the same repo-work surface."
+        }
+      ],
+      "missionMapping": {
+        "state": "unavailable",
+        "evidence": "none",
+        "sourceNote": "No trustworthy live Mission Control match is available for this repo-work desk right now."
+      }
+    },
+    {
+      "id": "build-agent",
+      "name": "Build Agent",
+      "role": "Automation Builder",
+      "roomId": "build",
+      "status": "active",
+      "currentTask": "Finishing overlap evidence badges on the same Phase 12 thread without a live Mission Control match.",
+      "focus": "Overlap evidence",
+      "model": "openai/gpt-5-mini",
+      "queueCount": 2,
+      "sessionCount": 1,
+      "utilization": 73,
+      "nextHandoff": "Review Booth",
+      "lastEventAt": "2026-03-19T20:29:04.100Z",
+      "latestActivityKind": "tool",
+      "latestToolName": "edit",
+      "workloads": [
+        {
+          "id": "build-repo-primary",
+          "title": "Phase 12 overlap evidence badges",
+          "summary": "Build Bay is touching the same repo-work thread as Coding Agent, which should read as ambiguous until Mission Control context becomes trustworthy.",
+          "sourceKind": "repo-work",
+          "confidence": "exact",
+          "repo": "openclaw-dashboard",
+          "threadLabel": "OpenClaw Discord bridge",
+          "channelLabel": "#repo-work",
+          "taskLabel": "12-02",
+          "sourceNote": "Captured from a second active repo-work session on the same execution thread."
         }
       ],
       "missionMapping": {
@@ -231,15 +267,28 @@
       "role": "Quality Review",
       "roomId": "review",
       "status": "waiting",
-      "currentTask": "Waiting on human confirmation that the surviving TQ set is personal-research-only.",
-      "focus": "Archive verification",
+      "currentTask": "Holding the concierge archive review lane so Research Agent can hand off TQ-101 cleanly.",
+      "focus": "Review handoff",
       "model": "openai/gpt-5-mini",
       "queueCount": 2,
       "sessionCount": 1,
       "utilization": 49,
-      "nextHandoff": "Release Dock",
-      "lastEventAt": "2026-03-15T12:57:59.000Z",
-      "latestActivityKind": "assistant"
+      "lastEventAt": "2026-03-19T20:16:59.000Z",
+      "latestActivityKind": "assistant",
+      "workloads": [
+        {
+          "id": "qa-review-primary",
+          "title": "Concierge archive notebook review handoff",
+          "summary": "Review Booth is waiting on the concierge notes handoff so the archive boundary can be confirmed without shifting task truth out of Mission Control.",
+          "sourceKind": "personal-research",
+          "confidence": "exact",
+          "repo": "personal-research",
+          "threadLabel": "Concierge archive notes",
+          "channelLabel": "#review",
+          "taskLabel": "TQ-101",
+          "sourceNote": "Sourced from the review queue that follows the live Mission Control task."
+        }
+      ]
     },
     {
       "id": "release-agent",
@@ -272,16 +321,16 @@
       "label": "Implementation lane",
       "owner": "Coding Agent",
       "target": "Build Bay",
-      "count": 1,
-      "tone": "default"
+      "count": 3,
+      "tone": "warning"
     },
     {
       "id": "review-holds",
       "label": "Review holds",
       "owner": "QA Agent",
       "target": "Review Booth",
-      "count": 1,
-      "tone": "default"
+      "count": 2,
+      "tone": "active"
     },
     {
       "id": "release-blockers",
@@ -292,8 +341,8 @@
       "tone": "default"
     },
     {
-      "id": "doc-polish",
-      "label": "Doc polish",
+      "id": "coordination-holds",
+      "label": "Coordination holds",
       "owner": "Main Console",
       "target": "Dispatch Desk",
       "count": 2,
@@ -302,35 +351,35 @@
   ],
   "advisorySuggestions": [
     {
-      "id": "repo-10-03",
-      "title": "Document the provenance contract and verification flow",
-      "summary": "README and runbook updates are still needed after the UI lands.",
+      "id": "repo-12-03",
+      "title": "Document the overlap and handoff verification path",
+      "summary": "README and runbook updates still need the final Phase 12 wording once the UI and Mission Control views line up.",
       "sourceKind": "repo-work",
       "confidence": "exact",
       "roomId": "research",
       "repo": "openclaw-dashboard",
-      "taskId": "10-03",
-      "featureTitle": "Phase 10 docs",
-      "rankingReason": "The current repo phase still has a downstream documentation plan waiting behind active UI work.",
+      "taskId": "12-03",
+      "featureTitle": "Phase 12 verification docs",
+      "rankingReason": "The repo still needs the end-to-end verification narrative after the overlap and handoff UI lands.",
       "sourceLabel": "Repo phase agent work provenance"
     },
     {
-      "id": "repo-10-02",
-      "title": "Review the concise coordination layout polish",
-      "summary": "QA can pick up the roster and lower-half scan-path review once the implementation stabilizes.",
+      "id": "repo-12-overlap",
+      "title": "Resolve the Build Bay overlap before more UI work splits again",
+      "summary": "Two active repo-work desks are serving the same execution thread with no trustworthy Mission Control join yet.",
       "sourceKind": "repo-work",
       "confidence": "exact",
-      "roomId": "review",
+      "roomId": "build",
       "repo": "openclaw-dashboard",
-      "taskId": "10-02",
-      "featureTitle": "Phase 10 UI review",
-      "rankingReason": "The current repo phase has active build work that will need a clear review handoff next.",
+      "taskId": "12-02",
+      "featureTitle": "Phase 12 overlap visibility",
+      "rankingReason": "This is the highest-risk current coordination issue because the same repo-work thread is active in two build desks without task-truth coverage.",
       "sourceLabel": "Repo phase agent work provenance"
     },
     {
       "id": "research-tq-101",
-      "title": "Approve the concierge archive notes",
-      "summary": "Personal research is waiting for operator confirmation after the archive cleanup.",
+      "title": "Finish the concierge review handoff",
+      "summary": "Mission Control already has the concierge notebook in review, and QA is waiting for the handoff details to settle.",
       "sourceKind": "personal-research",
       "confidence": "exact",
       "roomId": "research",
@@ -338,7 +387,7 @@
       "threadLabel": "#intake",
       "taskId": "TQ-101",
       "featureTitle": "Concierge research notebook",
-      "rankingReason": "This research thread is actionable now and remains advisory-only.",
+      "rankingReason": "This handoff is trustworthy and actionable now because the review queue and last research owner are both visible.",
       "sourceLabel": "Mission archive research queue"
     }
   ],
@@ -346,28 +395,45 @@
     {
       "id": "event-main-1",
       "agentId": "main",
-      "at": "2026-03-15T13:30:15.281Z",
+      "at": "2026-03-19T20:42:15.281Z",
       "kind": "tool",
       "toolName": "read",
-      "summary": "Main Console reprioritized the lifecycle milestone summary.",
-      "detail": "The operator summary now calls out the archive boundary, the surviving personal research queue, and the retired repo-task lanes."
+      "summary": "Main Console aligned the review handoff and the Build Bay overlap check.",
+      "detail": "Dispatch now highlights that the concierge review handoff is healthy while the second Build Bay desk still looks like risky overlap."
     },
     {
       "id": "event-research-1",
       "agentId": "research-agent",
-      "at": "2026-03-15T10:45:51.004Z",
+      "at": "2026-03-19T20:18:51.004Z",
       "kind": "assistant",
-      "summary": "Research Agent refreshed the surviving TQ notebook.",
-      "detail": "The concierge notes were updated after repo-bound task records were archived out of the mission dataset."
+      "summary": "Research Agent prepared TQ-101 for the QA handoff.",
+      "detail": "The concierge notes are ready for review, and Mission Control still shows Research Agent as the current task owner."
     },
     {
       "id": "event-coding-1",
       "agentId": "coding-agent",
-      "at": "2026-03-15T13:25:09.442Z",
+      "at": "2026-03-19T20:31:09.442Z",
       "kind": "tool",
       "toolName": "exec",
-      "summary": "Coding Agent is serving two repo-work threads at once.",
-      "detail": "Build Bay is showing a multi-session repo-work case so the operator can see both the active UI implementation and the pending docs follow-up."
+      "summary": "Coding Agent is still active on the same Phase 12 repo-work thread as Build Agent.",
+      "detail": "Build Bay now shows an ambiguous overlap case because two desks are touching the same execution thread without a trustworthy Mission Control join."
+    },
+    {
+      "id": "event-build-1",
+      "agentId": "build-agent",
+      "at": "2026-03-19T20:29:04.100Z",
+      "kind": "tool",
+      "toolName": "edit",
+      "summary": "Build Agent picked up the same overlap-visibility thread as Coding Agent.",
+      "detail": "The second Build Bay session is intentional demo pressure so the overlap detector can prove what needs intervention."
+    },
+    {
+      "id": "event-qa-1",
+      "agentId": "qa-agent",
+      "at": "2026-03-19T20:16:59.000Z",
+      "kind": "assistant",
+      "summary": "QA Agent is holding the concierge notebook review lane.",
+      "detail": "Review Booth is ready for the TQ-101 handoff without implying that ownership left Mission Control."
     },
     {
       "id": "event-release-1",

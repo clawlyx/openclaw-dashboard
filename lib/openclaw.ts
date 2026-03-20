@@ -1540,7 +1540,14 @@ const getCoordinationAgentRank = (agent: AgentSnapshot) => {
 };
 
 const getPrimaryCoordinationCandidate = (agent: AgentSnapshot): CoordinationCandidate | null => {
-  if (agent.missionMapping?.taskId) {
+  const hasExplicitTaskAnchor =
+    Boolean(agent.currentTaskId) ||
+    Boolean(agent.workloads?.some((workload) => workload.taskLabel?.toUpperCase().startsWith("TQ-")));
+
+  if (
+    agent.missionMapping?.taskId &&
+    (agent.missionMapping.state === "exact" || agent.status === "active" || hasExplicitTaskAnchor)
+  ) {
     return {
       key: `task:${agent.missionMapping.taskId.toUpperCase()}`,
       label: agent.missionMapping.taskTitle || agent.missionMapping.taskId,
@@ -1554,7 +1561,7 @@ const getPrimaryCoordinationCandidate = (agent: AgentSnapshot): CoordinationCand
     };
   }
 
-  if (agent.missionMapping?.featureId) {
+  if (agent.missionMapping?.featureId && (agent.missionMapping.state === "exact" || agent.status === "active" || hasExplicitTaskAnchor)) {
     return {
       key: `feature:${agent.missionMapping.featureId}`,
       label: agent.missionMapping.featureTitle || agent.missionMapping.featureId,
