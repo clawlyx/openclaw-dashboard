@@ -2,28 +2,25 @@
 
 ## What This Is
 
-OpenClaw Dashboard is the operator workstation for a local OpenClaw setup. It turns agent presence, Mission Control queue state, usage history, provider limits, and scheduler health into one app so the operator does not need to bounce between multiple internal tools. `1.4.0` shipped a clearer operator triage surface: roster-first agent status, archive-era Mission Control boundaries, and provenance-aware coordination now live in the same workstation.
+OpenClaw Dashboard is the operator workstation for a local OpenClaw setup. It turns agent presence, Mission Control queue state, usage history, provider limits, and scheduler health into one app so the operator does not need to bounce between multiple internal tools. `1.5.0` shipped clearer Mission Control mapping, overlap and handoff visibility, and one trustworthy next move across the existing `Agents` and `Mission Control` surfaces.
 
 ## Current State
 
-- **Shipped version:** `1.4.0` on 2026-03-16
-- **Milestone status:** `v1.5.0 Coordination Clarity` is active and in planning
-- **Codebase shape:** Next.js App Router + React + TypeScript workstation, about 16.2k LOC across `app`, `components`, `lib`, and `demo`
-- **Validation baseline:** `pnpm check`, bundled-demo browser verification, `/api/snapshot` provenance checks, and archive-boundary API validation
-- **Archives:** `.planning/milestones/v1.2.0-ROADMAP.md`, `.planning/milestones/v1.2.0-REQUIREMENTS.md`, `.planning/milestones/v1.3.0-ROADMAP.md`, `.planning/milestones/v1.3.0-REQUIREMENTS.md`, `.planning/milestones/v1.4.0-ROADMAP.md`, `.planning/milestones/v1.4.0-REQUIREMENTS.md`, and `.planning/milestones/v1.4.0-MILESTONE-AUDIT.md`
+- **Shipped version:** `1.5.0` on 2026-03-21
+- **Milestone status:** `v1.5.0 Coordination Clarity` is archived; the next milestone is not yet defined
+- **Codebase shape:** Next.js App Router + React + TypeScript workstation, about 14.3k LOC across `app`, `components`, `lib`, and `demo`
+- **Validation baseline:** `pnpm check`, bundled-demo browser verification, `/api/snapshot` coordination contract checks, and Mission Control continuity verification
+- **Archives:** `.planning/milestones/v1.2.0-ROADMAP.md`, `.planning/milestones/v1.2.0-REQUIREMENTS.md`, `.planning/milestones/v1.3.0-ROADMAP.md`, `.planning/milestones/v1.3.0-REQUIREMENTS.md`, `.planning/milestones/v1.4.0-ROADMAP.md`, `.planning/milestones/v1.4.0-REQUIREMENTS.md`, `.planning/milestones/v1.4.0-MILESTONE-AUDIT.md`, `.planning/milestones/v1.5.0-ROADMAP.md`, `.planning/milestones/v1.5.0-REQUIREMENTS.md`, and `.planning/milestones/v1.5.0-MILESTONE-AUDIT.md`
 
 ## Core Value
 
 One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.
 
-## Current Milestone: v1.5.0 Coordination Clarity
+## Next Milestone Goals
 
-**Goal:** Make coordination across Agents and Mission Control easier to trust and faster to act on by clarifying task-to-agent mapping, overlap and handoff state, and the operator's next move without introducing new control surfaces.
-
-**Target features:**
-- Sharper task-to-agent mapping between Agents and Mission Control that clarifies who is serving what and where the operator should inspect or intervene
-- Better overlap, handoff, and intervention visibility on the existing Agents and Mission Control surfaces
-- More obvious next-action cues so the operator can tell the most useful move without reconstructing coordination state manually
+- Turn coordination clarity into forward-looking signal without manufacturing certainty the data cannot support.
+- Decide whether safe local runtime controls belong in the workstation and what recovery contract they need.
+- Only widen beyond the existing `Agents` and `Mission Control` surfaces if the current flows can no longer carry the coordination load.
 
 ## Requirements
 
@@ -37,32 +34,34 @@ One workstation should let the operator see who owns work, what needs action nex
 - ✓ Working agents show repo or intake provenance, and idle suggestions stay advisory with clear source reasoning — shipped in `1.4.0`
 - ✓ Mission Control follows an archive-era local contract and no longer presents retired repo-task systems as live ownership truth — shipped in `1.4.0`
 - ✓ Local-first snapshot loading from `~/.openclaw`, mission archive state, and bundled demo data keeps the app publishable without a custom backend — existing behavior
+- ✓ Agents and Mission Control now show exact, partial, and unavailable task-to-agent mapping states without implying ownership moved out of Mission Control — shipped in `1.5.0`
+- ✓ Existing coordination surfaces now expose overlap, handoff risk, and intervention priority explicitly across the default scan path and Mission Control landing states — shipped in `1.5.0`
+- ✓ The default Agents scan path now highlights one recommended next move with explicit destination clarity, concise reasoning, and a calm fallback state — shipped in `1.5.0`
 
 ### Active
 
-- [ ] Agents and Mission Control make task-to-agent mapping clearer without creating a second ownership system
-- [ ] Existing coordination surfaces expose overlap, handoff risk, and intervention needs more explicitly
-- [ ] The default operator scan path makes the next best action obvious from current state alone
+- [ ] Forecast emerging coordination bottlenecks with evidence the operator can inspect before pressure escalates.
+- [ ] Add safe local runtime controls only when command outcomes and recovery state are clear inside the workstation.
+- [ ] Decide whether deeper coordination analytics should extend existing surfaces or justify a dedicated expansion surface.
 
 ### Out of Scope
 
 - Automatic assignment, autonomous staffing, or fake certainty about what an agent should do next
-- Predictive bottleneck forecasting or SLA-style forecasting — deferred by the `v1.5.0` brief
-- Host service or worker-process controls — deferred by the `v1.5.0` brief
-- Net-new coordination workspace expansion beyond current Agents and Mission Control surfaces — prioritize clarity on known surfaces first
 - Moving task ownership truth out of Mission Control into Agents
 - Multi-user collaboration or shared operator sessions — single-operator workstation for now
+- External hosted backend requirements — local-first remains the default operator model
 
 ## Context
 
 - Existing app: Next.js App Router + React + TypeScript workstation reading local files under `~/.openclaw`, mission archive state under `~/.openclaw/mission-control`, and bundled demo fallback under `demo/openclaw-home`
 - `1.4.0` proved the Agents workspace can be the operator's fastest triage surface when it stays roster-first, provenance-aware, and explicitly advisory
+- `1.5.0` proved mapping clarity, overlap and handoff visibility, and recommendation guidance can stay inside the existing `Agents` and `Mission Control` flows without adding a new workspace
+- Bundled demo data now supports deterministic exact / partial / unavailable mapping plus intervene / watch / calm recommendation cases safe for docs and runbooks
 - Mission Control now treats `task-center`, `agent-launchpad`, and `agent-workflow` as archived context only; surviving task-center-like data is intentional personal research
 - Bundled demo data now includes deterministic repo-work, intake-thread, and multi-session workload cases safe for public docs and runbooks
 - Public README assets are demo-data driven and must remain safe to publish
-- `v1.5.0` deliberately skips research and should deepen clarity on existing Agents and Mission Control surfaces before any net-new workspace expansion
-- Forecasting and host controls were considered and explicitly deferred so the milestone stays focused on today's coordination blind spots
-- The milestone must preserve the archive boundary and public-safe demo validation path established in `1.4.0`
+- Forecasting, runtime controls, and deeper coordination expansion remain open planning questions rather than committed scope
+- The workstation must preserve the archive boundary and public-safe demo validation path established in `1.4.0`
 
 ## Constraints
 
@@ -70,6 +69,7 @@ One workstation should let the operator see who owns work, what needs action nex
 - **Data model**: Ownership truth stays in Mission Control even when Agents surfaces more guidance or provenance context
 - **Privacy**: README/demo assets must continue to use synthetic bundled data — public repo safety is mandatory
 - **Product scope**: Operators should stay inside one workstation app — do not reintroduce multi-app workflow sprawl
+- **Guidance model**: Recommendations must stay advisory, explainable, and grounded in current evidence rather than opaque scoring
 
 ## Key Decisions
 
@@ -90,15 +90,18 @@ One workstation should let the operator see who owns work, what needs action nex
 | Retire `task-center`, `agent-launchpad`, and `agent-workflow` as live repo-task ownership systems | Later coordination work needed one cleaned archive-era contract instead of another bridge | ✓ Good |
 | Advisory repo and research sourcing must stay visibly non-owning | Suggestions are useful only if they do not masquerade as staffing truth | ✓ Good |
 | Provenance confidence should be shown directly when metadata is partial | Operators need trustworthy context, not fake exactness | ✓ Good |
+| Show exact, partial, and unavailable Mission Control mapping states explicitly | Operators need to judge handoff confidence without guessing or assuming ownership changed | ✓ Good |
+| Keep overlap, handoff, and recommendation context inside existing `Agents` and `Mission Control` surfaces | Coordination clarity should improve scan speed without creating another workspace | ✓ Good |
+| Rank one default next move on the server and keep a calm fallback explicit | Every surface should consume the same advisory signal and avoid manufacturing urgency | ✓ Good |
 
 <details>
-<summary>Archived milestone framing (before v1.4.0 completion)</summary>
+<summary>Archived milestone framing (before v1.5.0 completion)</summary>
 
-- `1.4.0` started after `1.3.0` proved the workstation could explain pressure and room health but still needed faster staffing triage.
-- The milestone focus was: rebuild Agents around Working / Blocked / Idle clarity, retire the legacy repo-task bridge, then add explicit provenance and a concise coordination brief.
+- `1.5.0` started after `1.4.0` proved the Agents workspace could be the fastest triage surface but still left mapping quality, overlap, and next-action clarity implicit.
+- The milestone focus was: make Mission Control mapping state explicit, surface overlap and handoff risk across the existing `Agents` and `Mission Control` flows, and end with one trustworthy default next move.
 - The archived roadmap, requirements, and audit for that shipped milestone live under `.planning/milestones/`.
 
 </details>
 
 ---
-*Last updated: 2026-03-16 after starting the v1.5.0 Coordination Clarity milestone*
+*Last updated: 2026-03-21 after shipping v1.5.0 Coordination Clarity*
