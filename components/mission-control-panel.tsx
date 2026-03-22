@@ -149,6 +149,8 @@ type MissionControlMessages = {
   coordinationEvidenceUnknownOwner: string;
   coordinationLastAgent: string;
   coordinationNext: string;
+  recommendationTitle: string;
+  recommendationWhy: string;
   coordinationTruthHint: string;
 };
 
@@ -180,6 +182,12 @@ export type MissionControlHandoff = {
   queue?: "ready" | "running" | "review" | "blocked";
   lane?: "research" | "build" | "qa" | "release";
   mapping?: "exact" | "partial" | "unavailable";
+  recommendation?: {
+    title: string;
+    reason: string;
+    priority?: AgentCoordinationPriority;
+    destinationTargetLabel?: string;
+  };
   coordination?: MissionControlCoordinationFocus;
 };
 
@@ -576,7 +584,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
     (handoffTask ? missionControl.features.find((feature) => feature.featureId === handoffTask.featureId) || null : null);
   const coordination = handoff?.coordination;
   const handoffActive = Boolean(
-    handoff?.mapping || handoff?.taskId || handoff?.featureId || handoff?.queue || handoff?.lane || coordination
+    handoff?.mapping || handoff?.taskId || handoff?.featureId || handoff?.queue || handoff?.lane || handoff?.recommendation || coordination
   );
   const handoffState = handoff?.mapping || (handoffTask || handoffFeature ? "partial" : "unavailable");
   const coordinationTone = getCoordinationBannerTone(coordination);
@@ -592,6 +600,7 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
           <strong>{copy.handoffFromAgents}</strong>
         </div>
         <div className="missionBadgeRow missionBadgeRowTight">
+          {handoff?.recommendation ? <span className="missionBadge missionBadgeAccent">{copy.recommendationTitle}</span> : null}
           <span className="missionBadge missionBadgeAccent">{labelHandoffState(handoffState, copy)}</span>
           {coordination?.group ? (
             <span className={`missionBadge ${coordination.group.state === "ambiguous" ? "missionStatus-blocked" : "missionStatus-running"}`}>
@@ -625,6 +634,11 @@ export function MissionControlPanel({ id, missionControl, locale, copy, common, 
       ) : handoffFeature ? (
         <p className="missionHandoffCopy">
           {copy.handoffFeature}: <strong>{handoffFeature.title}</strong>
+        </p>
+      ) : null}
+      {handoff?.recommendation ? (
+        <p className="missionHandoffCopy">
+          {copy.recommendationWhy}: <strong>{handoff.recommendation.reason}</strong>
         </p>
       ) : null}
       {coordination?.group?.peerAgentNames.length ? (

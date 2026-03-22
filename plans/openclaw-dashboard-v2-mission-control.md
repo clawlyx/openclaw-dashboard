@@ -80,6 +80,20 @@
 - overlap cases with no exact Mission Control task must stay explicit fallback context rather than implying a hidden match
 - intervention-needed overlap should read as higher priority than routine parallel work across the existing Mission Control panels
 
+## Phase 13 Default Guidance Contract
+
+- `agents.coordinationRecommendationState` explicitly says whether the current snapshot has one recommended next move or a calm no-recommendation state
+- `agents.coordinationRecommendation` carries one chosen move only, with:
+  - destination surface (`agents` or `mission-control`)
+  - best-known destination context when confidence is high
+  - one concise, evidence-backed reason
+- the recommendation is advisory context only; it must not move task ownership truth out of Mission Control
+- bundled demo verification must cover:
+  - default intervene path
+  - watch fallback path
+  - calm no-recommendation path
+- Mission Control should repeat the recommendation reason on recommended landings so the cross-surface move feels continuous instead of disconnected
+
 ## Manual verification
 
 Use [runbooks/openclaw-dashboard-v2-mission-control-e2e.md](runbooks/openclaw-dashboard-v2-mission-control-e2e.md) to confirm:
@@ -90,4 +104,5 @@ Use [runbooks/openclaw-dashboard-v2-mission-control-e2e.md](runbooks/openclaw-da
 - Agents shows exact repo-work and intake provenance in demo mode, plus partial fallback wording where metadata is incomplete
 - Agents shows exact / partial / unavailable Mission Control mapping states and only exposes a handoff when the destination is trustworthy
 - Agents and Mission Control repeat the same overlap-group, handoff, and intervention-priority picture for the selected context
+- Agents and Mission Control repeat the same recommended-next-move reason on recommended landings, while keeping Mission Control as the task source of truth
 - advisory next moves explain source and ranking reason without reviving archived ownership semantics

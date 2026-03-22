@@ -67,6 +67,7 @@ type HomePageProps = {
         lang?: string;
         view?: string;
         panel?: string;
+        demoRecommendation?: string;
         missionTask?: string;
         missionFeature?: string;
         missionQueue?: string;
@@ -79,6 +80,7 @@ type HomePageProps = {
         lang?: string;
         view?: string;
         panel?: string;
+        demoRecommendation?: string;
         missionTask?: string;
         missionFeature?: string;
         missionQueue?: string;
@@ -95,7 +97,12 @@ const resolveView = (raw?: string): DashboardView =>
 const resolvePanel = (view: DashboardView, raw?: string): DashboardPanel =>
   DASHBOARD_PANELS[view].includes(raw as DashboardPanel) ? (raw as DashboardPanel) : DASHBOARD_PANELS[view][0];
 
-const buildHref = (targetLocale: Locale, view?: DashboardView, panel?: DashboardPanel) => {
+const buildHref = (
+  targetLocale: Locale,
+  view?: DashboardView,
+  panel?: DashboardPanel,
+  demoRecommendation?: "intervene" | "watch" | "calm"
+) => {
   const search = new URLSearchParams();
 
   if (targetLocale === "zh") {
@@ -108,6 +115,10 @@ const buildHref = (targetLocale: Locale, view?: DashboardView, panel?: Dashboard
 
   if (panel) {
     search.set("panel", panel);
+  }
+
+  if (demoRecommendation) {
+    search.set("demoRecommendation", demoRecommendation);
   }
 
   const query = search.toString();
@@ -153,6 +164,9 @@ const resolveMissionLane = (value?: string): MissionControlHandoff["lane"] =>
 const resolveMissionMapping = (value?: string): MissionControlHandoff["mapping"] =>
   value === "exact" || value === "partial" || value === "unavailable" ? value : undefined;
 
+const resolveDemoRecommendation = (value?: string) =>
+  value === "intervene" || value === "watch" || value === "calm" ? value : undefined;
+
 export async function generateMetadata({ searchParams }: HomePageProps): Promise<Metadata> {
   const params = searchParams ? await searchParams : undefined;
   const locale = resolveLocale(params?.lang);
@@ -169,11 +183,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const locale = resolveLocale(params?.lang);
   const activeView = resolveView(params?.view);
   const activePanel = resolvePanel(activeView, params?.panel);
+  const demoRecommendation = resolveDemoRecommendation(params?.demoRecommendation);
   const t = getMessages(locale);
   const cookieStore = await cookies();
   const theme = resolveTheme(cookieStore.get(THEME_COOKIE)?.value);
 
-  const snapshot = await getDashboardSnapshot();
+  const snapshot = await getDashboardSnapshot({
+    demoRecommendation
+  });
   const { usage, cron, agents, missionControl, openclawHome, openclawSourceKind, openclawSourceLabel } = snapshot;
   const missionMutationMode = "local";
   const na = t.common.na;
@@ -617,12 +634,27 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const missionMappingState =
     resolveMissionMapping(params?.missionMapping) ||
     resolveMissionMapping(missionAgent?.missionMapping?.state);
+  const coordinationRecommendation = agents.coordinationRecommendation;
+  const missionRecommendation =
+    coordinationRecommendation?.destinationSurface === "mission-control" &&
+    ((requestedAgentId && coordinationRecommendation.destinationAgentId === requestedAgentId) ||
+      (requestedGroupId && coordinationRecommendation.destinationGroupId === requestedGroupId) ||
+      (params?.missionTask?.trim() && coordinationRecommendation.destinationTaskId === params.missionTask.trim()) ||
+      (params?.missionFeature?.trim() && coordinationRecommendation.destinationFeatureId === params.missionFeature.trim()))
+      ? {
+          title: coordinationRecommendation.title,
+          reason: coordinationRecommendation.reason,
+          priority: coordinationRecommendation.priority,
+          destinationTargetLabel: coordinationRecommendation.destinationTargetLabel
+        }
+      : undefined;
   const missionHandoff: MissionControlHandoff = {
     taskId: params?.missionTask?.trim() || missionCoordinationHandoff?.taskId || missionGroup?.taskId || undefined,
     featureId: params?.missionFeature?.trim() || missionCoordinationHandoff?.featureId || missionGroup?.featureId || undefined,
     queue: missionQueue,
     lane: missionLane,
     mapping: missionMappingState,
+    recommendation: missionRecommendation,
     coordination:
       missionAgent || missionGroup || missionCoordinationHandoff
         ? {
@@ -1174,7 +1206,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <div className="pageGlow pageGlowRight" />
 
       <header className="topBar">
-        <a href={buildHref(locale)} className="brandLockup">
+        <a href={buildHref(locale, undefined, undefined, demoRecommendation)} className="brandLockup">
           <span className="brandBadge">OC</span>
           <span className="brandText">
             <strong>{t.hero.title}</strong>
@@ -1186,7 +1218,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           {viewItems.map((item) => (
             <a
               key={item.id}
-              href={buildHref(locale, item.id)}
+              href={buildHref(locale, item.id, undefined, demoRecommendation)}
               className={`menuLink ${activeView === item.id ? "menuLinkActive" : ""}`}
               aria-current={activeView === item.id ? "page" : undefined}
             >
@@ -1207,7 +1239,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             {(["en", "zh"] as const).map((targetLocale) => (
               <a
                 key={targetLocale}
-                href={buildHref(targetLocale, activeView, activePanel)}
+                href={buildHref(targetLocale, activeView, activePanel, demoRecommendation)}
                 className={`languageOption ${locale === targetLocale ? "languageOptionActive" : ""}`}
                 aria-current={locale === targetLocale ? "page" : undefined}
               >
@@ -1231,7 +1263,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               {activePanelItems.map((item, index) => (
                 <a
                   key={item.id}
-                  href={buildHref(locale, activeView, item.id)}
+                  href={buildHref(locale, activeView, item.id, demoRecommendation)}
                   className={`sidebarNavLink ${activePanel === item.id ? "sidebarNavLinkActive" : ""}`}
                   aria-current={activePanel === item.id ? "page" : undefined}
                 >

@@ -11,6 +11,7 @@ import type {
   AgentAdvisorySuggestionSnapshot,
   AgentActivitySnapshot,
   AgentCoordinationPriority,
+  AgentCoordinationRecommendationSnapshot,
   AgentHandoffSnapshot,
   AgentMissionMappingSnapshot,
   AgentOverlapEvidence,
@@ -272,6 +273,21 @@ type AgentsVirtualOfficeMessages = {
   coordinationEvidenceRoomSplit: string;
   coordinationEvidenceSameRoom: string;
   coordinationEvidenceUnknownOwner: string;
+  coordinationRecommendationBadge: string;
+  coordinationRecommendationWhy: string;
+  coordinationRecommendationDestination: string;
+  coordinationRecommendationTarget: string;
+  coordinationRecommendationConfidenceExact: string;
+  coordinationRecommendationConfidencePartial: string;
+  coordinationRecommendationDestinationAgents: string;
+  coordinationRecommendationDestinationMissionControl: string;
+  coordinationRecommendationCalmTitle: string;
+  coordinationRecommendationCalmCopy: string;
+  coordinationRecommendationActionFocusAgent: string;
+  coordinationRecommendationActionFocusRoom: string;
+  coordinationRecommendationActionClarifyOverlap: string;
+  coordinationRecommendationActionMissionControl: string;
+  coordinationRecommendationActionMissionControlFallback: string;
   handoffStatusLabel: string;
   handoffActive: string;
   handoffStalled: string;
@@ -839,6 +855,42 @@ const getHandoffStateLabel = (handoff: AgentHandoffSnapshot | undefined, copy: A
     default:
       return copy.handoffUnknown;
   }
+};
+
+const getRecommendationDestinationLabel = (
+  recommendation: AgentCoordinationRecommendationSnapshot,
+  copy: AgentsVirtualOfficeMessages
+) =>
+  recommendation.destinationSurface === "mission-control"
+    ? copy.coordinationRecommendationDestinationMissionControl
+    : copy.coordinationRecommendationDestinationAgents;
+
+const getRecommendationConfidenceLabel = (
+  recommendation: AgentCoordinationRecommendationSnapshot,
+  copy: AgentsVirtualOfficeMessages
+) =>
+  recommendation.destinationConfidence === "exact"
+    ? copy.coordinationRecommendationConfidenceExact
+    : copy.coordinationRecommendationConfidencePartial;
+
+const getRecommendationHref = (recommendation: AgentCoordinationRecommendationSnapshot, locale: Locale) => {
+  if (recommendation.destinationSurface !== "mission-control" || !recommendation.destinationPanel) return null;
+
+  const search = new URLSearchParams();
+  if (locale === "zh") {
+    search.set("lang", "zh");
+  }
+  search.set("view", "mission-control");
+  search.set("panel", recommendation.destinationPanel);
+  search.set("missionMapping", recommendation.destinationConfidence);
+  if (recommendation.destinationTaskId) search.set("missionTask", recommendation.destinationTaskId);
+  if (recommendation.destinationFeatureId) search.set("missionFeature", recommendation.destinationFeatureId);
+  if (recommendation.destinationQueue) search.set("missionQueue", recommendation.destinationQueue);
+  if (recommendation.destinationLane) search.set("missionLane", recommendation.destinationLane);
+  if (recommendation.destinationAgentId) search.set("missionAgent", recommendation.destinationAgentId);
+  if (recommendation.destinationGroupId) search.set("missionGroup", recommendation.destinationGroupId);
+
+  return `/?${search.toString()}`;
 };
 
 const getMissionControlHref = (
@@ -1910,6 +1962,7 @@ export function AgentsVirtualOfficePanel({
     })
     .slice(0, 4);
   const coordinationSuggestions = (agents.advisorySuggestions || []).slice(0, 4);
+  const coordinationRecommendation = agents.coordinationRecommendation;
   const getSuggestionTone = (kind: IdleSuggestionKind) => {
     switch (kind) {
       case "same-room":
@@ -1960,8 +2013,14 @@ export function AgentsVirtualOfficePanel({
     const coordination = agent.coordination;
     const group = coordination?.primaryGroupId ? overlapGroupById.get(coordination.primaryGroupId) : undefined;
     const handoff = coordination?.handoff;
+    const recommendation = coordinationRecommendation?.agentId === agent.id ? coordinationRecommendation : undefined;
+    const recommendationHref = recommendation ? getRecommendationHref(recommendation, locale) : null;
+    const showRecommendationTarget =
+      Boolean(recommendation?.destinationTargetLabel) &&
+      (recommendation?.destinationSurface === "agents" || recommendation?.destinationConfidence === "exact");
+    const snippetTitle = group?.taskTitle || group?.featureTitle || group?.label || recommendation?.title;
 
-    if (!group && !handoff) return null;
+    if (!group && !handoff && !recommendation) return null;
 
     const peerNames = group
       ? group.agentIds
@@ -1991,7 +2050,7 @@ export function AgentsVirtualOfficePanel({
           ) : null}
         </div>
 
-        {group ? <p className="coordinationSnippetTitle">{group.taskTitle || group.featureTitle || group.label}</p> : null}
+        {snippetTitle ? <p className="coordinationSnippetTitle">{snippetTitle}</p> : null}
         {group && peerNames.length ? (
           <p className="coordinationSnippetCopy">
             {copy.coordinationSharedWith}: {peerNames.join(", ")}
@@ -2010,6 +2069,62 @@ export function AgentsVirtualOfficePanel({
             <span>
               {copy.handoffNext}: {nextTarget || common.na}
             </span>
+          </div>
+        ) : null}
+        {recommendation ? (
+          <div className={`coordinationRecommendation coordinationRecommendation${recommendation.destinationSurface === "mission-control" ? "MissionControl" : "Agents"}`}>
+            <div className="coordinationRecommendationHead">
+              <span className="coordinationRecommendationBadge">{copy.coordinationRecommendationBadge}</span>
+              <span className="coordinationRecommendationChip">{getRecommendationDestinationLabel(recommendation, copy)}</span>
+              <span className="coordinationRecommendationChip">{getRecommendationConfidenceLabel(recommendation, copy)}</span>
+            </div>
+            {showRecommendationTarget ? (
+              <p className="coordinationRecommendationMeta">
+                {copy.coordinationRecommendationTarget}: {recommendation.destinationTargetLabel}
+              </p>
+            ) : null}
+            <p className="coordinationRecommendationCopy">
+              {copy.coordinationRecommendationWhy}: {recommendation.reason}
+            </p>
+            {recommendationHref ? (
+              <a className="coordinationRecommendationAction" href={recommendationHref}>
+                {recommendation.destinationTargetLabel
+                  ? formatMessage(copy.coordinationRecommendationActionMissionControl, {
+                      value: recommendation.destinationTargetLabel
+                    })
+                  : copy.coordinationRecommendationActionMissionControlFallback}
+              </a>
+            ) : recommendation.action === "focus-room" && recommendation.destinationRoomId ? (
+              <button
+                type="button"
+                className="coordinationRecommendationAction"
+                onClick={() => focusRoom(recommendation.destinationRoomId!)}
+              >
+                {formatMessage(copy.coordinationRecommendationActionFocusRoom, {
+                  value:
+                    recommendation.destinationTargetLabel ||
+                    roomLabelById.get(recommendation.destinationRoomId!) ||
+                    recommendation.destinationRoomId!
+                })}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="coordinationRecommendationAction"
+                onClick={() =>
+                  focusAgent(
+                    recommendation.destinationAgentId || agent.id,
+                    recommendation.destinationRoomId || agent.roomId
+                  )
+                }
+              >
+                {recommendation.action === "clarify-overlap"
+                  ? copy.coordinationRecommendationActionClarifyOverlap
+                  : formatMessage(copy.coordinationRecommendationActionFocusAgent, {
+                      value: recommendation.destinationTargetLabel || agent.name
+                    })}
+              </button>
+            )}
           </div>
         ) : null}
       </div>
@@ -2584,6 +2699,12 @@ export function AgentsVirtualOfficePanel({
               </div>
               <p className="virtualOfficeRailCopy">{localizedCoordinationHeadline}</p>
             </div>
+            {agents.coordinationRecommendationState === "calm" ? (
+              <div className="coordinationCalmNotice coordinationCalmNoticeCompact">
+                <strong>{copy.coordinationRecommendationCalmTitle}</strong>
+                <p>{copy.coordinationRecommendationCalmCopy}</p>
+              </div>
+            ) : null}
             <div className="virtualOfficeCoordinationGrid">
               <article className="virtualOfficeDrawerPanel">
                 <p className="eyebrow">{copy.coordinationActiveTitle}</p>
@@ -2594,6 +2715,8 @@ export function AgentsVirtualOfficePanel({
                         key={`active-workload:${entry.agent.id}`}
                         className={`virtualMissionCard virtualMissionCard${getCoordinationPriorityClassName(entry.agent.coordination?.priority)} ${
                           selectedAgent?.id === entry.agent.id ? "virtualDeskCardSelected" : ""
+                        } ${coordinationRecommendation?.agentId === entry.agent.id ? "coordinationCardRecommended" : ""} ${
+                          coordinationRecommendation?.agentId === entry.agent.id ? "virtualMissionCardRecommended" : ""
                         }`}
                       >
                         <button
@@ -3049,41 +3172,41 @@ export function AgentsVirtualOfficePanel({
                 <div className="virtualDeskList">
                   {deskFeedAgents.length ? (
                     deskFeedAgents.map((agent) => (
-                      <button
+                      <article
                         key={agent.id}
-                        type="button"
-                        className={`virtualDeskCard virtualDeskCardButton virtualDeskCard${agent.status} ${
+                        className={`virtualDeskCard virtualDeskCard${agent.status} ${
                           selectedAgent?.id === agent.id ? "virtualDeskCardSelected" : ""
                         }`}
-                        onClick={() => toggleAgentFocus(agent)}
                       >
-                        <div className="virtualDeskCardHead">
-                          <strong>{agent.name}</strong>
-                          <span>{getStatusLabel(agent.status, copy)}</span>
-                        </div>
-                        <p>{getDeskTask(agent, copy, common.unavailable)}</p>
-                        <p className="virtualMissionCardSummary">
-                          {copy.provenanceLabel}:{" "}
-                          {agent.workloads?.[0]
-                            ? `${agent.workloads[0].title} · ${getWorkloadSourceLabel(agent.workloads[0].sourceKind, copy)}`
-                            : agent.provenanceNote || copy.provenanceFallback}
-                        </p>
-                        <p className="virtualMissionCardSummary">
-                          {copy.mappingLabel}: {getMissionMappingStateLabel(agent.missionMapping, copy)} · {getMissionMappingHeadline(agent.missionMapping, copy)}
-                        </p>
+                        <button type="button" className="virtualDeskCardButton" onClick={() => toggleAgentFocus(agent)}>
+                          <div className="virtualDeskCardHead">
+                            <strong>{agent.name}</strong>
+                            <span>{getStatusLabel(agent.status, copy)}</span>
+                          </div>
+                          <p>{getDeskTask(agent, copy, common.unavailable)}</p>
+                          <p className="virtualMissionCardSummary">
+                            {copy.provenanceLabel}:{" "}
+                            {agent.workloads?.[0]
+                              ? `${agent.workloads[0].title} · ${getWorkloadSourceLabel(agent.workloads[0].sourceKind, copy)}`
+                              : agent.provenanceNote || copy.provenanceFallback}
+                          </p>
+                          <p className="virtualMissionCardSummary">
+                            {copy.mappingLabel}: {getMissionMappingStateLabel(agent.missionMapping, copy)} · {getMissionMappingHeadline(agent.missionMapping, copy)}
+                          </p>
+                          <div className="virtualDeskCardMeta">
+                            <span>
+                              {copy.focus}: {agent.focus || common.na}
+                            </span>
+                            <span>
+                              {copy.nextHandoff}: {agent.nextHandoff || common.na}
+                            </span>
+                            <span>
+                              {copy.lastEvent}: {formatDateTimeLabel(parseTimestampMs(agent.lastEventAt), locale, common.na)}
+                            </span>
+                          </div>
+                        </button>
                         {renderCoordinationSnippet(agent, true)}
-                        <div className="virtualDeskCardMeta">
-                          <span>
-                            {copy.focus}: {agent.focus || common.na}
-                          </span>
-                          <span>
-                            {copy.nextHandoff}: {agent.nextHandoff || common.na}
-                          </span>
-                          <span>
-                            {copy.lastEvent}: {formatDateTimeLabel(parseTimestampMs(agent.lastEventAt), locale, common.na)}
-                          </span>
-                        </div>
-                      </button>
+                      </article>
                     ))
                   ) : (
                     <div className="virtualOfficeEmpty">{copy.roomEmpty}</div>

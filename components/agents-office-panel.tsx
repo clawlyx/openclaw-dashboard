@@ -5,6 +5,7 @@ import type {
   AgentsSnapshot,
   AgentActivitySnapshot,
   AgentCoordinationPriority,
+  AgentCoordinationRecommendationSnapshot,
   AgentHandoffSnapshot,
   AgentMissionMappingSnapshot,
   AgentOverlapEvidence,
@@ -112,6 +113,18 @@ type AgentsMessages = {
   coordinationEvidenceRoomSplit: string;
   coordinationEvidenceSameRoom: string;
   coordinationEvidenceUnknownOwner: string;
+  coordinationRecommendationBadge: string;
+  coordinationRecommendationWhy: string;
+  coordinationRecommendationDestination: string;
+  coordinationRecommendationTarget: string;
+  coordinationRecommendationConfidenceExact: string;
+  coordinationRecommendationConfidencePartial: string;
+  coordinationRecommendationDestinationAgents: string;
+  coordinationRecommendationDestinationMissionControl: string;
+  coordinationRecommendationCalmTitle: string;
+  coordinationRecommendationCalmCopy: string;
+  coordinationRecommendationActionMissionControl: string;
+  coordinationRecommendationActionMissionControlFallback: string;
   handoffActive: string;
   handoffStalled: string;
   handoffUnknown: string;
@@ -298,6 +311,42 @@ const getHandoffStateLabel = (handoff: AgentHandoffSnapshot | undefined, copy: A
   }
 };
 
+const getRecommendationDestinationLabel = (
+  recommendation: AgentCoordinationRecommendationSnapshot,
+  copy: AgentsMessages
+) =>
+  recommendation.destinationSurface === "mission-control"
+    ? copy.coordinationRecommendationDestinationMissionControl
+    : copy.coordinationRecommendationDestinationAgents;
+
+const getRecommendationConfidenceLabel = (
+  recommendation: AgentCoordinationRecommendationSnapshot,
+  copy: AgentsMessages
+) =>
+  recommendation.destinationConfidence === "exact"
+    ? copy.coordinationRecommendationConfidenceExact
+    : copy.coordinationRecommendationConfidencePartial;
+
+const getRecommendationHref = (recommendation: AgentCoordinationRecommendationSnapshot, locale: Locale) => {
+  if (recommendation.destinationSurface !== "mission-control" || !recommendation.destinationPanel) return null;
+
+  const search = new URLSearchParams();
+  if (locale === "zh") {
+    search.set("lang", "zh");
+  }
+  search.set("view", "mission-control");
+  search.set("panel", recommendation.destinationPanel);
+  search.set("missionMapping", recommendation.destinationConfidence);
+  if (recommendation.destinationTaskId) search.set("missionTask", recommendation.destinationTaskId);
+  if (recommendation.destinationFeatureId) search.set("missionFeature", recommendation.destinationFeatureId);
+  if (recommendation.destinationQueue) search.set("missionQueue", recommendation.destinationQueue);
+  if (recommendation.destinationLane) search.set("missionLane", recommendation.destinationLane);
+  if (recommendation.destinationAgentId) search.set("missionAgent", recommendation.destinationAgentId);
+  if (recommendation.destinationGroupId) search.set("missionGroup", recommendation.destinationGroupId);
+
+  return `/?${search.toString()}`;
+};
+
 const getMissionControlHref = (
   mapping: AgentMissionMappingSnapshot | undefined,
   locale: Locale,
@@ -362,6 +411,7 @@ export function AgentsOfficePanel({
   const agentNameById = new Map(agents.agents.map((agent) => [agent.id, agent.name] as const));
   const roomLabelById = new Map(agents.rooms.map((room) => [room.id, room.label] as const));
   const overlapGroupById = new Map((agents.overlapGroups || []).map((group) => [group.id, group] as const));
+  const coordinationRecommendation = agents.coordinationRecommendation;
   const renderMissionMapping = (agent: AgentSnapshot) => {
     const mapping = agent.missionMapping;
     const mappingHref = getMissionControlHref(mapping, locale, {
@@ -399,8 +449,14 @@ export function AgentsOfficePanel({
     const coordination = agent.coordination;
     const group = coordination?.primaryGroupId ? overlapGroupById.get(coordination.primaryGroupId) : undefined;
     const handoff = coordination?.handoff;
+    const recommendation = coordinationRecommendation?.agentId === agent.id ? coordinationRecommendation : undefined;
+    const recommendationHref = recommendation ? getRecommendationHref(recommendation, locale) : null;
+    const showRecommendationTarget =
+      Boolean(recommendation?.destinationTargetLabel) &&
+      (recommendation?.destinationSurface === "agents" || recommendation?.destinationConfidence === "exact");
+    const snippetTitle = group?.taskTitle || group?.featureTitle || group?.label || recommendation?.title;
 
-    if (!group && !handoff) return null;
+    if (!group && !handoff && !recommendation) return null;
 
     const peerNames = group
       ? group.agentIds
@@ -429,7 +485,7 @@ export function AgentsOfficePanel({
             </span>
           ) : null}
         </div>
-        {group ? <p className="coordinationSnippetTitle">{group.taskTitle || group.featureTitle || group.label}</p> : null}
+        {snippetTitle ? <p className="coordinationSnippetTitle">{snippetTitle}</p> : null}
         {group && peerNames.length ? (
           <p className="coordinationSnippetCopy">
             {copy.coordinationSharedWith}: {peerNames.join(", ")}
@@ -448,6 +504,32 @@ export function AgentsOfficePanel({
             <span>
               {copy.handoffNext}: {nextTarget || common.na}
             </span>
+          </div>
+        ) : null}
+        {recommendation ? (
+          <div className={`coordinationRecommendation coordinationRecommendation${recommendation.destinationSurface === "mission-control" ? "MissionControl" : "Agents"}`}>
+            <div className="coordinationRecommendationHead">
+              <span className="coordinationRecommendationBadge">{copy.coordinationRecommendationBadge}</span>
+              <span className="coordinationRecommendationChip">{getRecommendationDestinationLabel(recommendation, copy)}</span>
+              <span className="coordinationRecommendationChip">{getRecommendationConfidenceLabel(recommendation, copy)}</span>
+            </div>
+            {showRecommendationTarget ? (
+              <p className="coordinationRecommendationMeta">
+                {copy.coordinationRecommendationTarget}: {recommendation.destinationTargetLabel}
+              </p>
+            ) : null}
+            <p className="coordinationRecommendationCopy">
+              {copy.coordinationRecommendationWhy}: {recommendation.reason}
+            </p>
+            {recommendationHref ? (
+              <a className="coordinationRecommendationAction" href={recommendationHref}>
+                {recommendation.destinationTargetLabel
+                  ? formatMessage(copy.coordinationRecommendationActionMissionControl, {
+                      value: recommendation.destinationTargetLabel
+                    })
+                  : copy.coordinationRecommendationActionMissionControlFallback}
+              </a>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -732,6 +814,12 @@ export function AgentsOfficePanel({
             <p className="eyebrow">{officeName}</p>
             <h3>{copy.boardTitle}</h3>
             <p className="officeBoardCopy">{copy.boardCopy}</p>
+            {agents.coordinationRecommendationState === "calm" ? (
+              <div className="coordinationCalmNotice">
+                <strong>{copy.coordinationRecommendationCalmTitle}</strong>
+                <p>{copy.coordinationRecommendationCalmCopy}</p>
+              </div>
+            ) : null}
           </div>
 
           <div className="officeLegend">
@@ -774,7 +862,9 @@ export function AgentsOfficePanel({
                   {roomAgents.map((agent) => (
                     <article
                       key={agent.id}
-                      className={`agentDesk ${statusClass[agent.status]} coordinationCard${getCoordinationPriorityClassName(agent.coordination?.priority)}`}
+                      className={`agentDesk ${statusClass[agent.status]} coordinationCard${getCoordinationPriorityClassName(agent.coordination?.priority)} ${
+                        coordinationRecommendation?.agentId === agent.id ? "coordinationCardRecommended" : ""
+                      }`}
                     >
                       <div className="agentDeskTop">
                         <span className="agentDeskStatus">{getStatusLabel(agent.status, copy)}</span>

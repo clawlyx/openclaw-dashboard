@@ -23,6 +23,13 @@ export type AgentMissionMappingPanel = "missions" | "queue" | "reviews" | "relea
 export type AgentMissionMappingQueue = "ready" | "running" | "review" | "blocked";
 export type AgentCoordinationPriority = "routine" | "watch" | "intervene";
 export type AgentOverlapState = "parallel" | "ambiguous";
+export type AgentCoordinationSurface = "agents" | "mission-control";
+export type AgentCoordinationRecommendationState = "recommended" | "calm";
+export type AgentCoordinationRecommendationAction =
+  | "focus-agent"
+  | "focus-room"
+  | "clarify-overlap"
+  | "open-mission-control";
 export type AgentOverlapEvidence =
   | "shared-task"
   | "shared-feature"
@@ -152,6 +159,27 @@ export type AgentOverlapGroupSnapshot = {
   destination?: AgentMissionMappingDestination;
 };
 
+export type AgentCoordinationRecommendationSnapshot = {
+  id: string;
+  priority: AgentCoordinationPriority;
+  title: string;
+  reason: string;
+  action: AgentCoordinationRecommendationAction;
+  agentId?: string;
+  groupId?: string;
+  destinationSurface: AgentCoordinationSurface;
+  destinationConfidence: AgentWorkloadConfidence;
+  destinationPanel?: AgentMissionMappingPanel;
+  destinationTaskId?: string;
+  destinationFeatureId?: string;
+  destinationQueue?: AgentMissionMappingQueue;
+  destinationLane?: string;
+  destinationAgentId?: string;
+  destinationRoomId?: string;
+  destinationGroupId?: string;
+  destinationTargetLabel?: string;
+};
+
 export type AgentCoordinationSnapshot = {
   priority: AgentCoordinationPriority;
   primaryGroupId?: string;
@@ -196,6 +224,8 @@ export type AgentsSnapshot = {
   advisorySuggestions?: AgentAdvisorySuggestionSnapshot[];
   coordinationHeadline?: string;
   overlapGroups?: AgentOverlapGroupSnapshot[];
+  coordinationRecommendationState?: AgentCoordinationRecommendationState;
+  coordinationRecommendation?: AgentCoordinationRecommendationSnapshot;
   notes?: string[];
   error?: string;
 };
@@ -484,6 +514,38 @@ const normalizeCoordinationPriority = (value?: string): AgentCoordinationPriorit
     case "routine":
     case "watch":
     case "intervene":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeCoordinationSurface = (value?: string): AgentCoordinationSurface | undefined => {
+  switch (value) {
+    case "agents":
+    case "mission-control":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeCoordinationRecommendationState = (value?: string): AgentCoordinationRecommendationState | undefined => {
+  switch (value) {
+    case "recommended":
+    case "calm":
+      return value;
+    default:
+      return undefined;
+  }
+};
+
+const normalizeCoordinationRecommendationAction = (value?: string): AgentCoordinationRecommendationAction | undefined => {
+  switch (value) {
+    case "focus-agent":
+    case "focus-room":
+    case "clarify-overlap":
+    case "open-mission-control":
       return value;
     default:
       return undefined;
@@ -934,6 +996,44 @@ const normalizeOverlapGroup = (value: unknown, fallbackId: string): AgentOverlap
   };
 };
 
+const normalizeCoordinationRecommendation = (
+  value: unknown,
+  fallbackId: string
+): AgentCoordinationRecommendationSnapshot | null => {
+  const entry = asObject(value);
+  const priority = normalizeCoordinationPriority(asString(entry?.priority));
+  const title = asString(entry?.title);
+  const reason = asString(entry?.reason);
+  const action = normalizeCoordinationRecommendationAction(asString(entry?.action));
+  const destinationSurface = normalizeCoordinationSurface(asString(entry?.destinationSurface));
+  const destinationConfidence = normalizeWorkloadConfidence(asString(entry?.destinationConfidence));
+
+  if (!priority || !title || !reason || !action || !destinationSurface || !destinationConfidence) {
+    return null;
+  }
+
+  return {
+    id: asString(entry?.id) || fallbackId,
+    priority,
+    title,
+    reason,
+    action,
+    agentId: asString(entry?.agentId),
+    groupId: asString(entry?.groupId),
+    destinationSurface,
+    destinationConfidence,
+    destinationPanel: normalizeMissionMappingPanel(asString(entry?.destinationPanel)),
+    destinationTaskId: asString(entry?.destinationTaskId),
+    destinationFeatureId: asString(entry?.destinationFeatureId),
+    destinationQueue: normalizeMissionMappingQueue(asString(entry?.destinationQueue)),
+    destinationLane: asString(entry?.destinationLane),
+    destinationAgentId: asString(entry?.destinationAgentId),
+    destinationRoomId: asString(entry?.destinationRoomId),
+    destinationGroupId: asString(entry?.destinationGroupId),
+    destinationTargetLabel: asString(entry?.destinationTargetLabel)
+  };
+};
+
 const deriveFallbackWorkloads = (agent: AgentSnapshot): AgentWorkloadSnapshot[] | undefined => {
   if (agent.workloads?.length || agent.status === "idle" || agent.status === "offline") return agent.workloads;
 
@@ -976,6 +1076,8 @@ export const finalizeAgentsSnapshot = (
     missionMappings?: Record<string, AgentMissionMappingSnapshot>;
     coordinationByAgent?: Record<string, AgentCoordinationSnapshot>;
     overlapGroups?: AgentOverlapGroupSnapshot[];
+    coordinationRecommendationState?: AgentCoordinationRecommendationState;
+    coordinationRecommendation?: AgentCoordinationRecommendationSnapshot;
     notes?: string[];
   }
 ): AgentsSnapshot => {
@@ -1000,6 +1102,14 @@ export const finalizeAgentsSnapshot = (
     advisorySuggestions: options?.advisorySuggestions || snapshot.advisorySuggestions,
     coordinationHeadline: options?.coordinationHeadline || snapshot.coordinationHeadline,
     overlapGroups: options?.overlapGroups || snapshot.overlapGroups,
+    coordinationRecommendationState:
+      options?.coordinationRecommendation
+        ? "recommended"
+        : options?.coordinationRecommendationState || snapshot.coordinationRecommendationState,
+    coordinationRecommendation:
+      options?.coordinationRecommendationState === "calm"
+        ? undefined
+        : options?.coordinationRecommendation || snapshot.coordinationRecommendation,
     notes: [...(snapshot.notes || []), ...(options?.notes || [])].filter(Boolean)
   };
 };
@@ -1141,6 +1251,8 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
           .map((entry, index) => normalizeOverlapGroup(entry, `group:${index + 1}`))
           .filter((entry): entry is AgentOverlapGroupSnapshot => Boolean(entry))
       : undefined;
+    const coordinationRecommendation =
+      normalizeCoordinationRecommendation(data.coordinationRecommendation, "coordination-recommendation") || undefined;
 
     return finalizeAgentsSnapshot({
       available: true,
@@ -1158,6 +1270,8 @@ const readConfiguredAgentsSnapshot = async (openclawHome: OpenClawHomeLike): Pro
       advisorySuggestions,
       coordinationHeadline: asString(data.coordinationHeadline),
       overlapGroups,
+      coordinationRecommendationState: normalizeCoordinationRecommendationState(asString(data.coordinationRecommendationState)),
+      coordinationRecommendation,
       notes
     });
   } catch (error) {

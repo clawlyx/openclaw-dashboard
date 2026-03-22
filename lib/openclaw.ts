@@ -9,12 +9,15 @@ import {
   readAgentsSnapshot,
   type AgentAdvisorySuggestionSnapshot,
   type AgentCoordinationPriority,
+  type AgentCoordinationRecommendationAction,
+  type AgentCoordinationRecommendationSnapshot,
   type AgentCoordinationSnapshot,
   type AgentHandoffSnapshot,
   type AgentMissionMappingSnapshot,
   type AgentOverlapEvidence,
   type AgentOverlapGroupSnapshot,
   type AgentSnapshot,
+  type AgentWorkloadConfidence,
   type AgentWorkloadSnapshot,
   type AgentsSnapshot
 } from "@/lib/agents";
@@ -185,6 +188,12 @@ type ResolvedOpenClawHome = {
   home: string;
   sourceKind: OpenClawSourceKind;
   sourceLabel: string;
+};
+
+type DemoRecommendationScenario = "intervene" | "watch" | "calm";
+
+type DashboardSnapshotOptions = {
+  demoRecommendation?: DemoRecommendationScenario;
 };
 
 type ParsedUsageReport = UsageHistoryPoint & {
@@ -1468,6 +1477,10 @@ type CoordinationCandidate = {
   destination?: NonNullable<AgentMissionMappingSnapshot["destination"]>;
 };
 
+type CoordinationRecommendationCandidate = AgentCoordinationRecommendationSnapshot & {
+  score: number;
+};
+
 const ACTIVE_COORDINATION_STATUSES = new Set<AgentSnapshot["status"]>(["active", "blocked", "waiting"]);
 const COORDINATION_ROOM_HINTS: Record<string, string[]> = {
   dispatch: ["dispatch", "dispatch desk", "main console", "triage"],
@@ -1716,6 +1729,144 @@ const deriveAgentHandoff = (
   };
 };
 
+const getRecommendationConfidenceFromGroup = (group: AgentOverlapGroupSnapshot): AgentWorkloadConfidence =>
+  group.evidence.includes("exact-mapping") ? "exact" : "partial";
+
+const getRecommendationWinner = (
+  candidates: CoordinationRecommendationCandidate[]
+): AgentCoordinationRecommendationSnapshot | undefined =>
+  [...candidates]
+    .sort((left, right) => {
+      const scoreDelta = right.score - left.score;
+      if (scoreDelta !== 0) return scoreDelta;
+      return left.title.localeCompare(right.title);
+    })
+    .map(({ score: _score, ...candidate }) => candidate)[0];
+
+const buildCoordinationRecommendation = (
+  agentsSnapshot: AgentsSnapshot,
+  overlapGroups: AgentOverlapGroupSnapshot[],
+  coordinationByAgent: Map<string, AgentCoordinationSnapshot>
+) => {
+  const agentById = new Map(agentsSnapshot.agents.map((agent) => [agent.id, agent] as const));
+  const roomLabelById = new Map(agentsSnapshot.rooms.map((room) => [room.id, room.label] as const));
+  const candidates: CoordinationRecommendationCandidate[] = [];
+
+  for (const agent of agentsSnapshot.agents) {
+    const handoff = coordinationByAgent.get(agent.id)?.handoff;
+    if (!handoff || handoff.state === "unknown") continue;
+
+    const missionDestination = handoff.destination || agent.missionMapping?.destination;
+    const isMissionControlRecommendation =
+      handoff.state === "stalled" && Boolean(missionDestination || handoff.taskId || handoff.featureId);
+    const destinationSurface = isMissionControlRecommendation ? "mission-control" : "agents";
+    const destinationConfidence: AgentWorkloadConfidence = isMissionControlRecommendation
+      ? agent.missionMapping?.state === "exact" || handoff.destination
+        ? "exact"
+        : "partial"
+      : "exact";
+    const nextTarget =
+      handoff.nextAgentName ||
+      (handoff.nextRoomId ? roomLabelById.get(handoff.nextRoomId) || handoff.nextRoomId : undefined) ||
+      handoff.nextLane ||
+      handoff.nextQueue;
+    const title = handoff.taskTitle || handoff.featureTitle || `${agent.name} handoff`;
+    const reason =
+      handoff.state === "stalled"
+        ? `${agent.name} is waiting on operator approval before ${nextTarget || "the next handoff"} can move ${title} forward.`
+        : `${agent.name} already has the clearest active handoff${nextTarget ? ` to ${nextTarget}` : ""}, so this is the best move to follow in Agents.`;
+    const action: AgentCoordinationRecommendationAction = isMissionControlRecommendation
+      ? "open-mission-control"
+      : "focus-agent";
+
+    candidates.push({
+      id: `handoff:${agent.id}`,
+      score:
+        getPriorityRank(handoff.state === "stalled" ? "intervene" : "watch") * 100 +
+        30 +
+        (isMissionControlRecommendation ? 20 : 0) +
+        (destinationConfidence === "exact" ? 10 : 5) +
+        Math.min(9, Math.round(getCoordinationAgentRank(agent) / 10)),
+      priority: handoff.state === "stalled" ? "intervene" : "watch",
+      title,
+      reason,
+      action,
+      agentId: agent.id,
+      groupId: coordinationByAgent.get(agent.id)?.primaryGroupId,
+      destinationSurface,
+      destinationConfidence,
+      destinationPanel: missionDestination?.panel,
+      destinationTaskId: handoff.taskId || missionDestination?.taskId,
+      destinationFeatureId: handoff.featureId || missionDestination?.featureId,
+      destinationQueue: handoff.nextQueue || missionDestination?.queue,
+      destinationLane: handoff.nextLane || missionDestination?.lane,
+      destinationAgentId: agent.id,
+      destinationRoomId: agent.roomId,
+      destinationGroupId: coordinationByAgent.get(agent.id)?.primaryGroupId,
+      destinationTargetLabel: isMissionControlRecommendation
+        ? agent.missionMapping?.taskTitle || handoff.taskTitle || agent.missionMapping?.featureTitle || handoff.featureTitle
+        : nextTarget || agent.name
+    });
+  }
+
+  for (const group of overlapGroups.filter((entry) => entry.priority !== "routine")) {
+    const agents = group.agentIds
+      .map((agentId) => agentById.get(agentId))
+      .filter((agent): agent is AgentSnapshot => Boolean(agent))
+      .sort((left, right) => getCoordinationAgentRank(right) - getCoordinationAgentRank(left));
+    const focalAgent = agents[0];
+    const peerNames = agents.slice(1).map((agent) => agent.name);
+    const hasMissionControlDestination =
+      Boolean(group.destination && (group.taskId || group.featureId)) &&
+      (group.evidence.includes("exact-mapping") || group.evidence.includes("partial-mapping"));
+    const destinationSurface = hasMissionControlDestination ? "mission-control" : "agents";
+    const destinationConfidence = hasMissionControlDestination
+      ? getRecommendationConfidenceFromGroup(group)
+      : focalAgent
+        ? "exact"
+        : "partial";
+    const title = group.taskTitle || group.featureTitle || group.label;
+    const reason = hasMissionControlDestination
+      ? `${title} still shows conflicting coordination evidence, so Mission Control is the safest place to resolve it.`
+      : `${focalAgent?.name || title}${peerNames[0] ? ` and ${peerNames[0]}` : ""} are on the same ${group.threadLabel || group.repo || "work"} without a trustworthy Mission Control owner.`;
+
+    candidates.push({
+      id: `overlap:${group.id}`,
+      score:
+        getPriorityRank(group.priority) * 100 +
+        (hasMissionControlDestination ? 15 : 0) +
+        (destinationConfidence === "exact" ? 10 : 5) +
+        Math.min(9, agents.length * 2),
+      priority: group.priority,
+      title,
+      reason,
+      action: hasMissionControlDestination ? "open-mission-control" : "clarify-overlap",
+      agentId: focalAgent?.id,
+      groupId: group.id,
+      destinationSurface,
+      destinationConfidence,
+      destinationPanel: group.destination?.panel,
+      destinationTaskId: group.taskId || group.destination?.taskId,
+      destinationFeatureId: group.featureId || group.destination?.featureId,
+      destinationQueue: group.destination?.queue,
+      destinationLane: group.lane || group.destination?.lane,
+      destinationAgentId: focalAgent?.id,
+      destinationRoomId: focalAgent?.roomId,
+      destinationGroupId: group.id,
+      destinationTargetLabel: hasMissionControlDestination ? title : focalAgent?.name || title
+    });
+  }
+
+  const winner = getRecommendationWinner(candidates);
+
+  const coordinationRecommendationState: "recommended" | "calm" = winner ? "recommended" : "calm";
+
+  return {
+    coordinationRecommendationState,
+    coordinationRecommendation: winner
+  };
+};
+
 const buildCoordinationModel = (agentsSnapshot: AgentsSnapshot, missionControl: MissionControlSnapshot) => {
   const overlapGroups = buildOverlapGroups(agentsSnapshot);
   const taskById = new Map(
@@ -1772,11 +1923,14 @@ const buildCoordinationModel = (agentsSnapshot: AgentsSnapshot, missionControl: 
     ambiguousCount || parallelCount || activeHandoffCount
       ? `${parallelCount} healthy shared-work group${parallelCount === 1 ? "" : "s"}, ${ambiguousCount} overlap risk${ambiguousCount === 1 ? "" : "s"} needing intervention, and ${activeHandoffCount} active handoff${activeHandoffCount === 1 ? "" : "s"} are visible in this snapshot.`
       : "No trustworthy overlap or handoff signals are available yet.";
+  const recommendation = buildCoordinationRecommendation(agentsSnapshot, overlapGroups, coordinationByAgent);
 
   return {
     overlapGroups,
     coordinationByAgent: Object.fromEntries(coordinationByAgent.entries()),
-    coordinationHeadline
+    coordinationHeadline,
+    coordinationRecommendationState: recommendation.coordinationRecommendationState,
+    coordinationRecommendation: recommendation.coordinationRecommendation
   };
 };
 
@@ -2314,22 +2468,190 @@ const readCronJobs = async (openclawHome: ResolvedOpenClawHome): Promise<CronSna
   }
 };
 
-export const getDashboardSnapshot = async (): Promise<DashboardSnapshot> => {
+const applyDemoRecommendationScenario = (
+  agentsSnapshot: AgentsSnapshot,
+  missionControl: MissionControlSnapshot,
+  scenario: DemoRecommendationScenario
+) => {
+  const patchTask = (task: MissionControlTaskSnapshot): MissionControlTaskSnapshot => {
+    if (scenario === "calm" && task.tqId === "TQ-091") {
+      return {
+        ...task,
+        ownerAgentId: undefined
+      };
+    }
+
+    if (task.tqId !== "TQ-101") return task;
+
+    if (scenario === "intervene") {
+      return {
+        ...task,
+        waitingOn: "operator approval before qa-agent review sign-off"
+      };
+    }
+
+    if (scenario === "watch") {
+      return {
+        ...task,
+        waitingOn: "qa-agent review sign-off"
+      };
+    }
+
+    return {
+      ...task,
+      ownerAgentId: undefined,
+      waitingOn: undefined
+    };
+  };
+
+  const patchedMissionControl: MissionControlSnapshot = {
+    ...missionControl,
+    features: missionControl.features.map((feature) => ({
+      ...feature,
+      tasks: feature.tasks.map(patchTask)
+    })),
+    queue: {
+      readyTasks: missionControl.queue.readyTasks.map(patchTask),
+      runningTasks: missionControl.queue.runningTasks.map(patchTask),
+      reviewTasks: missionControl.queue.reviewTasks.map(patchTask),
+      blockedTasks: missionControl.queue.blockedTasks.map(patchTask)
+    },
+    review: {
+      ...missionControl.review,
+      reviewTasks: missionControl.review.reviewTasks.map(patchTask)
+    }
+  };
+
+  const patchedAgents: AgentsSnapshot = {
+    ...agentsSnapshot,
+    agents: agentsSnapshot.agents.map((agent) => {
+      if (scenario === "intervene") {
+        return agent;
+      }
+
+      if (agent.id === "build-agent") {
+        return {
+          ...agent,
+          currentTask:
+            scenario === "watch"
+              ? "Finishing badge cleanup on a separate follow-up thread so Build Bay no longer overlaps the main repo-work intervention."
+              : "Closing a separate badge cleanup follow-up while the rest of the floor stays routine.",
+          focus: scenario === "watch" ? "Separate follow-up" : "Routine cleanup",
+          workloads: agent.workloads?.map((workload, index) =>
+            index === 0
+              ? {
+                  ...workload,
+                  title:
+                    scenario === "watch"
+                      ? "Phase 12 badge cleanup follow-up"
+                      : "Separate badge cleanup follow-up",
+                  summary:
+                    scenario === "watch"
+                      ? "Build Bay moved onto a separate repo-work follow-up so the only remaining coordination question is the live review handoff."
+                      : "Build Bay is on a separate follow-up thread, so no overlap escalation is warranted right now.",
+                  threadLabel: scenario === "watch" ? "Badge cleanup follow-up" : "Routine badge cleanup",
+                  taskLabel: scenario === "watch" ? "12-03" : undefined
+                }
+              : workload
+          )
+        };
+      }
+
+      if (agent.id === "main") {
+        return {
+          ...agent,
+          currentTask:
+            scenario === "watch"
+              ? "Coordinating the concierge review handoff while the rest of the floor stays split cleanly."
+              : "Coordinating routine concierge follow-through while the rest of the floor stays calm.",
+          workloads: agent.workloads?.map((workload, index) =>
+            index === 0
+              ? {
+                  ...workload,
+                  summary:
+                    scenario === "watch"
+                      ? "Dispatch is tracking the live concierge review handoff now that the build overlap is no longer the highest-priority issue."
+                      : "Dispatch is watching a routine concierge follow-through with no current escalation signal."
+                }
+              : workload
+          )
+        };
+      }
+
+      if (scenario === "calm" && agent.id === "research-agent") {
+        return {
+          ...agent,
+          currentTaskId: undefined,
+          currentTask: "Keeping the concierge notebook aligned while the review path stays routine.",
+          focus: "Routine research follow-through",
+          missionMapping: undefined,
+          nextHandoff: undefined,
+          workloads: agent.workloads?.map((workload, index) =>
+            index === 0
+              ? {
+                  ...workload,
+                  summary: "Research Bay is maintaining the concierge notes without an escalation signal or exact next owner.",
+                  taskLabel: undefined
+                }
+              : workload
+          )
+        };
+      }
+
+      if (scenario === "calm" && agent.id === "qa-agent") {
+        return {
+          ...agent,
+          currentTask: "Keeping the concierge review lane warm while routine checks continue.",
+          focus: "Routine review queue",
+          workloads: agent.workloads?.map((workload, index) =>
+            index === 0
+              ? {
+                  ...workload,
+                  summary: "Review Booth is visible as the next likely stop, but no exact review escalation is active.",
+                  taskLabel: undefined
+                }
+              : workload
+          )
+        };
+      }
+
+      return agent;
+    })
+  };
+
+  return {
+    agentsSnapshot: patchedAgents,
+    missionControl: patchedMissionControl
+  };
+};
+
+export const getDashboardSnapshot = async (options?: DashboardSnapshotOptions): Promise<DashboardSnapshot> => {
   const openclawHome = await resolveOpenClawHome();
   const generatedAt = new Date().toISOString();
   const baseAgents = await readAgentsSnapshot(openclawHome);
-  const missionControl = await readMissionControlSnapshot();
-  const advisorySuggestions = await buildAdvisorySuggestions(missionControl);
-  const missionMappings = buildMissionMappings(baseAgents, missionControl);
-  const agentsWithMappings = finalizeAgentsSnapshot(baseAgents, {
+  const baseMissionControl = await readMissionControlSnapshot();
+  const demoRecommendation =
+    openclawHome.sourceKind === "demo" ? options?.demoRecommendation || "intervene" : undefined;
+  const demoScenario = demoRecommendation
+    ? applyDemoRecommendationScenario(baseAgents, baseMissionControl, demoRecommendation)
+    : { agentsSnapshot: baseAgents, missionControl: baseMissionControl };
+  const advisorySuggestions = await buildAdvisorySuggestions(demoScenario.missionControl);
+  const missionMappings = buildMissionMappings(demoScenario.agentsSnapshot, demoScenario.missionControl);
+  const agentsWithMappings = finalizeAgentsSnapshot(demoScenario.agentsSnapshot, {
     missionMappings
   });
-  const coordination = buildCoordinationModel(agentsWithMappings, missionControl);
+  const coordination = buildCoordinationModel(agentsWithMappings, demoScenario.missionControl);
   const agents = finalizeAgentsSnapshot(agentsWithMappings, {
     advisorySuggestions,
     coordinationByAgent: coordination.coordinationByAgent,
     overlapGroups: coordination.overlapGroups,
-    coordinationHeadline: coordination.coordinationHeadline
+    coordinationHeadline: coordination.coordinationHeadline,
+    coordinationRecommendationState: coordination.coordinationRecommendationState,
+    coordinationRecommendation: coordination.coordinationRecommendation,
+    notes:
+      demoRecommendation && openclawHome.sourceKind === "demo"
+        ? [`Bundled demo recommendation scenario: ${demoRecommendation}.`]
+        : undefined
   });
 
   return {
@@ -2340,10 +2662,10 @@ export const getDashboardSnapshot = async (): Promise<DashboardSnapshot> => {
     usage: await readUsageReports(openclawHome),
     cron: await readCronJobs(openclawHome),
     agents,
-    missionControl,
+    missionControl: demoScenario.missionControl,
     pressure: buildPressureSignalsModel({
       agents,
-      missionControl,
+      missionControl: demoScenario.missionControl,
       generatedAt
     })
   };
