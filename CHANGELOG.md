@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-03-21
+
+### Added
+
+- Exact, partial, and unavailable task-to-agent mapping states across `Agents`, the snapshot contract, and `Mission Control` handoff flows.
+- Explicit overlap groups, recent handoff state, and intervention priority so healthy parallel work reads differently from risky coordination ambiguity.
+- One default recommended next move with explicit `Agents` vs `Mission Control` destination clarity, concise reasoning, and a calm no-escalation fallback.
+
+### Changed
+
+- Extended `Mission Control` landing continuity so recommendation context carries through existing route state without moving task truth out of `Mission Control`.
+- Updated README docs, Chinese docs, plans, and runbooks to describe the shipped `1.5.0 Coordination Clarity` contract and bundled-demo verification flow.
+- Bumped the app version to `1.5.0` for the Coordination Clarity milestone.
+
+### Fixed
+
+- Kept overlap, handoff, and recommendation cues synchronized between `Agents`, `Mission Control`, and `/api/snapshot` so demo verification inspects one shared coordination model.
+- Preserved explicit advisory framing and calm fallback behavior so recommendation guidance never reads like automatic reassignment or manufactured urgency.
+
 ## [1.4.0] - 2026-03-16
 
 ### Added

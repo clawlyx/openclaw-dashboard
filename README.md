@@ -4,7 +4,7 @@
 
 OpenClaw workstation with dedicated Agents, Mission Control, Overview, History, Usage, and Scheduler workspaces.
 
-Latest release: `1.4.0 Agent Clarity`.
+Latest release: `1.5.0 Coordination Clarity`.
 
 <p align="center">
   <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard agents virtual office desktop preview" width="78%" />
@@ -155,7 +155,7 @@ What to confirm before release:
 - Mission Control mirrors the same overlap and handoff context from Agents, repeats the recommended-move reason on recommended landings, and keeps intervention-needed overlap above routine parallel work
 - the bundled mission notes make the keep/archive/remove boundary explicit for the surviving `TQ-091` and `TQ-101` research items
 - README and preview screenshots in `.github/assets/` are captured only from the bundled demo dataset
-- `package.json`, README release copy, and the changelog all agree on `1.4.0`
+- `package.json`, README release copy, and the changelog all agree on `1.5.0`
 
 ```bash
 pnpm lint

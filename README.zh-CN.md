@@ -4,7 +4,7 @@
 
 一个面向 OpenClaw 的工作站应用，提供 Agents、Mission Control、概览、历史、用量和调度等独立工作区。
 
-当前已发布版本：`1.4.0 Agent Clarity`。
+当前已发布版本：`1.5.0 Coordination Clarity`。
 
 <p align="center">
   <img src="./.github/assets/readme-demo.png" alt="OpenClaw Dashboard Agents 虚拟办公室桌面端预览" width="78%" />
@@ -146,7 +146,7 @@ OPENCLAW_HOME=demo/openclaw-home MISSION_CONTROL_HOME=/tmp/openclaw-dashboard-de
 - `Mission Control` 会复现与 Agents 相同的重叠与交接上下文，在推荐跳转落地时重复推荐理由，并让需要介入的风险高于常规并行工作
 - 内置 mission 注释能清楚说明 `TQ-091` 与 `TQ-101` 被保留，而 repo-bound 任务记录已被归档或移除
 - `.github/assets/` 中的 README 与预览截图全部来自内置 demo 数据，而不是本机真实数据
-- `package.json`、README 里的发布描述和 changelog 对 `1.4.0` 版本保持一致
+- `package.json`、README 里的发布描述和 changelog 对 `1.5.0` 版本保持一致
 
 ```bash
 pnpm lint
