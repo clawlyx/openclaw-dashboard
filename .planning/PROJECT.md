@@ -2,12 +2,12 @@
 
 ## What This Is
 
-OpenClaw Dashboard is the operator workstation for a local OpenClaw setup. It turns agent presence, Mission Control queue state, usage history, provider limits, and scheduler health into one app so the operator does not need to bounce between multiple internal tools. `1.5.0` shipped clearer Mission Control mapping, overlap and handoff visibility, and one trustworthy next move across the existing `Agents` and `Mission Control` surfaces.
+OpenClaw Dashboard is the operator workstation for a local OpenClaw setup. It turns agent presence, Mission Control queue state, usage history, provider limits, and scheduler health into one app so the operator does not need to bounce between multiple internal tools. `1.5.0` shipped clearer Mission Control mapping, overlap and handoff visibility, and one trustworthy next move across the existing `Agents` and `Mission Control` surfaces. `1.6.0` now focuses on evidence-based forecasting so operators can see what is likely to slip next before today's coordination issues become tomorrow's pressure spikes.
 
 ## Current State
 
 - **Shipped version:** `1.5.0` on 2026-03-21
-- **Milestone status:** `v1.5.0 Coordination Clarity` is archived; the next milestone is not yet defined
+- **Milestone status:** `v1.6.0 Evidence-Based Forecasting` is defined; next step is planning Phase 14
 - **Codebase shape:** Next.js App Router + React + TypeScript workstation, about 14.3k LOC across `app`, `components`, `lib`, and `demo`
 - **Validation baseline:** `pnpm check`, bundled-demo browser verification, `/api/snapshot` coordination contract checks, and Mission Control continuity verification
 - **Archives:** `.planning/milestones/v1.2.0-ROADMAP.md`, `.planning/milestones/v1.2.0-REQUIREMENTS.md`, `.planning/milestones/v1.3.0-ROADMAP.md`, `.planning/milestones/v1.3.0-REQUIREMENTS.md`, `.planning/milestones/v1.4.0-ROADMAP.md`, `.planning/milestones/v1.4.0-REQUIREMENTS.md`, `.planning/milestones/v1.4.0-MILESTONE-AUDIT.md`, `.planning/milestones/v1.5.0-ROADMAP.md`, `.planning/milestones/v1.5.0-REQUIREMENTS.md`, and `.planning/milestones/v1.5.0-MILESTONE-AUDIT.md`
@@ -16,11 +16,14 @@ OpenClaw Dashboard is the operator workstation for a local OpenClaw setup. It tu
 
 One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.
 
-## Next Milestone Goals
+## Current Milestone: v1.6.0 Evidence-Based Forecasting
 
-- Turn coordination clarity into forward-looking signal without manufacturing certainty the data cannot support.
-- Decide whether safe local runtime controls belong in the workstation and what recovery contract they need.
-- Only widen beyond the existing `Agents` and `Mission Control` surfaces if the current flows can no longer carry the coordination load.
+**Goal:** Turn coordination clarity into inspectable early-warning guidance across the existing `Agents` and `Mission Control` surfaces without manufacturing certainty.
+
+**Target features:**
+- Early-warning forecasting for overlap, handoff, queue, room, and mission slippage using the existing local snapshot and recent history.
+- Explainable forecast evidence and confidence-aware fallback states so operators can tell why a forecast exists and when it is too weak to trust.
+- Forecast continuity inside the existing `Agents`, `Mission Control`, `/api/snapshot`, and bundled-demo validation flows without adding a new workspace.
 
 ## Requirements
 
@@ -41,8 +44,8 @@ One workstation should let the operator see who owns work, what needs action nex
 ### Active
 
 - [ ] Forecast emerging coordination bottlenecks with evidence the operator can inspect before pressure escalates.
-- [ ] Add safe local runtime controls only when command outcomes and recovery state are clear inside the workstation.
-- [ ] Decide whether deeper coordination analytics should extend existing surfaces or justify a dedicated expansion surface.
+- [ ] Surface forecasted risk from the existing `Agents` and `Mission Control` scan paths without creating a new coordination workspace.
+- [ ] Keep forecasting advisory, confidence-aware, and consistent across the shared snapshot contract, bundled demo scenarios, and verification flow.
 
 ### Out of Scope
 
@@ -60,7 +63,7 @@ One workstation should let the operator see who owns work, what needs action nex
 - Mission Control now treats `task-center`, `agent-launchpad`, and `agent-workflow` as archived context only; surviving task-center-like data is intentional personal research
 - Bundled demo data now includes deterministic repo-work, intake-thread, and multi-session workload cases safe for public docs and runbooks
 - Public README assets are demo-data driven and must remain safe to publish
-- Forecasting, runtime controls, and deeper coordination expansion remain open planning questions rather than committed scope
+- `1.6.0` intentionally tackles forecasting before runtime controls so the workstation can prove demand for forward-looking signal without taking on command-and-recovery complexity yet
 - The workstation must preserve the archive boundary and public-safe demo validation path established in `1.4.0`
 
 ## Constraints
@@ -93,6 +96,7 @@ One workstation should let the operator see who owns work, what needs action nex
 | Show exact, partial, and unavailable Mission Control mapping states explicitly | Operators need to judge handoff confidence without guessing or assuming ownership changed | ✓ Good |
 | Keep overlap, handoff, and recommendation context inside existing `Agents` and `Mission Control` surfaces | Coordination clarity should improve scan speed without creating another workspace | ✓ Good |
 | Rank one default next move on the server and keep a calm fallback explicit | Every surface should consume the same advisory signal and avoid manufacturing urgency | ✓ Good |
+| Forecasts must explain their evidence and confidence before asking the operator to act | Forward-looking guidance is only useful if operators can inspect why it exists and when it is too weak to trust | ✓ New |
 
 <details>
 <summary>Archived milestone framing (before v1.5.0 completion)</summary>
@@ -104,4 +108,4 @@ One workstation should let the operator see who owns work, what needs action nex
 </details>
 
 ---
-*Last updated: 2026-03-21 after shipping v1.5.0 Coordination Clarity*
+*Last updated: 2026-03-21 after starting v1.6.0 Evidence-Based Forecasting*

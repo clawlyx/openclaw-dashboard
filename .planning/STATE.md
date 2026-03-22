@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.5.0
-milestone_name: Coordination Clarity
-status: milestone_complete
-stopped_at: Milestone v1.5.0 archived; ready to define the next milestone
-last_updated: "2026-03-21T21:33:52-0400"
-last_activity: 2026-03-21 — Archived milestone `v1.5.0 Coordination Clarity`, recorded the milestone audit, and prepared planning docs for the next version
+milestone: v1.6.0
+milestone_name: Evidence-Based Forecasting
+status: ready_to_plan
+stopped_at: Ready to plan Phase 14 for v1.6.0 Evidence-Based Forecasting
+last_updated: "2026-03-21T23:59:00-0400"
+last_activity: 2026-03-21 — Started milestone `v1.6.0 Evidence-Based Forecasting`, defined requirements, and prepared the roadmap for Phase 14 planning
 progress:
   total_phases: 3
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,29 +21,29 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-03-21)
 
 **Core value:** One workstation should let the operator see who owns work, what needs action next, and move the mission forward without switching apps.  
-**Current focus:** Define the next milestone with `$gsd-new-milestone`.
+**Current focus:** Plan Phase 14 of `v1.6.0 Evidence-Based Forecasting`.
 
 ## Current Position
 
-Milestone: `v1.5.0 Coordination Clarity`
-Phase: —
+Milestone: `v1.6.0 Evidence-Based Forecasting`
+Phase: 14
 Plan: —
-Status: Milestone archived, ready for next milestone definition
-Last activity: 2026-03-21 — Archived milestone `v1.5.0 Coordination Clarity`, recorded the milestone audit, and prepared planning docs for the next version
+Status: Ready to plan
+Last activity: 2026-03-21 — Started milestone `v1.6.0 Evidence-Based Forecasting`, defined requirements, and prepared the roadmap for Phase 14 planning
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Milestone Stats
 
-- Latest shipped milestone: `v1.5.0 Coordination Clarity`
-- Archived phases: `11-13`
-- Requirements shipped: `9/9`
-- Audit status: `passed`
+- Previous milestone archive: `v1.5.0 Coordination Clarity`
+- Active milestone target: `v1.6.0 Evidence-Based Forecasting`
+- Roadmap phases: `14-16`
+- Requirements mapped: `9/9`
 - Research mode: skipped for this milestone
 
 ## Pending Todos
 
-- Start the next milestone with `$gsd-new-milestone`
+- Plan Phase 14 with `$gsd-plan-phase 14`
 
 ## Blockers/Concerns
 
@@ -51,6 +51,6 @@ Progress: [##########] 100%
 
 ## Session Continuity
 
-Last session: 2026-03-21T21:33:52-0400
-Stopped at: Milestone v1.5.0 archived; ready to define the next milestone
-Resume file: None
+Last session: 2026-03-21T23:59:00-0400
+Stopped at: Ready to plan Phase 14 for v1.6.0 Evidence-Based Forecasting
+Resume file: .planning/REQUIREMENTS.md
